@@ -54,64 +54,101 @@ export default function MyTeacherPage() {
   const [isLoadingPage, setIsLoadingPage] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchMyTeacherData = useCallback(async () => {
-    if (!user || authLoading) return;
-
-    setIsLoadingPage(true);
-    setError(null);
+  const fetchMyTeacherData = useCallback(async (isMountedGetter: () => boolean = () => true) => {
+    if (!user || authLoading) {
+        if (isMountedGetter()) { setIsLoadingPage(false); }
+        return;
+    }
+    if (isMountedGetter()) {
+      setIsLoadingPage(true);
+      setError(null);
+    }
 
     if (!user.subscription_by_teacher || user.subscription_by_teacher.length === 0) {
-      setSubscribedTeacherInfo(null);
-      setTeacherTests([]);
-      setIsLoadingPage(false);
+      if (isMountedGetter()) {
+        setSubscribedTeacherInfo(null);
+        setTeacherTests([]);
+        setIsLoadingPage(false);
+      }
       return;
     }
 
-    const teacherId = user.subscription_by_teacher[0]; // Assuming student subscribes to one main teacher for now
+    const teacherId = user.subscription_by_teacher[0]; 
 
     try {
-      // Fetch teacher details
+      if (!isMountedGetter()) return;
       const teacherRecord = await pb.collection('teacher_data').getOne<RecordModel>(teacherId, {
-        fields: 'id,name,profile_picture,institute_name,EduNexus_Name,collectionId,collectionName', // Fetch necessary fields
+        fields: 'id,name,profile_picture,institute_name,EduNexus_Name,collectionId,collectionName', 
+        '$autoCancel': false,
       });
       
+      if (!isMountedGetter()) return;
       let avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherRecord.name?.charAt(0) || 'T')}&background=random&color=fff&size=128`;
       if (teacherRecord.profile_picture && teacherRecord.collectionId && teacherRecord.collectionName) {
-        avatarUrl = pb.files.getUrl(teacherRecord, teacherRecord.profile_picture as string);
+        try {
+          avatarUrl = pb.files.getUrl(teacherRecord, teacherRecord.profile_picture as string);
+        } catch (e) {
+          console.warn(`MyTeacherPage: Error getting avatar URL for teacher ${teacherRecord.id}:`, e);
+        }
       }
 
-      setSubscribedTeacherInfo({
-        id: teacherRecord.id,
-        name: teacherRecord.name,
-        avatarUrl: avatarUrl,
-        email: '', // Not fetched, but required by User type
-        role: 'Teacher', // Assuming this context
-        EduNexus_Name: teacherRecord.EduNexus_Name,
-        institute_name: teacherRecord.institute_name,
-      } as User);
+      if (isMountedGetter()) {
+        setSubscribedTeacherInfo({
+          id: teacherRecord.id,
+          name: teacherRecord.name,
+          avatarUrl: avatarUrl,
+          email: '', 
+          role: 'Teacher', 
+          EduNexus_Name: teacherRecord.EduNexus_Name,
+          institute_name: teacherRecord.institute_name,
+        } as User);
+      } else { return; }
 
-      // Fetch teacher's published tests
+
       const testsFilter = `teacherId = "${escapeForPbFilter(teacherId)}" && status = "Published"`;
       const testRecords = await pb.collection('teacher_tests').getFullList<RecordModel>({
         filter: testsFilter,
         sort: '-created',
-        fields: 'id,testName,model,type,status,QBExam,duration,questions', // Add questions to get count
+        fields: 'id,testName,model,type,status,QBExam,duration,questions', 
+        '$autoCancel': false,
       });
-      setTeacherTests(testRecords.map(mapPbTeacherTestToDisplay));
+      if (isMountedGetter()) setTeacherTests(testRecords.map(mapPbTeacherTestToDisplay));
 
     } catch (err: any) {
-      const clientError = err as ClientResponseError;
-      console.error("Error fetching teacher data or tests:", clientError.data || clientError);
-      setError(`Could not load teacher's content. Error: ${clientError.data?.message || clientError.message}`);
+      if (!isMountedGetter()) return;
+      let errorToLog: any = err;
+      let errorMessage = "An unexpected error occurred.";
+
+      if (err instanceof Error && 'isAbort' in err && (err as any).isAbort) {
+          console.warn('MyTeacherPage: Fetch teacher data or tests request was aborted.');
+          errorMessage = "Request was cancelled. Please try again if this was not intended.";
+      } else if (err && typeof err === 'object') {
+          const clientError = err as ClientResponseError;
+          errorToLog = clientError.data || clientError; // Prioritize clientError.data for logging if available
+          if (clientError.name === 'ClientResponseError' && clientError.status === 0) {
+              console.warn('MyTeacherPage: Network error or request autocancelled. Error object:', clientError);
+              errorMessage = "Network error. Please check your connection.";
+          } else if (clientError.status === 404) {
+              errorMessage = "The teacher or their tests could not be found. The record might have been deleted.";
+          } else if (clientError.data && clientError.data.message) {
+              errorMessage = `Error: ${clientError.data.message}`;
+          } else if (clientError.message) {
+              errorMessage = `Error: ${clientError.message}`;
+          }
+      }
+      console.error("MyTeacherPage: Error fetching teacher data or tests:", errorToLog);
+      setError(errorMessage);
     } finally {
-      setIsLoadingPage(false);
+      if (isMountedGetter()) setIsLoadingPage(false);
     }
   }, [user, authLoading]);
 
   useEffect(() => {
+    let isMounted = true;
     if (!authLoading) {
-      fetchMyTeacherData();
+      fetchMyTeacherData(() => isMounted);
     }
+    return () => { isMounted = false; };
   }, [authLoading, fetchMyTeacherData]);
 
   if (isLoadingPage || authLoading) {
@@ -175,7 +212,7 @@ export default function MyTeacherPage() {
             <Avatar className="h-20 w-20 border-2 border-primary-foreground/50">
               <AvatarImage src={subscribedTeacherInfo.avatarUrl} alt={subscribedTeacherInfo.name} data-ai-hint="teacher profile"/>
               <AvatarFallback className="text-3xl bg-primary-foreground/20 text-primary-foreground">
-                {subscribedTeacherInfo.name.charAt(0).toUpperCase()}
+                {subscribedTeacherInfo.name?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="text-center sm:text-left">
@@ -241,15 +278,12 @@ export default function MyTeacherPage() {
         )}
       </section>
       
-      {/* Placeholder for other content types like DPPs, Notes from this teacher */}
       <section className="mt-8 pt-6 border-t">
         <h2 className="text-xl font-semibold mb-4 text-foreground">More from {subscribedTeacherInfo.name}</h2>
         <div className="text-center p-6 border-dashed rounded-md bg-muted/50">
             <p className="text-muted-foreground">Stay tuned! More content like DPPs and notes from this teacher will appear here soon.</p>
         </div>
       </section>
-
     </div>
   );
 }
-
