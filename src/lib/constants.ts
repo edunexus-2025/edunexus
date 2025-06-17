@@ -52,6 +52,7 @@ export const Routes = {
   feedback: '/dashboard/settings/feedback',
   studyPlan: '/dashboard/study-plan',
   studentTeacherRanking: '/dashboard/teacher-ranking',
+  myTeacherPortal: '/dashboard/my-teacher', // New Route
   testResult: (resultId: string) => `/dashboard/test-results/chapterwise/${resultId}`,
   testResultCompete: (resultId: string) => `/dashboard/test-results/compete/${resultId}`,
   helpCenter: '/dashboard/help-center',

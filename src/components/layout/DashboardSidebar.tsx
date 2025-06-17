@@ -68,7 +68,7 @@ import {
 import { ThemeToggleButton } from './ThemeToggleButton';
 import { NotificationPopover } from './NotificationPopover';
 import type { NotificationMessage } from '@/lib/types';
-import { buttonVariants } from '@/components/ui/button';
+import { buttonVariants } from '../ui/button';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -87,7 +87,7 @@ const mainNavItems = [
 
 const teacherPanelItems = [
   { href: Routes.studentTeacherRanking, label: 'Teacher Ranking', icon: <Award /> },
-  { href: Routes.teacherDashboard, label: 'Your Teacher Portal', icon: <ClipboardSignature /> },
+  { href: Routes.myTeacherPortal, label: 'My Teacher Portal', icon: <ClipboardSignature /> }, // Updated href
 ];
 
 const connectNavItems = [
@@ -346,7 +346,7 @@ export function DashboardSidebar({
         )}
       </SidebarContent>
 
-      <SidebarFooter className="p-2 border-t border-sidebar-border">
+      <SidebarFooter className="p-2 border-t border-sidebar-border bg-card">
         {user && !isLoading && (
           <div className="relative"> 
             <DropdownMenu>
