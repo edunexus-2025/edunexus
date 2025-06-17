@@ -42,4 +42,10 @@ next-env.d.ts
 
 # firebase
 firebase-debug.log
+<<<<<<< HEAD
 firestore-debug.log
+
+/edunexus
+=======
+firestore-debug.log
+>>>>>>> 04886db95a98afe4f396b7bb2a309e2fc958be11

@@ -1,21 +1,28 @@
-import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
-import './globals.css';
-import { Toaster } from "@/components/ui/toaster"; // Added Toaster
 
-const geistSans = Geist({
+import type { Metadata } from 'next'; 
+import { Geist } from 'next/font/google';
+import './globals.css';
+import { Toaster } from '@/components/ui/toaster';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { AppConfig } from '@/lib/constants';
+import { ThemeProvider } from 'next-themes';
+// useEffect is no longer needed for document.title
+import { NotificationPermissionManager } from '@/components/layout/NotificationPermissionManager';
+
+
+const geist = Geist({
   variable: '--font-geist-sans',
   subsets: ['latin'],
 });
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
-
+// Set metadata for the application
 export const metadata: Metadata = {
-  title: 'PhotoRecipe', // Updated title
-  description: 'Suggests ingredients based on your food photos!',
+  title: AppConfig.appName,
+  description: `Prepare for MHT CET, JEE, NEET with ${AppConfig.appName} - Your ultimate test series and DPP companion.`,
+  icons: {
+    icon: '/edunexus-applogo.png', // Standard favicon
+    apple: '/edunexus-applogo.png', // Apple touch icon
+  },
 };
 
 export default function RootLayout({
@@ -23,12 +30,42 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  
+  // useEffect for document.title has been removed. 
+  // The title is now set via the metadata export above.
+
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
-        {children}
-        <Toaster />
+    <html lang="en" suppressHydrationWarning>
+      <head>{/* Ensure no leading whitespace */}
+        {/* Favicon and Apple touch icon links are now handled by Next.js metadata.icons */}
+        {/*
+        Standard HTML script tag for AdSense */}
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9210790199921207"
+          crossOrigin="anonymous"
+        ></script>{/*
+        Razorpay Checkout Script */}
+        <script
+          id="razorpay-checkout-js"
+          src="https://checkout.razorpay.com/v1/checkout.js"
+        ></script>{/* Ensure no trailing whitespace */}
+      </head>
+      <body className={`${geist.variable} font-sans antialiased`}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+            {children}
+            <NotificationPermissionManager />
+            <Toaster />
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
 }
+

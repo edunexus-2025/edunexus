@@ -1,0 +1,134 @@
+
+[
+    {
+        "id": "pbc_report_students",
+        "listRule": "@request.auth.id != \"\" && (user = @request.auth.id || @request.auth.role = \"admin\")",
+        "viewRule": "@request.auth.id != \"\" && (user = @request.auth.id || @request.auth.role = \"admin\")",
+        "createRule": "@request.auth.id != \"\"",
+        "updateRule": "@request.auth.id != \"\" && (user = @request.auth.id || @request.auth.role = \"admin\")",
+        "deleteRule": "@request.auth.id != \"\" && (user = @request.auth.id || @request.auth.role = \"admin\")",
+        "name": "report_by_students",
+        "type": "base",
+        "system": false,
+        "schema": [
+            {
+                "system": true,
+                "id": "text_report_id",
+                "name": "id",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": 15,
+                    "max": 15,
+                    "pattern": "^[a-z0-9]+$",
+                    "autogeneratePattern": "[a-z0-9]{15}"
+                }
+            },
+            {
+                "system": false,
+                "id": "select_report_type_error",
+                "name": "TypeOfError",
+                "type": "select",
+                "required": true,
+                "presentable": true,
+                "unique": false,
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "Wrong Question",
+                        "Incomplete Question",
+                        "Incorrect Grammar",
+                        "Question is out of syllabus",
+                        "Question an old pattern",
+                        "Repeated Question"
+                    ]
+                }
+            },
+            {
+                "system": false,
+                "id": "text_report_details",
+                "name": "Please_write_your_report_here",
+                "type": "text",
+                "required": false,
+                "presentable": true,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": 500,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "relation_report_user",
+                "name": "user",
+                "type": "relation",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "pbc_1377172174",
+                    "cascadeDelete": false,
+                    "minSelect": 1,
+                    "maxSelect": 1,
+                    "displayFields": null
+                }
+            },
+            {
+                "system": false,
+                "id": "relation_report_question",
+                "name": "question",
+                "type": "relation",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "pbc_1874489316",
+                    "cascadeDelete": false,
+                    "minSelect": 1,
+                    "maxSelect": 1,
+                    "displayFields": null
+                }
+            },
+            {
+                "system": false,
+                "id": "relation_report_test",
+                "name": "test_in_which_report_is_made",
+                "type": "relation",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "pbc_3575280622",
+                    "cascadeDelete": false,
+                    "minSelect": 1,
+                    "maxSelect": 1,
+                    "displayFields": null
+                }
+            },
+            {
+                "system": false,
+                "id": "autodate_report_created",
+                "name": "created",
+                "type": "autodate",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": { "onCreate": true, "onUpdate": false }
+            },
+            {
+                "system": false,
+                "id": "autodate_report_updated",
+                "name": "updated",
+                "type": "autodate",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": { "onCreate": true, "onUpdate": true }
+            }
+        ],
+        "indexes": []
+    }
+]

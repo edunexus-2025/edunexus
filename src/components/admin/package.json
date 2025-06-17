@@ -1,0 +1,7 @@
+
+{
+  "name": "@components/admin",
+  "private": true,
+  "main": "./index.ts",
+  "types": "./index.ts"
+}

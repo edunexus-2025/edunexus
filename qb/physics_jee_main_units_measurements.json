@@ -1,0 +1,45 @@
+
+[
+  {
+    "teacher": null,
+    "QuestionImage": null,
+    "QuestionText": "The dimensional formula for permeability of free space, $\\mu_0$ is:",
+    "OptionAImage": null,
+    "OptionAText": "$[MLT^{-2}A^{-2}]$",
+    "OptionBImage": null,
+    "OptionBText": "$[ML^{-1}T^{-2}A^{-1}]$",
+    "OptionCImage": null,
+    "OptionCText": "$[MLT^{-2}A^{-1}]$",
+    "OptionDImage": null,
+    "OptionDText": "$[M L^2 T^{-1} A^{-2}]$",
+    "Section1": "",
+    "Section2": "",
+    "Section3": "",
+    "CorrectOption": "Option A",
+    "LessonName": "Units and Measurements",
+    "QBExam": "JEE MAIN",
+    "explanationText": "From the formula $B = \\frac{\\mu_0 I}{2\\pi r}$ (magnetic field due to a long straight wire), or $F = \\frac{\\mu_0}{4\\pi} \\frac{I_1 I_2 l}{r}$. We know $c = 1/\\sqrt{\\mu_0 \\epsilon_0}$. Also, force $F=qVB$. Dimensions of $B$ can be found from $F=BIL$. $\\mu_0 = \\frac{4\\pi r F}{I_1 I_2 l}$. Dimensions: $[\mu_0] = \\frac{[L][MLT^{-2}]}{[A][A][L]} = [MLT^{-2}A^{-2}]$.",
+    "explanationImage": null
+  },
+  {
+    "teacher": null,
+    "QuestionImage": null,
+    "QuestionText": "A physical quantity $P$ is related to four observables $a, b, c,$ and $d$ as follows: $P = a^3b^2/(\\sqrt{c}d)$. The percentage errors of measurement in $a, b, c,$ and $d$ are 1%, 3%, 4%, and 2%, respectively. What is the percentage error in the quantity $P$?",
+    "OptionAImage": null,
+    "OptionAText": "13%",
+    "OptionBImage": null,
+    "OptionBText": "12%",
+    "OptionCImage": null,
+    "OptionCText": "14%",
+    "OptionDImage": null,
+    "OptionDText": "10%",
+    "Section1": "",
+    "Section2": "",
+    "Section3": "",
+    "CorrectOption": "Option A",
+    "LessonName": "Units and Measurements",
+    "QBExam": "JEE MAIN",
+    "explanationText": "Given $P = a^3b^2/(c^{1/2}d)$. The percentage error in P is given by $(\\Delta P/P) \times 100 = (3(\\Delta a/a) + 2(\\Delta b/b) + (1/2)(\\Delta c/c) + (\Delta d/d)) \times 100$. So, $\% error = 3(1\%) + 2(3\%) + (1/2)(4\%) + 1(2\%) = 3\% + 6\% + 2\% + 2\% = 13\%$.",
+    "explanationImage": null
+  }
+]

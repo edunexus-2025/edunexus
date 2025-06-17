@@ -1,0 +1,132 @@
+[
+    {
+        "id": "pbc_200955995",
+        "listRule": "@request.auth.id != \"\"",
+        "viewRule": "@request.auth.id != \"\"",
+        "createRule": "@request.auth.id != \"\"",
+        "updateRule": "(@request.auth.id != \"\" && by_whom_student = @request.auth.id) || (@request.auth.id != \"\" && by_whom_teacher = @request.auth.id) || @request.auth.id != \"\"",
+        "deleteRule": "(@request.auth.id != \"\" && by_whom_student = @request.auth.id) || (@request.auth.id != \"\" && by_whom_teacher = @request.auth.id)",
+        "name": "discussion_form_messages",
+        "type": "base",
+        "schema": [
+            {
+                "id": "text3208210256",
+                "name": "id",
+                "type": "text",
+                "system": true,
+                "required": true,
+                "presentable": false,
+                "options": { "min": 15, "max": 15, "pattern": "^[a-z0-9]+$", "autogeneratePattern": "[a-z0-9]{15}" }
+            },
+            {
+                "id": "text1841317061",
+                "name": "group",
+                "type": "text",
+                "system": false,
+                "required": true,
+                "presentable": true,
+                "options": { "min": 1, "max": 100, "pattern": "" }
+            },
+            {
+                "id": "text3065852031",
+                "name": "message",
+                "type": "text",
+                "system": false,
+                "required": true,
+                "presentable": true,
+                "options": { "min": 1, "max": 2000, "pattern": "" }
+            },
+            {
+                "id": "relation3336892155",
+                "name": "by_whom_student",
+                "type": "relation",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "options": {
+                    "collectionId": "pbc_1377172174",
+                    "cascadeDelete": false,
+                    "minSelect": 0,
+                    "maxSelect": 1,
+                    "displayFields": ["name", "avatar", "avatarUrl", "collectionId", "collectionName"]
+                }
+            },
+            {
+                "id": "relation3241273117",
+                "name": "by_whom_teacher",
+                "type": "relation",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "options": {
+                    "collectionId": "pbc_2504364897",
+                    "cascadeDelete": false,
+                    "minSelect": 0,
+                    "maxSelect": 1,
+                    "displayFields": ["name", "profile_picture", "avatarUrl", "collectionId", "collectionName"]
+                }
+            },
+            { "id": "bool3678944962", "name": "seen_by_all", "type": "bool", "system": false, "required": false, "presentable": false, "options": {} },
+            { "id": "number1237995133", "name": "likes", "type": "number", "system": false, "required": false, "presentable": true, "options": { "min": 0, "noDecimal": true } },
+            { "id": "number770948625", "name": "dislikes", "type": "number", "system": false, "required": false, "presentable": true, "options": { "min": 0, "noDecimal": true } },
+            {
+                "id": "relation3735803479",
+                "name": "replied_to_message",
+                "type": "relation",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "options": {
+                    "collectionId": "pbc_200955995",
+                    "cascadeDelete": false,
+                    "minSelect": 0,
+                    "maxSelect": 1,
+                    "displayFields": ["message", "by_whom_student", "by_whom_teacher", "expand.by_whom_student.name", "expand.by_whom_teacher.name"]
+                }
+            },
+            {
+                "id": "file594283018",
+                "name": "any_image",
+                "type": "file",
+                "system": false,
+                "required": false,
+                "presentable": true,
+                "options": { "maxSelect": 1, "maxSize": 5242880, "mimeTypes": ["image/jpeg", "image/png", "image/webp", "image/gif"], "thumbs": ["100x100","300x300"] }
+            },
+            {
+                "id": "url4014468952",
+                "name": "any_link",
+                "type": "url",
+                "system": false,
+                "required": false,
+                "presentable": true,
+                "options": { "exceptDomains": null, "onlyDomains": null }
+            },
+            {
+                "id": "relation90787616",
+                "name": "like_by",
+                "type": "relation",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "options": { "collectionId": "pbc_1377172174", "cascadeDelete": false, "minSelect": 0, "maxSelect": 999, "displayFields": null }
+            },
+            {
+                "id": "relation22655203",
+                "name": "unlike_by",
+                "type": "relation",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "options": { "collectionId": "pbc_1377172174", "cascadeDelete": false, "minSelect": 0, "maxSelect": 999, "displayFields": null }
+            },
+            { "id": "autodate2990389176", "name": "created", "type": "date", "system": true, "required": false, "presentable": false, "options": {"min": "", "max": ""} },
+            { "id": "autodate3332085495", "name": "updated", "type": "date", "system": true, "required": false, "presentable": false, "options": {"min": "", "max": ""} }
+        ],
+        "indexes": [
+            "CREATE INDEX idx_dfm_group ON discussion_form_messages (group)",
+            "CREATE INDEX idx_dfm_created_desc ON discussion_form_messages (created DESC)"
+        ],
+        "system": false
+    }
+]

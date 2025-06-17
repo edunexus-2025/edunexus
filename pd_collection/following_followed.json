@@ -1,0 +1,87 @@
+
+[
+  {
+    "id": "pbc_following_system",
+    "name": "following_followed",
+    "type": "base",
+    "system": false,
+    "listRule": "@request.auth.id != \"\"",
+    "viewRule": "@request.auth.id != \"\"",
+    "createRule": "@request.auth.id != \"\" && @request.data.user:isset",
+    "updateRule": "@request.auth.id != \"\" && user = @request.auth.id",
+    "deleteRule": "@request.auth.id != \"\" && user = @request.auth.id",
+    "schema": [
+      {
+        "id": "ff_id_field",
+        "name": "id",
+        "type": "text",
+        "system": true,
+        "required": true,
+        "presentable": false,
+        "options": { "min": 15, "max": 15, "pattern": "^[a-z0-9]+$", "autogeneratePattern": "[a-z0-9]{15}" }
+      },
+      {
+        "id": "ff_user_relation",
+        "name": "user",
+        "type": "relation",
+        "required": true,
+        "system": false,
+        "unique": true,
+        "options": {
+          "collectionId": "pbc_1377172174", 
+          "cascadeDelete": true,
+          "minSelect": 1,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "id": "ff_following_list",
+        "name": "following",
+        "type": "relation",
+        "required": false,
+        "system": false,
+        "options": {
+          "collectionId": "pbc_1377172174", 
+          "cascadeDelete": false,
+          "minSelect": 0,
+          "maxSelect": 9999, 
+          "displayFields": ["id", "name", "avatar", "avatarUrl", "collectionId", "collectionName"] 
+        }
+      },
+      {
+        "id": "ff_followers_list",
+        "name": "followers",
+        "type": "relation",
+        "required": false,
+        "system": false,
+        "options": {
+          "collectionId": "pbc_1377172174", 
+          "cascadeDelete": false,
+          "minSelect": 0,
+          "maxSelect": 9999, 
+          "displayFields": ["id", "name", "avatar", "avatarUrl", "collectionId", "collectionName"] 
+        }
+      },
+      {
+          "id": "autodate_ff_created",
+          "name": "created",
+          "type": "date",
+          "system": true,
+          "required": false,
+          "options": { "min": "", "max": "" }
+      },
+      {
+          "id": "autodate_ff_updated",
+          "name": "updated",
+          "type": "date",
+          "system": true,
+          "required": false,
+          "options": { "min": "", "max": "" }
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX idx_ff_user ON following_followed (user)"
+    ]
+  }
+]

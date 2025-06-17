@@ -1,9 +1,11 @@
+
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
-  ({ className, type, ...props }, ref) => {
+  // Explicitly destructure `value` from props, and use `...restProps` for the remainder
+  ({ className, type, value, ...restProps }, ref) => {
     return (
       <input
         type={type}
@@ -12,7 +14,10 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
           className
         )}
         ref={ref}
-        {...props}
+        // Ensure the value passed to the native input is never undefined if a value prop is intended.
+        // If `value` is undefined or null, use an empty string to keep it controlled.
+        value={value ?? ""}
+        {...restProps}
       />
     )
   }
@@ -20,3 +25,4 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
 Input.displayName = "Input"
 
 export { Input }
+

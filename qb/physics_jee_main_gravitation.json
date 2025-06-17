@@ -1,0 +1,45 @@
+
+[
+  {
+    "teacher": null,
+    "QuestionImage": null,
+    "QuestionText": "A satellite is moving in a circular orbit at a certain height above the Earth's surface. It is found that the time period of the satellite is $T$. If the satellite is brought to an orbit of smaller radius, its time period will:",
+    "OptionAImage": null,
+    "OptionAText": "Increase",
+    "OptionBImage": null,
+    "OptionBText": "Decrease",
+    "OptionCImage": null,
+    "OptionCText": "Remain the same",
+    "OptionDImage": null,
+    "OptionDText": "First increase then decrease",
+    "Section1": "",
+    "Section2": "",
+    "Section3": "",
+    "CorrectOption": "Option B",
+    "LessonName": "Gravitation",
+    "QBExam": "JEE MAIN",
+    "explanationText": "According to Kepler's third law of planetary motion, the square of the time period of revolution of a satellite ($T^2$) is directly proportional to the cube of the semi-major axis of its orbit ($R^3$). So, $T^2 \propto R^3$. If the radius $R$ decreases, the time period $T$ will also decrease.",
+    "explanationImage": null
+  },
+  {
+    "teacher": null,
+    "QuestionImage": null,
+    "QuestionText": "The value of acceleration due to gravity ($g$) at a height $h$ above the surface of the Earth is given by $g' = g(1 - 2h/R)$, where $R$ is the radius of the Earth. This formula is valid when:",
+    "OptionAImage": null,
+    "OptionAText": "$h << R$",
+    "OptionBImage": null,
+    "OptionBText": "$h >> R$",
+    "OptionCImage": null,
+    "OptionCText": "$h = R$",
+    "OptionDImage": null,
+    "OptionDText": "For any value of h",
+    "Section1": "",
+    "Section2": "",
+    "Section3": "",
+    "CorrectOption": "Option A",
+    "LessonName": "Gravitation",
+    "QBExam": "JEE MAIN",
+    "explanationText": "The exact formula for acceleration due to gravity at height $h$ is $g' = gR^2 / (R+h)^2 = g(1 + h/R)^{-2}$. Using binomial expansion for $(1+x)^n \approx 1+nx$ when $x << 1$, we get $g' \approx g(1 - 2h/R)$. This approximation is valid only when $h << R$.",
+    "explanationImage": null
+  }
+]

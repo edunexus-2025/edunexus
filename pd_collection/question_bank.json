@@ -1,0 +1,450 @@
+
+[
+    {
+        "id": "pbc_1874489316",
+        "listRule": "@request.auth.id != \"\"",
+        "viewRule": "@request.auth.id != \"\"",
+        "createRule": "",
+        "updateRule": "",
+        "deleteRule": "",
+        "name": "question_bank",
+        "type": "base",
+        "fields": [
+            {
+                "autogeneratePattern": "[a-z0-9]{15}",
+                "hidden": false,
+                "id": "text3208210256",
+                "max": 15,
+                "min": 15,
+                "name": "id",
+                "pattern": "^[a-z0-9]+$",
+                "presentable": false,
+                "primaryKey": true,
+                "required": true,
+                "system": true,
+                "type": "text"
+            },
+            {
+                "hidden": false,
+                "id": "select4224597626",
+                "maxSelect": 1,
+                "name": "subject",
+                "presentable": false,
+                "required": true,
+                "system": false,
+                "type": "select",
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "Physics",
+                        "Chemistry",
+                        "Mathematics",
+                        "Biology"
+                    ]
+                }
+            },
+            {
+                "autogeneratePattern": "",
+                "hidden": false,
+                "id": "text3239013921",
+                "max": 0,
+                "min": 0,
+                "name": "lessonName",
+                "pattern": "",
+                "presentable": false,
+                "primaryKey": false,
+                "required": true,
+                "system": false,
+                "type": "text"
+            },
+            {
+                "autogeneratePattern": "",
+                "hidden": false,
+                "id": "text953501536",
+                "max": 0,
+                "min": 0,
+                "name": "lessonTopic",
+                "pattern": "",
+                "presentable": false,
+                "primaryKey": false,
+                "required": false,
+                "system": false,
+                "type": "text"
+            },
+            {
+                "hidden": false,
+                "id": "select3144380399",
+                "maxSelect": 1,
+                "name": "difficulty",
+                "presentable": false,
+                "required": true,
+                "system": false,
+                "type": "select",
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "Easy",
+                        "Medium",
+                        "Hard"
+                    ]
+                }
+            },
+            {
+                "hidden": false,
+                "id": "select3146033465",
+                "maxSelect": 1,
+                "name": "pyqExamName",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "select",
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "JEE Main",
+                        "JEE Advanced",
+                        "KCET",
+                        "WBJEE",
+                        "MHT CET PCM",
+                        "MHT CET PCB",
+                        "NEET"
+                    ]
+                }
+            },
+            {
+                "hidden": false,
+                "id": "number2741999926",
+                "max": null,
+                "min": null,
+                "name": "pyqYear",
+                "onlyInt": false,
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "number"
+            },
+            {
+                "hidden": false,
+                "id": "date2993937787",
+                "max": "",
+                "min": "",
+                "name": "pyqDate",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "date"
+            },
+            {
+                "hidden": false,
+                "id": "select3524585017",
+                "maxSelect": 1,
+                "name": "pyqShift",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "select",
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "Shift 1",
+                        "Shift 2",
+                        "N/A"
+                    ]
+                }
+            },
+            {
+                "hidden": false,
+                "id": "select1368588437",
+                "maxSelect": 1,
+                "name": "questionType",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "select",
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "text",
+                        "image",
+                        "text_image"
+                    ]
+                }
+            },
+            {
+                "autogeneratePattern": "",
+                "hidden": false,
+                "id": "text3871797371",
+                "max": 0,
+                "min": 0,
+                "name": "questionText",
+                "pattern": "",
+                "presentable": false,
+                "primaryKey": false,
+                "required": false,
+                "system": false,
+                "type": "text"
+            },
+            {
+                "hidden": false,
+                "id": "file121091759",
+                "maxSelect": 1,
+                "maxSize": 0,
+                "options": {
+                    "maxSelect": 1,
+                    "maxSize": 5242880,
+                    "mimeTypes": [],
+                    "thumbs": [],
+                    "protected": false
+                },
+                "name": "questionImage",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "file"
+            },
+            {
+                "hidden": false,
+                "id": "select2455447254",
+                "maxSelect": 1,
+                "name": "optionsFormat",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "select",
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "text_options",
+                        "image_options"
+                    ]
+                }
+            },
+            {
+                "autogeneratePattern": "",
+                "hidden": false,
+                "id": "text2892467193",
+                "max": 0,
+                "min": 0,
+                "name": "optionAText",
+                "pattern": "",
+                "presentable": false,
+                "primaryKey": false,
+                "required": false,
+                "system": false,
+                "type": "text"
+            },
+            {
+                "hidden": false,
+                "id": "file80475608",
+                "maxSelect": 1,
+                "maxSize": 0,
+                 "options": {
+                    "maxSelect": 1,
+                    "maxSize": 5242880,
+                    "mimeTypes": [],
+                    "thumbs": [],
+                    "protected": false
+                },
+                "name": "optionAImage",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "file"
+            },
+            {
+                "autogeneratePattern": "",
+                "hidden": false,
+                "id": "text3955749161",
+                "max": 0,
+                "min": 0,
+                "name": "optionBText",
+                "pattern": "",
+                "presentable": false,
+                "primaryKey": false,
+                "required": false,
+                "system": false,
+                "type": "text"
+            },
+            {
+                "hidden": false,
+                "id": "file2187298678",
+                "maxSelect": 1,
+                "maxSize": 0,
+                 "options": {
+                    "maxSelect": 1,
+                    "maxSize": 5242880,
+                    "mimeTypes": [],
+                    "thumbs": [],
+                    "protected": false
+                },
+                "name": "optionBImage",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "file"
+            },
+            {
+                "autogeneratePattern": "",
+                "hidden": false,
+                "id": "text3601324185",
+                "max": 0,
+                "min": 0,
+                "name": "optionCText",
+                "pattern": "",
+                "presentable": false,
+                "primaryKey": false,
+                "required": false,
+                "system": false,
+                "type": "text"
+            },
+            {
+                "hidden": false,
+                "id": "file1224955091",
+                "maxSelect": 1,
+                "maxSize": 0,
+                 "options": {
+                    "maxSelect": 1,
+                    "maxSize": 5242880,
+                    "mimeTypes": [],
+                    "thumbs": [],
+                    "protected": false
+                },
+                "name": "optionCImage",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "file"
+            },
+            {
+                "autogeneratePattern": "",
+                "hidden": false,
+                "id": "text1686570121",
+                "max": 0,
+                "min": 0,
+                "name": "optionDText",
+                "pattern": "",
+                "presentable": false,
+                "primaryKey": false,
+                "required": false,
+                "system": false,
+                "type": "text"
+            },
+            {
+                "hidden": false,
+                "id": "file1409705067",
+                "maxSelect": 1,
+                "maxSize": 0,
+                "options": {
+                    "maxSelect": 1,
+                    "maxSize": 5242880,
+                    "mimeTypes": [],
+                    "thumbs": [],
+                    "protected": false
+                },
+                "name": "optionDImage",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "file"
+            },
+            {
+                "hidden": false,
+                "id": "select237407826",
+                "maxSelect": 1,
+                "name": "correctOption",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "select",
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                    ]
+                }
+            },
+            {
+                "autogeneratePattern": "",
+                "hidden": false,
+                "id": "text2935346487",
+                "max": 0,
+                "min": 0,
+                "name": "explanationText",
+                "pattern": "",
+                "presentable": false,
+                "primaryKey": false,
+                "required": false,
+                "system": false,
+                "type": "text"
+            },
+            {
+                "hidden": false,
+                "id": "file2014677041",
+                "maxSelect": 1,
+                "maxSize": 0,
+                "options": {
+                    "maxSelect": 1,
+                    "maxSize": 5242880,
+                    "mimeTypes": [],
+                    "thumbs": [],
+                    "protected": false
+                },
+                "name": "explanationImage",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "file"
+            },
+            {
+                "hidden": false,
+                "id": "bool1917792855",
+                "name": "pyq",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "bool"
+            },
+            {
+                "hidden": false,
+                "id": "select161044217",
+                "maxSelect": 1,
+                "name": "ExamDpp",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "select",
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "JEE MAIN",
+                        "NEET",
+                        "MHT CET"
+                    ]
+                }
+            },
+            {
+                "hidden": false,
+                "id": "number1013643859",
+                "max": null,
+                "min": null,
+                "name": "marks",
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "noDecimal": true
+                },
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "number"
+            }
+        ],
+        "indexes": [],
+        "system": false
+    }
+]
+    
+    

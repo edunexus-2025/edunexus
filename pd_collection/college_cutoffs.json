@@ -1,0 +1,144 @@
+
+[
+    {
+        "id": "pbc_966363275",
+        "listRule": "@request.auth.id != ''",
+        "viewRule": "@request.auth.id != ''",
+        "createRule": "",
+        "updateRule": "",
+        "deleteRule": "",
+        "name": "college_cutoffs",
+        "type": "base",
+        "system": false,
+        "schema": [
+            {
+                "id": "text_college_id_pk",
+                "name": "id",
+                "type": "text",
+                "system": true,
+                "required": true,
+                "presentable": false,
+                "options": { "min": 15, "max": 15, "pattern": "^[a-z0-9]+$", "autogeneratePattern": "[a-z0-9]{15}" }
+            },
+            {
+                "id": "text_college_name_main",
+                "name": "college_name",
+                "type": "text",
+                "system": false,
+                "required": true,
+                "presentable": true,
+                "options": { "min": 1, "max": 255, "pattern": "" }
+            },
+            {
+                "id": "text4102584804",
+                "name": "college_code",
+                "type": "text",
+                "system": false,
+                "required": false,
+                "presentable": true,
+                "options": { "min": null, "max": 50, "pattern": "" }
+            },
+            {
+                "id": "select2363381545",
+                "name": "type",
+                "type": "select",
+                "system": false,
+                "required": false,
+                "presentable": true,
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "Government",
+                        "Government Aided",
+                        "Autonomous",
+                        "University Department",
+                        "Private Unaided",
+                        "Deemed University",
+                        "Minority",
+                        "Private Autonomous",
+                        "Government Autonomous",
+                        "Un-aided Autonomous"
+                    ]
+                }
+            },
+            {
+                "id": "text1587448267",
+                "name": "location",
+                "type": "text",
+                "system": false,
+                "required": false,
+                "presentable": true,
+                "options": { "min": null, "max": 100, "pattern": "" }
+            },
+            {
+                "id": "url1198480871",
+                "name": "website",
+                "type": "url",
+                "system": false,
+                "required": false,
+                "presentable": true,
+                "options": { "exceptDomains": null, "onlyDomains": null }
+            },
+            {
+                "id": "json2772168475",
+                "name": "cutoffs",
+                "type": "json",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "options": { "maxSize": 5242880 }
+            },
+            {
+                "id": "json2694037868",
+                "name": "fees",
+                "type": "json",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "options": { "maxSize": 524288 } 
+            },
+            {
+                "id": "text3553097909",
+                "name": "exam_name",
+                "type": "text",
+                "system": false,
+                "required": false,
+                "presentable": true,
+                "options": { "min": null, "max": 100, "pattern": "" }
+            },
+            {
+                "id": "number660268833",
+                "name": "academic_year",
+                "type": "number",
+                "system": false,
+                "required": false,
+                "presentable": true,
+                "options": { "min": 2000, "max": 2050, "noDecimal": true }
+            },
+            {
+                "id": "autodate_created_college",
+                "name": "created",
+                "type": "date", 
+                "system": true, 
+                "required": false,
+                "presentable": false,
+                "options": {"min": "", "max": ""}
+            },
+            {
+                "id": "autodate_updated_college",
+                "name": "updated",
+                "type": "date",
+                "system": true,
+                "required": false,
+                "presentable": false,
+                "options": {"min": "", "max": ""}
+            }
+        ],
+        "indexes": [
+            "CREATE INDEX idx_college_code ON college_cutoffs (college_code)",
+            "CREATE INDEX idx_college_name ON college_cutoffs (college_name)",
+            "CREATE INDEX idx_exam_year ON college_cutoffs (exam_name, academic_year)"
+        ],
+        "options": {}
+    }
+]

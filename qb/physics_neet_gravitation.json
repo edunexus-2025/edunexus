@@ -1,0 +1,45 @@
+
+[
+  {
+    "teacher": null,
+    "QuestionImage": null,
+    "QuestionText": "If the Earth were to suddenly contract to half its present radius without any change in its mass, the duration of the new day will be approximately:",
+    "OptionAImage": null,
+    "OptionAText": "6 hours",
+    "OptionBImage": null,
+    "OptionBText": "12 hours",
+    "OptionCImage": null,
+    "OptionCText": "18 hours",
+    "OptionDImage": null,
+    "OptionDText": "24 hours",
+    "Section1": "",
+    "Section2": "",
+    "Section3": "",
+    "CorrectOption": "Option A",
+    "LessonName": "Gravitation",
+    "QBExam": "NEET",
+    "explanationText": "By conservation of angular momentum, $I_1\\omega_1 = I_2\\omega_2$. For a solid sphere, $I = (2/5)MR^2$. So, $(2/5)MR_1^2 (2\\pi/T_1) = (2/5)MR_2^2 (2\\pi/T_2)$. This simplifies to $R_1^2/T_1 = R_2^2/T_2$. Given $R_2 = R_1/2$ and $T_1 = 24$ hours. So, $R_1^2/24 = (R_1/2)^2/T_2 \Rightarrow R_1^2/24 = R_1^2/(4T_2) \Rightarrow 1/24 = 1/(4T_2) \Rightarrow 4T_2 = 24 \Rightarrow T_2 = 6$ hours.",
+    "explanationImage": null
+  },
+  {
+    "teacher": null,
+    "QuestionImage": null,
+    "QuestionText": "The weight of an object in the coal mine, at sea level, and at the top of the mountain are $W_1, W_2$ and $W_3$ respectively. Then:",
+    "OptionAImage": null,
+    "OptionAText": "$W_1 < W_2 > W_3$",
+    "OptionBImage": null,
+    "OptionBText": "$W_1 = W_2 = W_3$",
+    "OptionCImage": null,
+    "OptionCText": "$W_1 < W_2 < W_3$",
+    "OptionDImage": null,
+    "OptionDText": "$W_1 > W_2 < W_3$",
+    "Section1": "",
+    "Section2": "",
+    "Section3": "",
+    "CorrectOption": "Option A",
+    "LessonName": "Gravitation",
+    "QBExam": "NEET",
+    "explanationText": "The value of $g$ is maximum at the Earth's surface ($W_2$). It decreases as we go up from the surface ($W_3 < W_2$) and also decreases as we go down into a mine ($W_1 < W_2$). Thus, $W_1 < W_2 > W_3$.",
+    "explanationImage": null
+  }
+]

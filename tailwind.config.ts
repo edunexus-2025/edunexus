@@ -8,17 +8,6 @@ export default {
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    fontFamily: {
-      sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
-      mono: ["var(--font-geist-mono)", "monospace"],
-      // Added explicit body/headline, though Geist Sans will cover it by default.
-      // This matches the guidance to define body/headline if fonts were specified.
-      // Since no specific font was requested beyond "clean and readable", 
-      // and Geist is already in use, we formally assign it.
-      body: ['var(--font-geist-sans)', 'system-ui', 'sans-serif'],
-      headline: ['var(--font-geist-sans)', 'system-ui', 'sans-serif'],
-      code: ['var(--font-geist-mono)', 'monospace'],
-    },
   	extend: {
   		colors: {
   			background: 'hsl(var(--background))',

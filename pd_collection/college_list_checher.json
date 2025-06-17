@@ -1,0 +1,156 @@
+
+[
+    {
+        "id": "pbc_college_predictor_query",
+        "listRule": "@request.auth.id != \"\" && student = @request.auth.id || @request.auth.role = \"Admin\"",
+        "viewRule": "@request.auth.id != \"\" && student = @request.auth.id || @request.auth.role = \"Admin\"",
+        "createRule": "@request.auth.id != \"\"",
+        "updateRule": "@request.auth.id != \"\" && student = @request.auth.id",
+        "deleteRule": "@request.auth.id != \"\" && student = @request.auth.id",
+        "name": "college_list_checher",
+        "type": "base",
+        "system": false,
+        "schema": [
+            {
+                "id": "text_clc_id",
+                "name": "id",
+                "type": "text",
+                "system": true,
+                "required": true,
+                "presentable": false,
+                "options": { "min": 15, "max": 15, "pattern": "^[a-z0-9]+$", "autogeneratePattern": "[a-z0-9]{15}" }
+            },
+            {
+                "id": "relation_clc_student",
+                "name": "student",
+                "type": "relation",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "options": {
+                    "collectionId": "pbc_1377172174",
+                    "cascadeDelete": false,
+                    "minSelect": 0,
+                    "maxSelect": 1,
+                    "displayFields": null
+                }
+            },
+            {
+                "id": "select_clc_score_type",
+                "name": "Score_Type",
+                "type": "select",
+                "system": false,
+                "required": true,
+                "presentable": true,
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "MHT CET",
+                        "JEE MAINS"
+                    ]
+                }
+            },
+            {
+                "id": "number_clc_percentile",
+                "name": "enter_percentile",
+                "type": "number",
+                "system": false,
+                "required": true,
+                "presentable": true,
+                "options": { "min": 0, "max": 100, "noDecimal": false }
+            },
+            {
+                "id": "select_clc_category",
+                "name": "category",
+                "type": "select",
+                "system": false,
+                "required": true,
+                "presentable": true,
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "OPEN",
+                        "OBC",
+                        "SC",
+                        "ST",
+                        "EWS",
+                        "OTHER"
+                    ]
+                }
+            },
+            {
+                "id": "select_clc_gender",
+                "name": "Gender",
+                "type": "select",
+                "system": false,
+                "required": true,
+                "presentable": true,
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "Male",
+                        "Female"
+                    ]
+                }
+            },
+            {
+                "id": "text_clc_branch",
+                "name": "Branch",
+                "type": "text",
+                "system": false,
+                "required": true,
+                "presentable": true,
+                "options": { "min": 1, "max": 100, "pattern": "" }
+            },
+            {
+                "id": "text_clc_region",
+                "name": "Region",
+                "type": "text",
+                "system": false,
+                "required": true,
+                "presentable": true,
+                "options": { "min": 1, "max": 100, "pattern": "" }
+            },
+            {
+                "id": "text_clc_district",
+                "name": "Class_12th_District",
+                "type": "text",
+                "system": false,
+                "required": true,
+                "presentable": true,
+                "options": { "min": 1, "max": 100, "pattern": "" }
+            },
+            {
+                "id": "number_clc_academic_year",
+                "name": "academic_year_preference",
+                "type": "number",
+                "system": false,
+                "required": true,
+                "presentable": true,
+                "options": { "min": 2000, "max": 2050, "noDecimal": true }
+            },
+            {
+                "id": "date_clc_created",
+                "name": "created",
+                "type": "date",
+                "system": true,
+                "required": false,
+                "presentable": false,
+                "options": {"min": "", "max": ""}
+            },
+            {
+                "id": "date_clc_updated",
+                "name": "updated",
+                "type": "date",
+                "system": true,
+                "required": false,
+                "presentable": false,
+                "options": {"min": "", "max": ""}
+            }
+        ],
+        "indexes": [
+          "CREATE INDEX idx_clc_student ON college_list_checher (student)"
+        ],
+        "options": {}
+    }
+]

@@ -1,0 +1,45 @@
+
+[
+  {
+    "teacher": null,
+    "QuestionImage": null,
+    "QuestionText": "The unit of thermal conductivity is:",
+    "OptionAImage": null,
+    "OptionAText": "$W m^{-1} K^{-1}$",
+    "OptionBImage": null,
+    "OptionBText": "$J m K^{-1}$",
+    "OptionCImage": null,
+    "OptionCText": "$J m^{-1} K^{-1}$",
+    "OptionDImage": null,
+    "OptionDText": "$W m K^{-1}$",
+    "Section1": "",
+    "Section2": "",
+    "Section3": "",
+    "CorrectOption": "Option A",
+    "LessonName": "Units and Measurements",
+    "QBExam": "NEET",
+    "explanationText": "The rate of heat flow $dQ/dt = -kA(dT/dx)$, where $k$ is thermal conductivity. Power (Watt) = $k \cdot [Area] \cdot [Temp. Gradient]$. So, $W = k \cdot m^2 \cdot K/m$. Thus, $k = W / (m \cdot K) = W m^{-1} K^{-1}$.",
+    "explanationImage": null
+  },
+  {
+    "teacher": null,
+    "QuestionImage": null,
+    "QuestionText": "Which of the following pairs of physical quantities does not have same dimensional formula?",
+    "OptionAImage": null,
+    "OptionAText": "Work and torque",
+    "OptionBImage": null,
+    "OptionBText": "Angular momentum and Planck's constant",
+    "OptionCImage": null,
+    "OptionCText": "Tension and surface tension",
+    "OptionDImage": null,
+    "OptionDText": "Impulse and linear momentum",
+    "Section1": "",
+    "Section2": "",
+    "Section3": "",
+    "CorrectOption": "Option C",
+    "LessonName": "Units and Measurements",
+    "QBExam": "NEET",
+    "explanationText": "Work ($[ML^2T^{-2}]$) and Torque ($[ML^2T^{-2}]$) have same dimensions. Angular momentum ($[ML^2T^{-1}]$) and Planck's constant ($[ML^2T^{-1}]$) have same dimensions. Impulse ($[MLT^{-1}]$) and Linear momentum ($[MLT^{-1}]$) have same dimensions. Tension is a Force ($[MLT^{-2}]$), while Surface Tension is Force per unit length ($[MT^{-2}]$). So, Tension and Surface Tension do not have the same dimensional formula.",
+    "explanationImage": null
+  }
+]

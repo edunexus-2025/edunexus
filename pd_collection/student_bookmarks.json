@@ -1,0 +1,197 @@
+[
+    {
+        "id": "pbc_2188384465",
+        "listRule": "@request.auth.id != \"\" && user = @request.auth.id",
+        "viewRule": "@request.auth.id != \"\" && user = @request.auth.id",
+        "createRule": "@request.auth.id != \"\"",
+        "updateRule": "@request.auth.id != \"\" && user = @request.auth.id",
+        "deleteRule": "@request.auth.id != \"\" && user = @request.auth.id",
+        "name": "student_bookmarks",
+        "type": "base",
+        "system": false,
+        "schema": [
+            {
+                "id": "text3208210256",
+                "name": "id",
+                "type": "text",
+                "system": true,
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": 15,
+                    "max": 15,
+                    "pattern": "^[a-z0-9]+$",
+                    "autogeneratePattern": "[a-z0-9]{15}"
+                }
+            },
+            {
+                "id": "relation2375276105",
+                "name": "user",
+                "type": "relation",
+                "system": false,
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "pbc_1377172174",
+                    "cascadeDelete": true,
+                    "minSelect": 1,
+                    "maxSelect": 1,
+                    "displayFields": null
+                }
+            },
+            {
+                "id": "text2032512240",
+                "name": "notebook_name",
+                "type": "text",
+                "system": false,
+                "required": true,
+                "presentable": true,
+                "unique": false,
+                "options": {
+                    "min": 1,
+                    "max": 100,
+                    "pattern": ""
+                }
+            },
+            {
+                "id": "relation2329695445",
+                "name": "questions",
+                "type": "relation",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "pbc_1874489316",
+                    "cascadeDelete": false,
+                    "minSelect": 0,
+                    "maxSelect": 999,
+                    "displayFields": null
+                }
+            },
+            {
+                "id": "select105650625",
+                "name": "category",
+                "type": "select",
+                "system": false,
+                "required": false,
+                "presentable": true,
+                "unique": false,
+                "options": {
+                    "maxSelect": 2,
+                    "values": [
+                        "Gone Tricky",
+                        "To Remeber"
+                    ]
+                }
+            },
+             {
+                "id": "select1874629670",
+                "name": "tags",
+                "type": "select",
+                "system": false,
+                "required": false,
+                "presentable": true,
+                "unique": false,
+                "options": {
+                    "maxSelect": 5,
+                    "values": [
+                        "Easy",
+                        "Hard",
+                        "Tricky",
+                        "Do Again",
+                        "Wrong"
+                    ]
+                }
+            },
+            {
+                "id": "bool1639016958",
+                "name": "archived",
+                "type": "bool",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {}
+            },
+            {
+                "id": "date1430177266",
+                "name": "last_attempted_date",
+                "type": "date",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "options": { "min": "", "max": "" }
+            },
+            {
+                "id": "relation4151227546",
+                "name": "tag1",
+                "type": "relation",
+                "system": false,
+                "required": false,
+                "options": { "collectionId": "pbc_1874489316", "cascadeDelete": false, "minSelect": null, "maxSelect": 1 }
+            },
+            {
+                "id": "relation1852302624",
+                "name": "tag2",
+                "type": "relation",
+                "system": false,
+                "required": false,
+                "options": { "collectionId": "pbc_1874489316", "cascadeDelete": false, "minSelect": null, "maxSelect": 1 }
+            },
+            {
+                "id": "relation425776566",
+                "name": "tag3",
+                "type": "relation",
+                "system": false,
+                "required": false,
+                "options": { "collectionId": "pbc_1874489316", "cascadeDelete": false, "minSelect": null, "maxSelect": 1 }
+            },
+            {
+                "id": "relation2265202709",
+                "name": "tag4",
+                "type": "relation",
+                "system": false,
+                "required": false,
+                "options": { "collectionId": "pbc_1874489316", "cascadeDelete": false, "minSelect": null, "maxSelect": 1 }
+            },
+            {
+                "id": "relation4026757251",
+                "name": "tag5",
+                "type": "relation",
+                "system": false,
+                "required": false,
+                "options": { "collectionId": "pbc_1874489316", "cascadeDelete": false, "minSelect": null, "maxSelect": 1 }
+            },
+            {
+                "id": "relation577145238",
+                "name": "shared_with",
+                "type": "relation",
+                "system": false,
+                "required": false,
+                "options": { "collectionId": "pbc_1377172174", "cascadeDelete": false, "minSelect": null, "maxSelect": 999 }
+            },
+            {
+                "id": "autodate2990389176",
+                "name": "created",
+                "type": "date",
+                "system": true,
+                "required": false,
+                "options": { "min": "", "max": "" }
+            },
+            {
+                "id": "autodate3332085495",
+                "name": "updated",
+                "type": "date",
+                "system": true,
+                "required": false,
+                "options": { "min": "", "max": "" }
+            }
+        ],
+        "indexes": [
+             "CREATE INDEX idx_sb_user_custom ON student_bookmarks (user)"
+        ]
+    }
+]
