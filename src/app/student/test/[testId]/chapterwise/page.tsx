@@ -8,21 +8,13 @@ import type { RecordModel, ClientResponseError as PocketBaseClientResponseError 
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-<<<<<<< HEAD
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-=======
-import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription as ShadcnCardDescription } from '@/components/ui/card';
->>>>>>> 04886db95a98afe4f396b7bb2a309e2fc958be11
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription as RadixAlertDialogDescription, AlertDialogFooter as RadixAlertDialogFooter, AlertDialogHeader as RadixAlertDialogHeader, AlertDialogTitle as RadixAlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Sheet, SheetContent, SheetHeader as ShadcnSheetHeader, SheetTitle as ShadcnSheetTitle, SheetDescription as ShadcnSheetDescription, SheetTrigger, SheetClose, SheetFooter as ShadcnSheetFooter } from '@/components/ui/sheet';
-<<<<<<< HEAD
 import { Dialog, DialogContent, DialogHeader as ShadcnDialogHeader, DialogTitle as ShadcnDialogTitle, DialogDescription as ShadcnDialogDescription, DialogFooter as ShadcnDialogFooter, DialogClose as ShadcnDialogClose } from "@/components/ui/dialog"; // Corrected import
-=======
-import { Dialog, DialogContent, DialogHeader as ShadcnDialogHeader, DialogTitle as ShadcnDialogTitle, DialogDescription as ShadcnDialogDescription, DialogFooter as ShadcnDialogFooter, DialogClose as ShadcnDialogClose } from "@/components/ui/dialog";
->>>>>>> 04886db95a98afe4f396b7bb2a309e2fc958be11
 import { AlertCircle, CheckCircle, ChevronLeft, ChevronRight, Clock, Expand, Flag, Image as ImageIconLucide, Loader2, Minimize, Send, XCircle, ArrowLeft as BackArrowIcon, Settings as SettingsIcon, Bookmark as BookmarkIconLucide, Check, PlusCircle, Info, ListOrdered, UserCircle as UserCircleIcon, CalendarDays, NotebookText, BarChart, PieChart as PieChartIcon, UserCheck, ListChecks, Eye, X as CloseIcon, MoreVertical, Menu, PanelRightOpen } from 'lucide-react';
 import NextImage from 'next/image';
 import 'katex/dist/katex.min.css';
@@ -394,7 +386,6 @@ export default function ChapterwiseTestPage() {
   const handleToggleTagSelection = (tag: string) => setSelectedModalTags(prev => { const newTags = new Set(prev); if (newTags.has(tag)) newTags.delete(tag); else if (newTags.size < 5) newTags.add(tag); else toast({ title: "Tag Limit Reached", description: "Max 5 tags."}); return Array.from(newTags); });
   const handleSaveToNotebooks = async () => { if (!currentQuestion || !user?.id || selectedNotebookIdsInModal.size === 0) { toast({ title: "No Notebook Selected" }); return; } let successCount = 0, errorCount = 0; for (const notebookId of Array.from(selectedNotebookIdsInModal)) { try { const notebook = await pb.collection('student_bookmarks').getOne<StudentBookmark>(notebookId); const existingQuestions = Array.isArray(notebook.questions) ? notebook.questions : []; const updateData: Partial<StudentBookmark> & { [key: string]: any } = { tags: selectedModalTags }; if (!existingQuestions.includes(currentQuestion.id)) updateData["questions+"] = currentQuestion.id; await pb.collection('student_bookmarks').update(notebookId, updateData); successCount++; } catch (err) { errorCount++; console.error(`Failed to save to notebook ${notebookId}:`, err); } } if (successCount > 0) { toast({ title: "Bookmarked!", description: `Question saved to ${successCount} notebook(s).` }); checkBookmarkStatus(currentQuestion.id); } if (errorCount > 0) toast({ title: "Error Bookmarking", description: `Failed for ${errorCount} notebook(s).`, variant: "destructive" }); setIsBookmarkModalOpen(false); };
 
-<<<<<<< HEAD
 
   const QuestionPaletteContent = () => (
     <>
@@ -411,25 +402,6 @@ export default function ChapterwiseTestPage() {
         <CardHeader className="p-2 text-center border-b border-primary/20">
           <CardTitle className="text-sm text-primary">QUESTION NAVIGATION</CardTitle>
         </CardHeader>
-=======
-  const QuestionPaletteContent = () => (
-    <>
-      <div className="hidden md:block"> {/* User info only for desktop sidebar */}
-        <Card className="shadow-none border-0 md:border md:shadow-md md:rounded-lg">
-          <ShadcnSheetHeader className="p-3 border-b text-center">
-            <UserCircleIcon className="mx-auto h-10 w-10 text-primary mb-1" />
-            <ShadcnSheetTitle className="text-base">{user?.name || "Student"}</ShadcnSheetTitle>
-            <ShadcnCardDescription className="text-xs truncate">{user?.email}</ShadcnCardDescription>
-            <ShadcnCardDescription className="text-xs">{todayDate}</ShadcnCardDescription>
-          </ShadcnSheetHeader>
-        </Card>
-      </div>
-      
-      <Card className="border-primary/30 bg-primary/5 flex-1 flex flex-col min-h-0 shadow-md rounded-lg md:mt-3">
-        <ShadcnSheetHeader className="p-2 text-center border-b border-primary/20">
-          <ShadcnSheetTitle className="text-sm text-primary">QUESTION NAVIGATION</ShadcnSheetTitle>
-        </ShadcnSheetHeader>
->>>>>>> 04886db95a98afe4f396b7bb2a309e2fc958be11
         <CardContent className="p-2 flex-1 overflow-hidden">
           <ScrollArea className="h-full">
             <div className="grid grid-cols-5 sm:grid-cols-4 gap-1.5 p-1">
@@ -523,32 +495,19 @@ export default function ChapterwiseTestPage() {
                 <Sheet open={isMobileSheetOpen} onOpenChange={setIsMobileSheetOpen}>
                   <SheetTrigger asChild>
                      <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary h-7 w-7 md:hidden" aria-label="Open Question Navigation">
-<<<<<<< HEAD
-                        <MoreVertical className="h-5 w-5" />
-=======
                         <ListOrdered className="h-5 w-5" />
->>>>>>> 04886db95a98afe4f396b7bb2a309e2fc958be11
                     </Button>
                   </SheetTrigger>
                   <SheetContent side="right" className="w-3/4 p-0 flex flex-col">
                      <ShadcnSheetHeader className="p-3 border-b text-center">
-<<<<<<< HEAD
-                        <ShadcnSheetTitle className="text-lg">Test Navigation</ShadcnSheetTitle>
-                        <ShadcnSheetDescription className="text-xs">Browse questions or submit.</ShadcnSheetDescription>
-=======
                         <ShadcnSheetTitle className="text-lg">Question Navigation</ShadcnSheetTitle>
                         <ShadcnSheetDescription>Jump to any question or submit.</ShadcnSheetDescription>
->>>>>>> 04886db95a98afe4f396b7bb2a309e2fc958be11
                      </ShadcnSheetHeader>
                      <QuestionPaletteContent />
                   </SheetContent>
                 </Sheet>
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary h-7 w-7 hidden md:inline-flex" onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} aria-label={isRightSidebarOpen ? "Hide Question Panel" : "Show Question Panel"}>
-<<<<<<< HEAD
-                  {isRightSidebarOpen ? <PanelRightOpen className="h-5 w-5" /> : <MoreVertical className="h-5 w-5" />}
-=======
                   <MoreVertical className="h-5 w-5" />
->>>>>>> 04886db95a98afe4f396b7bb2a309e2fc958be11
                 </Button>
                 <Button variant="ghost" size="icon" asChild className="text-muted-foreground hover:text-primary h-7 w-7"><Link href={Routes.studentTestInstructions(typeof testId === 'string' ? testId : '')} target="_blank"><Info className="h-4 w-4" /></Link></Button>
             </div>
@@ -595,26 +554,7 @@ export default function ChapterwiseTestPage() {
         )}
       </div>
       
-<<<<<<< HEAD
-      <Dialog open={isBookmarkModalOpen} onOpenChange={setIsBookmarkModalOpen}><DialogContent className="sm:max-w-md"><ShadcnDialogHeader><ShadcnDialogTitle>Add to Notebooks</ShadcnDialogTitle><ShadcnDialogDescription>Select notebook(s).</ShadcnDialogDescription></ShadcnDialogHeader> {isLoadingUserNotebooks ? (<div className="flex justify-center items-center h-32"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>) : userNotebooks.length === 0 ? (<p className="text-sm text-muted-foreground text-center py-4">No notebooks. <Link href={Routes.notebooks} className="text-primary hover:underline">Create one!</Link></p>) : ( <ScrollArea className="max-h-60 my-4"><div className="space-y-2 pr-2">{userNotebooks.map(nb => (<div key={nb.id} className="flex items-center space-x-2 p-2 border rounded-md hover:bg-muted/50"> <Checkbox id={`bm-nb-${nb.id}`} checked={selectedNotebookIdsInModal.has(nb.id)} onCheckedChange={() => handleToggleNotebookSelection(nb.id)}/> <label htmlFor={`bm-nb-${nb.id}`} className="text-sm font-medium leading-none flex-1 cursor-pointer">{nb.notebook_name}</label><Badge variant="outline" className="text-xs">{nb.questionCount || 0} Qs</Badge> </div>))}</div></ScrollArea> )} <Button type="button" variant="outline" size="sm" className="w-full justify-start text-primary hover:text-primary/90" onClick={() => router.push(Routes.notebooks)} ><PlusCircle className="mr-2 h-4 w-4"/>Create New Notebook</Button> <div className="mt-4 pt-4 border-t"><p className="text-sm font-medium mb-2 text-muted-foreground">Add tags (optional):</p><div className="flex flex-wrap gap-2">{PREDEFINED_TAGS.map(tag => (<Button key={tag} variant={selectedModalTags.includes(tag) ? "default" : "outline"} size="sm" className="text-xs" onClick={() => handleToggleTagSelection(tag)}>{selectedModalTags.includes(tag) && <Check className="mr-1.5 h-3.5 w-3.5"/>}{tag}</Button>))}</div><p className="text-xs text-muted-foreground mt-2">Tags apply to this question in selected notebooks.</p></div> <ShadcnDialogFooter className="mt-4"><DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose><Button onClick={handleSaveToNotebooks} disabled={selectedNotebookIdsInModal.size === 0 || isLoadingUserNotebooks}>Save</Button></ShadcnDialogFooter></DialogContent></Dialog>
-=======
       <Dialog open={isBookmarkModalOpen} onOpenChange={setIsBookmarkModalOpen}><DialogContent className="sm:max-w-md"><ShadcnDialogHeader><ShadcnDialogTitle>Add to Notebooks</ShadcnDialogTitle><ShadcnDialogDescription>Select notebook(s).</ShadcnDialogDescription></ShadcnDialogHeader> {isLoadingUserNotebooks ? (<div className="flex justify-center items-center h-32"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>) : userNotebooks.length === 0 ? (<p className="text-sm text-muted-foreground text-center py-4">No notebooks. <Link href={Routes.notebooks} className="text-primary hover:underline">Create one!</Link></p>) : ( <ScrollArea className="max-h-60 my-4"><div className="space-y-2 pr-2">{userNotebooks.map(nb => (<div key={nb.id} className="flex items-center space-x-2 p-2 border rounded-md hover:bg-muted/50"> <Checkbox id={`bm-nb-${nb.id}`} checked={selectedNotebookIdsInModal.has(nb.id)} onCheckedChange={() => handleToggleNotebookSelection(nb.id)}/> <label htmlFor={`bm-nb-${nb.id}`} className="text-sm font-medium leading-none flex-1 cursor-pointer">{nb.notebook_name}</label><Badge variant="outline" className="text-xs">{nb.questionCount || 0} Qs</Badge> </div>))}</div></ScrollArea> )} <Button type="button" variant="outline" size="sm" className="w-full justify-start text-primary hover:text-primary/90" onClick={() => router.push(Routes.notebooks)} ><PlusCircle className="mr-2 h-4 w-4"/>Create New Notebook</Button> <div className="mt-4 pt-4 border-t"><p className="text-sm font-medium mb-2 text-muted-foreground">Add tags (optional):</p><div className="flex flex-wrap gap-2">{PREDEFINED_TAGS.map(tag => (<Button key={tag} variant={selectedModalTags.includes(tag) ? "default" : "outline"} size="sm" className="text-xs" onClick={() => handleToggleTagSelection(tag)}>{selectedModalTags.includes(tag) && <Check className="mr-1.5 h-3.5 w-3.5"/>}{tag}</Button>))}</div><p className="text-xs text-muted-foreground mt-2">Tags apply to this question in selected notebooks.</p></div> <ShadcnDialogFooter className="mt-4"><ShadcnDialogClose asChild><Button type="button" variant="outline">Cancel</Button></ShadcnDialogClose><Button onClick={handleSaveToNotebooks} disabled={selectedNotebookIdsInModal.size === 0 || isLoadingUserNotebooks}>Save</Button></ShadcnDialogFooter></DialogContent></Dialog>
->>>>>>> 04886db95a98afe4f396b7bb2a309e2fc958be11
     </div>
   );
 }
-    
-    
-
-
-
-
-
-
-
-<<<<<<< HEAD
-
-
-
-=======
->>>>>>> 04886db95a98afe4f396b7bb2a309e2fc958be11
