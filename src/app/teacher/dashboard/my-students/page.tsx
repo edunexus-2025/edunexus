@@ -121,11 +121,12 @@ function AddStudentModal({
       const records = await pb.collection('users').getFullList<RecordModel>({
         filter: filterString,
         fields: 'id,name,email,avatarUrl,role,model,avatar,collectionId,collectionName', // Fetch necessary fields
+        '$autoCancel': false,
       });
 
       const mappedResults = records
         .map(mapRecordToStudentDisplay)
-        .filter(u => u !== null && !currentStudentIds.includes(u.id)) as User[]; // Exclude already linked students
+        .filter(u => u !== null && !currentStudentIds.includes(u.id)) as User[];
       
       setSearchResultsModal(mappedResults);
       if (mappedResults.length === 0) {
@@ -169,7 +170,7 @@ function AddStudentModal({
       // Update the teacher's record to add this student
       await pb.collection('teacher_data').update(teacherId, {
         "subscription_takenby_student+": studentToAdd.id,
-      });
+      }, { '$autoCancel': false }); // Added $autoCancel
       
       toast({
         title: 'Student Added!',
@@ -228,7 +229,7 @@ function AddStudentModal({
           />
         </div>
 
-        <ScrollArea className="flex-grow min-h-0 p-1">
+        <ScrollArea className="flex-grow min-h-0 p-1"> {/* Adjusted padding */}
           {isLoadingSearchModal && (
             <div className="flex justify-center items-center h-32">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -311,6 +312,7 @@ export default function TeacherMyStudentsPage() {
       const teacherRecord = await pb.collection('teacher_data').getOne(teacher.id, {
         expand: 'subscription_takenby_student',
         fields: 'id,expand.subscription_takenby_student.id,expand.subscription_takenby_student.name,expand.subscription_takenby_student.email,expand.subscription_takenby_student.avatarUrl,expand.subscription_takenby_student.model,expand.subscription_takenby_student.class,expand.subscription_takenby_student.favExam,expand.subscription_takenby_student.joineddate,expand.subscription_takenby_student.created,expand.subscription_takenby_student.phone,expand.subscription_takenby_student.role,expand.subscription_takenby_student.targetYear,expand.subscription_takenby_student.totalPoints,expand.subscription_takenby_student.avatar,expand.subscription_takenby_student.collectionId,expand.subscription_takenby_student.collectionName',
+        '$autoCancel': false, // Added to prevent auto-cancellation
       });
       
       const studentDataFromExpand = teacherRecord.expand?.subscription_takenby_student || [];
@@ -330,6 +332,8 @@ export default function TeacherMyStudentsPage() {
            detailedErrorMessage += " Ensure the teacher record exists and 'subscription_takenby_student' field is setup correctly."
       } else if (clientError?.status === 400 || clientError?.status === 403) {
           detailedErrorMessage += ` This often indicates an issue with the 'teacher_data' collection API View/List Rule or the expand. Please verify these in PocketBase. Ensure 'subscription_takenby_student' is expandable.`;
+      } else if (clientError?.name === 'ClientResponseError' && clientError?.status === 0) {
+          detailedErrorMessage = 'Network error or request cancelled while fetching students. Please try again.';
       }
       console.error("TeacherMyStudentsPage: Failed to fetch students. Full error:", clientError);
       setError(detailedErrorMessage);
@@ -500,4 +504,3 @@ export default function TeacherMyStudentsPage() {
   );
 }
 
-    
