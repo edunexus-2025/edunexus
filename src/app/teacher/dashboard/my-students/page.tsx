@@ -81,7 +81,7 @@ interface AddStudentModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   teacherId: string;
-  currentStudentIds: string[]; // IDs of students already linked to the teacher
+  currentStudentIds: string[]; 
   onStudentAdded: () => void;
 }
 
@@ -111,7 +111,7 @@ function AddStudentModal({
     const filterParts = [
       `(name ~ "${searchTermEscaped}" || email ~ "${searchTermEscaped}")`,
       `role = "User"`,
-      `id != "${teacherId}"`, // Don't show the teacher themselves
+      `id != "${teacherId}"`,
     ];
 
     const filterString = filterParts.join(' && ');
@@ -120,13 +120,17 @@ function AddStudentModal({
     try {
       const records = await pb.collection('users').getFullList<RecordModel>({
         filter: filterString,
-        fields: 'id,name,email,avatarUrl,role,model,avatar,collectionId,collectionName', // Fetch necessary fields
+        fields: 'id,name,email,avatarUrl,role,model,avatar,collectionId,collectionName,subscription_by_teacher',
         '$autoCancel': false,
       });
 
       const mappedResults = records
         .map(mapRecordToStudentDisplay)
-        .filter(u => u !== null && !currentStudentIds.includes(u.id)) as User[];
+        .filter(u => {
+            if (!u) return false;
+            const studentAlreadySubscribedToThisTeacher = Array.isArray(u.subscription_by_teacher) && u.subscription_by_teacher.includes(teacherId);
+            return !currentStudentIds.includes(u.id) && !studentAlreadySubscribedToThisTeacher;
+        }) as User[];
       
       setSearchResultsModal(mappedResults);
       if (mappedResults.length === 0) {
@@ -167,10 +171,10 @@ function AddStudentModal({
     setProcessingStudentId(studentToAdd.id);
 
     try {
-      // Update the teacher's record to add this student
-      await pb.collection('teacher_data').update(teacherId, {
-        "subscription_takenby_student+": studentToAdd.id,
-      }, { '$autoCancel': false }); // Added $autoCancel
+      // Update the STUDENT'S record to add this teacher to their 'subscription_by_teacher' list
+      await pb.collection('users').update(studentToAdd.id, {
+        "subscription_by_teacher+": teacherId, // Add teacher's ID to student's list
+      }, { '$autoCancel': false });
       
       toast({
         title: 'Student Added!',
@@ -179,21 +183,23 @@ function AddStudentModal({
       setAddedStudentIdsModal(prev => new Set(prev).add(studentToAdd.id));
       onStudentAdded(); // Trigger refresh on the parent page
     } catch (error: any) {
-      console.error('AddStudentModal: Failed to add student to teacher_data:', error.data?.data || error.message, "Full error:", error);
+      console.error('AddStudentModal: Failed to add student by updating student record:', error.data?.data || error.message, "Full error:", error);
       let errorMsg = `Could not add ${studentToAdd.name}. Please try again.`;
       if (error.data?.data) {
         errorMsg = Object.entries(error.data.data).map(([key, val]: [string, any]) => `${key}: ${val.message}`).join('; ');
       } else if (error.message) {
         errorMsg = error.message;
       }
+       errorMsg += " Ensure the 'users' collection Update Rule allows teachers to modify 'subscription_by_teacher'.";
       toast({
         title: 'Error Adding Student',
         description: errorMsg,
         variant: 'destructive',
+        duration: 9000,
       });
       setAddedStudentIdsModal(prev => {
         const newSet = new Set(prev);
-        newSet.delete(studentToAdd.id); // Revert if error
+        newSet.delete(studentToAdd.id);
         return newSet;
       });
     } finally {
@@ -229,7 +235,7 @@ function AddStudentModal({
           />
         </div>
 
-        <ScrollArea className="flex-grow min-h-0 p-1"> {/* Adjusted padding */}
+        <ScrollArea className="flex-grow min-h-0 p-1">
           {isLoadingSearchModal && (
             <div className="flex justify-center items-center h-32">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -308,30 +314,25 @@ export default function TeacherMyStudentsPage() {
     setStudents([]); 
 
     try {
-      console.log(`Fetching teacher_data for teacher ID: ${teacher.id} and expanding students.`);
-      const teacherRecord = await pb.collection('teacher_data').getOne(teacher.id, {
-        expand: 'subscription_takenby_student',
-        fields: 'id,expand.subscription_takenby_student.id,expand.subscription_takenby_student.name,expand.subscription_takenby_student.email,expand.subscription_takenby_student.avatarUrl,expand.subscription_takenby_student.model,expand.subscription_takenby_student.class,expand.subscription_takenby_student.favExam,expand.subscription_takenby_student.joineddate,expand.subscription_takenby_student.created,expand.subscription_takenby_student.phone,expand.subscription_takenby_student.role,expand.subscription_takenby_student.targetYear,expand.subscription_takenby_student.totalPoints,expand.subscription_takenby_student.avatar,expand.subscription_takenby_student.collectionId,expand.subscription_takenby_student.collectionName',
-        '$autoCancel': false, // Added to prevent auto-cancellation
+      // Fetch students whose 'subscription_by_teacher' field contains the current teacher's ID.
+      const studentRecords = await pb.collection('users').getFullList<RecordModel>({
+        filter: `subscription_by_teacher ~ "${teacher.id}" && role = "User"`, // Filter for students linked to this teacher
+        fields: 'id,name,email,avatarUrl,model,class,favExam,joineddate,created,phone,role,targetYear,totalPoints,avatar,collectionId,collectionName,subscription_by_teacher',
+        '$autoCancel': false,
       });
       
-      const studentDataFromExpand = teacherRecord.expand?.subscription_takenby_student || [];
-      console.log(`Fetched ${studentDataFromExpand.length} student records from expand.`);
-      
-      const mappedStudents = studentDataFromExpand.map(mapRecordToStudentDisplay).filter(s => s !== null) as StudentDisplayInfo[];
-      
+      const mappedStudents = studentRecords.map(mapRecordToStudentDisplay).filter(s => s !== null) as StudentDisplayInfo[];
       setStudents(mappedStudents);
+
       if(mappedStudents.length === 0) {
-        console.log("No students found linked to this teacher via 'subscription_takenby_student' expand.");
+        console.log("No students found linked to this teacher by querying 'users' collection.");
       }
 
     } catch (err: any) {
       const clientError = err as ClientResponseError;
       let detailedErrorMessage = `Could not load students. Error: ${clientError?.data?.message || clientError?.message || 'Unknown error'}.`;
-      if (clientError?.status === 404) {
-           detailedErrorMessage += " Ensure the teacher record exists and 'subscription_takenby_student' field is setup correctly."
-      } else if (clientError?.status === 400 || clientError?.status === 403) {
-          detailedErrorMessage += ` This often indicates an issue with the 'teacher_data' collection API View/List Rule or the expand. Please verify these in PocketBase. Ensure 'subscription_takenby_student' is expandable.`;
+      if (clientError?.status === 400 || clientError?.status === 403) {
+          detailedErrorMessage += ` This often indicates an issue with the 'users' collection API List Rule or field filterability. Please verify these in PocketBase.`;
       } else if (clientError?.name === 'ClientResponseError' && clientError?.status === 0) {
           detailedErrorMessage = 'Network error or request cancelled while fetching students. Please try again.';
       }
@@ -496,11 +497,10 @@ export default function TeacherMyStudentsPage() {
           isOpen={isAddStudentModalOpen}
           onOpenChange={setIsAddStudentModalOpen}
           teacherId={teacher.id}
-          currentStudentIds={students.map(s => s.id)} // Pass current student IDs to modal for filtering
+          currentStudentIds={students.map(s => s.id)}
           onStudentAdded={fetchStudents}
         />
       )}
     </div>
   );
 }
-
