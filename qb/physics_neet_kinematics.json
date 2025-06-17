@@ -1,0 +1,45 @@
+
+[
+  {
+    "teacher": null,
+    "QuestionImage": null,
+    "QuestionText": "A car moves from X to Y with a uniform speed $v_u$ and returns to X with a uniform speed $v_d$. The average speed for this round trip is:",
+    "OptionAImage": null,
+    "OptionAText": "$\\sqrt{v_u v_d}$",
+    "OptionBImage": null,
+    "OptionBText": "$\\frac{v_d v_u}{v_d + v_u}$",
+    "OptionCImage": null,
+    "OptionCText": "$\\frac{v_u + v_d}{2}$",
+    "OptionDImage": null,
+    "OptionDText": "$\\frac{2v_d v_u}{v_d + v_u}$",
+    "Section1": "",
+    "Section2": "",
+    "Section3": "",
+    "CorrectOption": "Option D",
+    "LessonName": "Kinematics",
+    "QBExam": "NEET",
+    "explanationText": "Let the distance from X to Y be $d$. Time taken from X to Y, $t_1 = d/v_u$. Time taken from Y to X, $t_2 = d/v_d$. Total distance = $2d$. Total time = $t_1 + t_2 = d/v_u + d/v_d = d(v_d+v_u)/(v_uv_d)$. Average speed = Total distance / Total time = $2d / (d(v_d+v_u)/(v_uv_d)) = \\frac{2v_uv_d}{v_u+v_d}$.",
+    "explanationImage": null
+  },
+  {
+    "teacher": null,
+    "QuestionImage": null,
+    "QuestionText": "A body is projected vertically upwards. The times corresponding to height $h$ while ascending and while descending are $t_1$ and $t_2$ respectively. Then the velocity of projection is: (g is acceleration due to gravity)",
+    "OptionAImage": null,
+    "OptionAText": "$g\\sqrt{t_1t_2}$",
+    "OptionBImage": null,
+    "OptionBText": "$\\frac{g(t_1+t_2)}{2}$",
+    "OptionCImage": null,
+    "OptionCText": "$\\frac{g t_1 t_2}{t_1+t_2}$",
+    "OptionDImage": null,
+    "OptionDText": "$g (t_1+t_2)$",
+    "Section1": "",
+    "Section2": "",
+    "Section3": "",
+    "CorrectOption": "Option B",
+    "LessonName": "Kinematics",
+    "QBExam": "NEET",
+    "explanationText": "Let $u$ be the velocity of projection. From $s = ut + \\frac{1}{2}at^2$, we have $h = ut - \\frac{1}{2}gt^2$. This can be written as $\\frac{1}{2}gt^2 - ut + h = 0$. This is a quadratic equation in $t$. The roots are $t_1$ and $t_2$. Sum of roots $t_1 + t_2 = -(-u)/(\\frac{1}{2}g) = 2u/g$. Therefore, $u = \\frac{g(t_1+t_2)}{2}$.",
+    "explanationImage": null
+  }
+]

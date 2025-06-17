@@ -1,0 +1,119 @@
+
+[
+    {
+        "id": "pbc_2144187974",
+        "listRule": "@request.auth.id != \"\" && student = @request.auth.id || @request.auth.role = \"Admin\"",
+        "viewRule": "@request.auth.id != \"\" && student = @request.auth.id || @request.auth.role = \"Admin\"",
+        "createRule": "@request.auth.id != \"\"",
+        "updateRule": "@request.auth.id != \"\" && student = @request.auth.id || @request.auth.role = \"Admin\"",
+        "deleteRule": "@request.auth.role = \"Admin\"",
+        "name": "student_feedback",
+        "type": "base",
+        "system": false,
+        "schema": [
+            {
+                "system": true,
+                "id": "text3208210256",
+                "name": "id",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "options": {
+                    "min": 15,
+                    "max": 15,
+                    "pattern": "^[a-z0-9]+$",
+                    "autogeneratePattern": "[a-z0-9]{15}"
+                }
+            },
+            {
+                "system": false,
+                "id": "relation3072569139",
+                "name": "student",
+                "type": "relation",
+                "required": false,
+                "presentable": false,
+                "options": {
+                    "collectionId": "pbc_1377172174",
+                    "cascadeDelete": false,
+                    "minSelect": 0,
+                    "maxSelect": 1,
+                    "displayFields": null
+                }
+            },
+            {
+                "system": false,
+                "id": "text2388425073",
+                "name": "your_name",
+                "type": "text",
+                "required": false,
+                "presentable": true,
+                "options": {
+                    "min": null,
+                    "max": 100,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "text93372675",
+                "name": "experience",
+                "type": "text",
+                "required": true,
+                "presentable": true,
+                "options": {
+                    "min": 10,
+                    "max": 1000,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "number3632866850",
+                "name": "rating",
+                "type": "number",
+                "required": true,
+                "presentable": true,
+                "options": {
+                    "min": 1,
+                    "max": 5,
+                    "noDecimal": true
+                }
+            },
+            {
+                "system": false,
+                "id": "text2607052060",
+                "name": "want_any_more_additional_in_edunexus",
+                "type": "text",
+                "required": false,
+                "presentable": true,
+                "options": {
+                    "min": null,
+                    "max": 1000,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "autodate2990389176",
+                "name": "created",
+                "type": "date",
+                "required": false,
+                "presentable": true,
+                "options": { "min": "", "max": "" }
+            },
+            {
+                "system": false,
+                "id": "autodate3332085495",
+                "name": "updated",
+                "type": "date",
+                "required": false,
+                "presentable": false,
+                "options": { "min": "", "max": "" }
+            }
+        ],
+        "indexes": [
+            "CREATE INDEX idx_student_feedback_student ON student_feedback (student)",
+            "CREATE INDEX idx_student_feedback_created ON student_feedback (created DESC)"
+        ]
+    }
+]

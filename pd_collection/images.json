@@ -1,0 +1,93 @@
+
+{
+    "id": "pbc_3607937828",
+    "listRule": "@request.auth.id != \"\"",
+    "viewRule": "@request.auth.id != \"\"",
+    "createRule": "@request.auth.id != \"\" && teacher = @request.auth.id",
+    "updateRule": "@request.auth.id != \"\" && teacher = @request.auth.id",
+    "deleteRule": "@request.auth.id != \"\" && teacher = @request.auth.id",
+    "name": "images",
+    "type": "base",
+    "system": false,
+    "fields": [
+        {
+            "id": "text3208210256",
+            "name": "id",
+            "type": "text",
+            "system": true,
+            "required": true,
+            "presentable": false,
+            "unique": false,
+            "options": {
+                "min": 15,
+                "max": 15,
+                "pattern": "^[a-z0-9]+$",
+                "autogeneratePattern": "[a-z0-9]{15}"
+            }
+        },
+        {
+            "id": "relation2968954581",
+            "name": "teacher",
+            "type": "relation",
+            "system": false,
+            "required": true,
+            "presentable": false,
+            "unique": false,
+            "options": {
+                "collectionId": "pbc_2504364897",
+                "cascadeDelete": false,
+                "minSelect": 1,
+                "maxSelect": 1,
+                "displayFields": null
+            }
+        },
+        {
+            "id": "file3760176746",
+            "name": "images",
+            "type": "file",
+            "system": false,
+            "required": true,
+            "presentable": false,
+            "unique": false,
+            "options": {
+                "maxSelect": 1,
+                "maxSize": 5242880,
+                "mimeTypes": [
+                    "image/jpeg",
+                    "image/png",
+                    "image/webp",
+                    "image/gif"
+                ],
+                "thumbs": ["100x100"],
+                "protected": false
+            }
+        },
+        {
+            "id": "autodate2990389176",
+            "name": "created",
+            "type": "autodate",
+            "system": false,
+            "required": false,
+            "presentable": false,
+            "unique": false,
+            "options": {
+                "onCreate": true,
+                "onUpdate": false
+            }
+        },
+        {
+            "id": "autodate3332085495",
+            "name": "updated",
+            "type": "autodate",
+            "system": false,
+            "required": false,
+            "presentable": false,
+            "unique": false,
+            "options": {
+                "onCreate": true,
+                "onUpdate": true
+            }
+        }
+    ],
+    "indexes": []
+}

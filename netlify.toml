@@ -1,0 +1,23 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+# The [functions] block below is removed as Next.js App Router API routes
+# are typically handled by the Next.js build output and Netlify's adapter.
+# If you have specific standalone Netlify functions in 'netlify/functions'
+# that are NOT Next.js API routes, you might need to re-evaluate how they are deployed and accessed.
+# For Next.js API routes (like /api/razorpay/*), this block is often unnecessary or conflicting.
+
+# [functions]
+#   directory = "netlify/functions"
+#   node_bundler = "esbuild"
+
+# The [[redirects]] block below for /api/* is removed.
+# Netlify's Next.js runtime should handle /api routes automatically.
+# If you need specific redirects for other purposes, they can be added back,
+# but this one was likely causing the issue with your Next.js API routes.
+
+# [[redirects]]
+#   from = "/api/*"
+#   to = "/.netlify/functions/:splat"
+#   status = 200

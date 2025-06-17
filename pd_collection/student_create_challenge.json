@@ -1,0 +1,134 @@
+
+[
+    {
+        "id": "pbc_1771122963",
+        "listRule": "@request.auth.id != \"\" && (student = @request.auth.id || challenged_friends ~ @request.auth.id || status = \"active\")",
+        "viewRule": "@request.auth.id != \"\"",
+        "createRule": "@request.auth.id != \"\" && @request.data.student:isset && @request.data.student = @request.auth.id",
+        "updateRule": "@request.auth.id != \"\" && student = @request.auth.id",
+        "deleteRule": "@request.auth.id != \"\" && student = @request.auth.id",
+        "name": "student_create_challenge",
+        "type": "base",
+        "system": false,
+        "schema": [
+            {
+                "id": "text3208210256",
+                "name": "id",
+                "type": "text",
+                "system": true, "required": true, "presentable": false,
+                "options": { "min": 15, "max": 15, "pattern": "^[a-z0-9]+$", "autogeneratePattern": "[a-z0-9]{15}" }
+            },
+            {
+                "id": "relation_creator_student",
+                "name": "student",
+                "type": "relation",
+                "system": false, "required": true, "presentable": true,
+                "options": { 
+                    "collectionId": "pbc_1377172174", 
+                    "cascadeDelete": false, 
+                    "minSelect": 1, 
+                    "maxSelect": 1, 
+                    "displayFields": ["id", "name", "avatar", "avatarUrl", "collectionId", "collectionName"] 
+                }
+            },
+            {
+                "id": "text879953894",
+                "name": "Subject",
+                "type": "text",
+                "system": false, "required": true, "presentable": true,
+                "options": { "min": 1, "max": 100, "pattern": "" }
+            },
+            {
+                "id": "text4292374981",
+                "name": "Lesson",
+                "type": "text",
+                "system": false, "required": true, "presentable": true,
+                "options": { "min": 1, "max": 150, "pattern": "" }
+            },
+            {
+                "id": "editor780595064", 
+                "name": "number_of_question",
+                "type": "number", 
+                "system": false, "required": true, "presentable": true,
+                "options": { "min": 1, "max": 50, "noDecimal": true }
+            },
+            {
+                "id": "text4097207359",
+                "name": "Difficulty",
+                "type": "text",
+                "system": false, "required": true, "presentable": true,
+                "options": { "min": 1, "max": 50, "pattern": "" }
+            },
+            {
+                "id": "text1170751803",
+                "name": "Exam_specific_questions",
+                "type": "text",
+                "system": false, "required": false, "presentable": true,
+                "options": { "min": null, "max": 100, "pattern": "" }
+            },
+            {
+                "id": "relation1694247163",
+                "name": "challenged_friends",
+                "type": "relation",
+                "system": false, "required": true, "presentable": true,
+                "options": { 
+                    "collectionId": "pbc_1377172174", 
+                    "cascadeDelete": false, 
+                    "minSelect": 1, 
+                    "maxSelect": 10, 
+                    "displayFields": ["id", "name"] 
+                }
+            },
+            {
+                "id": "number2254405824",
+                "name": "duration",
+                "type": "number",
+                "system": false, "required": true, "presentable": true,
+                "options": { "min": 5, "max": 180, "noDecimal": true }
+            },
+            {
+                "id": "text1468823936",
+                "name": "challenge_name",
+                "type": "text",
+                "system": false, "required": true, "presentable": true,
+                "options": { "min": 1, "max": 50, "pattern": "" }
+            },
+            {
+                "id": "number1869749749",
+                "name": "expiry_time_min",
+                "type": "number",
+                "system": false, "required": true, "presentable": true,
+                "options": { "min": 1, "noDecimal": true }
+            },
+            {
+                "id": "challenge_status_select",
+                "name": "status",
+                "type": "select",
+                "system": false, "required": true, "presentable": true,
+                "options": {
+                  "maxSelect": 1,
+                  "values": ["pending", "active", "completed", "expired", "cancelled"],
+                  "defaultValue": "pending"
+                }
+            },
+            {
+                "id": "autodate2990389176",
+                "name": "created",
+                "type": "date", 
+                "system": false, "required": false, "presentable": true, 
+                "options": {"min": "", "max": ""} 
+            },
+            {
+                "id": "autodate3332085495",
+                "name": "updated",
+                "type": "date", 
+                "system": false, "required": false, "presentable": true, 
+                "options": {"min": "", "max": ""}
+            }
+        ],
+        "indexes": [
+            "CREATE INDEX idx_scc_creator ON student_create_challenge (student)",
+            "CREATE INDEX idx_scc_status_created ON student_create_challenge (status, created DESC)"
+        ]
+    }
+]

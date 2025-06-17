@@ -1,0 +1,45 @@
+
+[
+  {
+    "teacher": null,
+    "QuestionImage": null,
+    "QuestionText": "The escape velocity from the Earth's surface is $v_e$. The escape velocity from the surface of another planet having a radius, four times that of Earth and same mass density is:",
+    "OptionAImage": null,
+    "OptionAText": "$v_e$",
+    "OptionBImage": null,
+    "OptionBText": "$2v_e$",
+    "OptionCImage": null,
+    "OptionCText": "$3v_e$",
+    "OptionDImage": null,
+    "OptionDText": "$4v_e$",
+    "Section1": "",
+    "Section2": "",
+    "Section3": "",
+    "CorrectOption": "Option D",
+    "LessonName": "Gravitation",
+    "QBExam": "MHT CET",
+    "explanationText": "Escape velocity $v_e = \\sqrt{2GM/R}$. Mass $M = \\text{density} \\times \\text{volume} = \\rho \cdot (4/3)\\pi R^3$. So $v_e = \\sqrt{2G(\\rho (4/3)\\pi R^3)/R} = \\sqrt{(8/3)\\pi G \\rho R^2} = R \\sqrt{(8/3)\\pi G \\rho}$. Thus, $v_e \propto R$. If radius is four times ($R' = 4R$) and density is same, then $v_e' = 4v_e$.",
+    "explanationImage": null
+  },
+  {
+    "teacher": null,
+    "QuestionImage": null,
+    "QuestionText": "The time period of a geostationary satellite is:",
+    "OptionAImage": null,
+    "OptionAText": "12 hours",
+    "OptionBImage": null,
+    "OptionBText": "24 hours",
+    "OptionCImage": null,
+    "OptionCText": "36 hours",
+    "OptionDImage": null,
+    "OptionDText": "48 hours",
+    "Section1": "",
+    "Section2": "",
+    "Section3": "",
+    "CorrectOption": "Option B",
+    "LessonName": "Gravitation",
+    "QBExam": "MHT CET",
+    "explanationText": "A geostationary satellite is a satellite that revolves around the Earth in an equatorial orbit with the same angular speed and in the same direction as the Earth rotates about its own axis. Its time period of revolution is equal to the Earth's rotational period, which is 24 hours.",
+    "explanationImage": null
+  }
+]

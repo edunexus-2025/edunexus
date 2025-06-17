@@ -1,0 +1,45 @@
+
+[
+  {
+    "teacher": null,
+    "QuestionImage": null,
+    "QuestionText": "The dimensions of Planck's constant are the same as the dimensions of:",
+    "OptionAImage": null,
+    "OptionAText": "Energy",
+    "OptionBImage": null,
+    "OptionBText": "Power",
+    "OptionCImage": null,
+    "OptionCText": "Angular momentum",
+    "OptionDImage": null,
+    "OptionDText": "Force",
+    "Section1": "",
+    "Section2": "",
+    "Section3": "",
+    "CorrectOption": "Option C",
+    "LessonName": "Units and Measurements",
+    "QBExam": "MHT CET",
+    "explanationText": "Planck's constant $h$ has dimensions of $[ML^2T^{-1}]$. Energy is $[ML^2T^{-2}]$. Power is $[ML^2T^{-3}]$. Force is $[MLT^{-2}]$. Angular momentum $L = I\\omega = (MR^2)(V/R) = MRV$, dimensions are $M \cdot L \cdot LT^{-1} = [ML^2T^{-1}]$. Thus, Planck's constant has the same dimensions as angular momentum.",
+    "explanationImage": null
+  },
+  {
+    "teacher": null,
+    "QuestionImage": null,
+    "QuestionText": "If the error in the measurement of radius of a sphere is 2%, then the error in the determination of volume of the sphere will be:",
+    "OptionAImage": null,
+    "OptionAText": "8%",
+    "OptionBImage": null,
+    "OptionBText": "2%",
+    "OptionCImage": null,
+    "OptionCText": "4%",
+    "OptionDImage": null,
+    "OptionDText": "6%",
+    "Section1": "",
+    "Section2": "",
+    "Section3": "",
+    "CorrectOption": "Option D",
+    "LessonName": "Units and Measurements",
+    "QBExam": "MHT CET",
+    "explanationText": "Volume of a sphere $V = \\frac{4}{3}\\pi r^3$. The relative error in volume is $\\frac{\\Delta V}{V} = 3 \\frac{\\Delta r}{r}$. Given $\\frac{\\Delta r}{r} \times 100 = 2\\%$. So, percentage error in volume $= 3 \times (\\text{percentage error in radius}) = 3 \times 2\\% = 6\\%$.",
+    "explanationImage": null
+  }
+]

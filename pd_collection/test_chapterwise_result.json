@@ -1,0 +1,171 @@
+
+[
+    {
+        "id": "pbc_cw_results",
+        "name": "test_chapterwise_result",
+        "type": "base",
+        "system": false,
+        "listRule": "@request.auth.id != \"\" && user = @request.auth.id",
+        "viewRule": "@request.auth.id != \"\" && user = @request.auth.id",
+        "createRule": "@request.auth.id != \"\"",
+        "updateRule": "@request.auth.id != \"\" && user = @request.auth.id",
+        "deleteRule": "@request.auth.id != \"\" && user = @request.auth.id || @request.auth.role = \"admin\"",
+        "schema": [
+            {
+                "name": "user",
+                "type": "relation",
+                "required": true,
+                "system": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "pbc_1377172174", 
+                    "cascadeDelete": true,
+                    "minSelect": 1,
+                    "maxSelect": 1,
+                    "displayFields": null
+                }
+            },
+            {
+                "name": "test_id",
+                "type": "relation",
+                "required": true,
+                "system": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "pbc_3575280622", 
+                    "cascadeDelete": false,
+                    "minSelect": 1,
+                    "maxSelect": 1,
+                    "displayFields": null
+                }
+            },
+            {
+                "name": "test_name",
+                "type": "text",
+                "required": true,
+                "system": false,
+                "unique": false,
+                "options": { "min": 1, "max": 200, "pattern": "" }
+            },
+            {
+                "name": "start_time",
+                "type": "date",
+                "required": true,
+                "system": false,
+                "unique": false,
+                "options": { "min": "", "max": "" }
+            },
+            {
+                "name": "end_time",
+                "type": "date",
+                "required": false,
+                "system": false,
+                "unique": false,
+                "options": { "min": "", "max": "" }
+            },
+            {
+                "name": "duration_taken_seconds",
+                "type": "number",
+                "required": false,
+                "system": false,
+                "unique": false,
+                "options": { "min": 0, "noDecimal": true }
+            },
+            {
+                "name": "total_questions",
+                "type": "number",
+                "required": true,
+                "system": false,
+                "unique": false,
+                "options": { "min": 0, "noDecimal": true }
+            },
+            {
+                "name": "attempted_questions",
+                "type": "number",
+                "required": true,
+                "system": false,
+                "unique": false,
+                "options": { "min": 0, "noDecimal": true }
+            },
+            {
+                "name": "correct_answers",
+                "type": "number",
+                "required": true,
+                "system": false,
+                "unique": false,
+                "options": { "min": 0, "noDecimal": true }
+            },
+            {
+                "name": "incorrect_answers",
+                "type": "number",
+                "required": true,
+                "system": false,
+                "unique": false,
+                "options": { "min": 0, "noDecimal": true }
+            },
+            {
+                "name": "unattempted_questions",
+                "type": "number",
+                "required": true,
+                "system": false,
+                "unique": false,
+                "options": { "min": 0, "noDecimal": true }
+            },
+            {
+                "name": "score",
+                "type": "number",
+                "required": true,
+                "system": false,
+                "unique": false,
+                "options": { "noDecimal": false }
+            },
+            {
+                "name": "max_score",
+                "type": "number",
+                "required": true,
+                "system": false,
+                "unique": false,
+                "options": { "min": 0, "noDecimal": false }
+            },
+            {
+                "name": "percentage",
+                "type": "number",
+                "required": false,
+                "system": false,
+                "unique": false,
+                "options": { "min": 0, "max": 100, "noDecimal": false }
+            },
+            {
+                "name": "answers_log",
+                "type": "json",
+                "required": false,
+                "system": false,
+                "unique": false,
+                "options": { "maxSize": 5242880 }
+            },
+            {
+                "name": "proctoring_flags",
+                "type": "json",
+                "required": false,
+                "system": false,
+                "unique": false,
+                "options": { "maxSize": 65536 }
+            },
+            {
+                "name": "status",
+                "type": "select",
+                "required": true,
+                "system": false,
+                "unique": false,
+                "options": {
+                    "maxSelect": 1,
+                    "values": ["completed", "in_progress", "terminated_proctoring"]
+                }
+            }
+        ],
+        "indexes": [
+            "CREATE INDEX idx_cw_result_user ON test_chapterwise_result (user)",
+            "CREATE INDEX idx_cw_result_test_id ON test_chapterwise_result (test_id)"
+        ]
+    }
+]

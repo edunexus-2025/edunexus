@@ -1,0 +1,433 @@
+
+[
+    {
+        "id": "pbc_2863365490",
+        "listRule": "@request.auth.id != \"\" && teacherId = @request.auth.id",
+        "viewRule": "@request.auth.id != \"\" && teacherId = @request.auth.id",
+        "createRule": "@request.auth.id != \"\" && teacherId = @request.auth.id",
+        "updateRule": "@request.auth.id != \"\" && teacherId = @request.auth.id",
+        "deleteRule": "@request.auth.id != \"\" && teacherId = @request.auth.id",
+        "name": "teacher_tests",
+        "type": "base",
+        "fields": [
+            {
+                "autogeneratePattern": "[a-z0-9]{15}",
+                "hidden": false,
+                "id": "text3208210256",
+                "max": 15,
+                "min": 15,
+                "name": "id",
+                "pattern": "^[a-z0-9]+$",
+                "presentable": false,
+                "primaryKey": true,
+                "required": true,
+                "system": true,
+                "type": "text"
+            },
+            {
+                "cascadeDelete": false,
+                "collectionId": "pbc_2504364897",
+                "hidden": false,
+                "id": "relation3913794691",
+                "maxSelect": 1,
+                "minSelect": 1,
+                "name": "teacherId",
+                "presentable": false,
+                "required": true,
+                "system": false,
+                "type": "relation"
+            },
+            {
+                "autogeneratePattern": "",
+                "hidden": false,
+                "id": "text3389461509",
+                "max": null,
+                "min": 1,
+                "name": "testName",
+                "pattern": "",
+                "presentable": false,
+                "primaryKey": false,
+                "required": true,
+                "system": false,
+                "type": "text"
+            },
+            {
+                "autogeneratePattern": "",
+                "hidden": false,
+                "id": "text2254405824",
+                "max": null,
+                "min": 1,
+                "name": "duration",
+                "pattern": "",
+                "presentable": false,
+                "primaryKey": false,
+                "required": true,
+                "system": false,
+                "type": "text"
+            },
+            {
+                "hidden": false,
+                "id": "select3616895705",
+                "maxSelect": 1,
+                "name": "model",
+                "presentable": false,
+                "required": true,
+                "system": false,
+                "type": "select",
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "Chapterwise",
+                        "Full Length"
+                    ]
+                }
+            },
+            {
+                "hidden": false,
+                "id": "select2363381545",
+                "maxSelect": 1,
+                "name": "type",
+                "presentable": false,
+                "required": true,
+                "system": false,
+                "type": "select",
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "Free",
+                        "Premium"
+                    ]
+                }
+            },
+            {
+                "hidden": false,
+                "id": "select2063623452",
+                "maxSelect": 1,
+                "name": "status",
+                "presentable": false,
+                "required": true,
+                "system": false,
+                "type": "select",
+                 "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "Draft",
+                        "Published",
+                        "Archived"
+                    ]
+                }
+            },
+            {
+                "cascadeDelete": false,
+                "collectionId": "pbc_3669383003",
+                "hidden": false,
+                "id": "relation2329695445",
+                "maxSelect": 999,
+                "minSelect": 0,
+                "name": "questions",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "relation"
+            },
+            {
+                "hidden": false,
+                "id": "number3496344499",
+                "max": null,
+                "min": 0,
+                "name": "totalScore",
+                "options": {
+                    "min": 0,
+                    "max": null,
+                    "noDecimal": false
+                },
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "number"
+            },
+            {
+                "hidden": false,
+                "id": "number1847253182",
+                "max": null,
+                "min": null,
+                "name": "PerNegativeScore",
+                 "options": {
+                    "min": null,
+                    "max": null,
+                    "noDecimal": false
+                },
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "number"
+            },
+            {
+                "hidden": false,
+                "id": "number1707412729",
+                "max": null,
+                "min": 0,
+                "name": "PhysicsQuestions",
+                "options": {
+                    "min": 0,
+                    "max": null,
+                    "noDecimal": true
+                },
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "number"
+            },
+            {
+                "hidden": false,
+                "id": "number520241329",
+                "max": null,
+                "min": 0,
+                "name": "ChemistryQuestions",
+                "options": {
+                    "min": 0,
+                    "max": null,
+                    "noDecimal": true
+                },
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "number"
+            },
+            {
+                "hidden": false,
+                "id": "number3399273475",
+                "max": null,
+                "min": 0,
+                "name": "MathsQuestions",
+                "options": {
+                    "min": 0,
+                    "max": null,
+                    "noDecimal": true
+                },
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "number"
+            },
+            {
+                "hidden": false,
+                "id": "number4168650354",
+                "max": null,
+                "min": 0,
+                "name": "BiologyQuestions",
+                 "options": {
+                    "min": 0,
+                    "max": null,
+                    "noDecimal": true
+                },
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "number"
+            },
+            {
+                "hidden": false,
+                "id": "number2751317907",
+                "max": null,
+                "min": 0,
+                "name": "PhysicsScore",
+                 "options": {
+                    "min": 0,
+                    "max": null,
+                    "noDecimal": false
+                },
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "number"
+            },
+            {
+                "hidden": false,
+                "id": "number1027891066",
+                "max": null,
+                "min": 0,
+                "name": "ChemistryScore",
+                 "options": {
+                    "min": 0,
+                    "max": null,
+                    "noDecimal": false
+                },
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "number"
+            },
+            {
+                "hidden": false,
+                "id": "number3948510286",
+                "max": null,
+                "min": 0,
+                "name": "MathsScore",
+                "options": {
+                    "min": 0,
+                    "max": null,
+                    "noDecimal": false
+                },
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "number"
+            },
+            {
+                "hidden": false,
+                "id": "number1210194381",
+                "max": null,
+                "min": 0,
+                "name": "BiologyScore",
+                "options": {
+                    "min": 0,
+                    "max": null,
+                    "noDecimal": false
+                },
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "number"
+            },
+            {
+                "hidden": false,
+                "id": "number2507168605",
+                "max": 999999,
+                "min": 1000,
+                "name": "Admin_Password",
+                 "options": {
+                    "min": 1000,
+                    "max": 999999,
+                    "noDecimal": true
+                },
+                "presentable": false,
+                "required": true,
+                "system": false,
+                "type": "number"
+            },
+            {
+                "hidden": false,
+                "id": "select3991840572",
+                "maxSelect": 1,
+                "name": "QBExam",
+                "presentable": false,
+                "required": true,
+                "system": false,
+                "type": "select",
+                 "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "MHT CET",
+                        "JEE MAIN",
+                        "NEET"
+                    ]
+                }
+            },
+            {
+                "hidden": false,
+                "id": "bool1375632720",
+                "name": "Students_can_view_their_results_after_the_test",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "bool",
+                "options": {}
+            },
+            {
+                "hidden": false,
+                "id": "number1102202353",
+                "max": 10,
+                "min": 1,
+                "name": "How_many_times_can_students_take_the_test",
+                "options": {
+                    "min": 1,
+                    "max": 10,
+                    "noDecimal": true
+                },
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "number"
+            },
+            {
+                "hidden": false,
+                "id": "bool3741509037",
+                "name": "Shuffle_Questions",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "bool",
+                "options": {}
+            },
+            {
+                "hidden": false,
+                "id": "select1660153532",
+                "maxSelect": 1,
+                "name": "Who_can_take_your_test",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "select",
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "EveryOne",
+                        "Group 1",
+                        "Group 2",
+                        "Group 3",
+                        "Group 4",
+                        "Group 5",
+                        "Group 6"
+                    ]
+                }
+            },
+            {
+                "hidden": false,
+                "id": "bool860012282",
+                "name": "Would_you_like_to_get_admin_access_through_link",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "bool",
+                "options": {}
+            },
+            {
+                "autogeneratePattern": "",
+                "hidden": false,
+                "id": "text2738425650",
+                "max": null,
+                "min": null,
+                "name": "Test_Description",
+                "pattern": "",
+                "presentable": false,
+                "primaryKey": false,
+                "required": false,
+                "system": false,
+                "type": "text"
+            },
+            {
+                "hidden": false,
+                "id": "autodate2990389176",
+                "name": "created",
+                "onCreate": true,
+                "onUpdate": false,
+                "presentable": false,
+                "system": false,
+                "type": "autodate"
+            },
+            {
+                "hidden": false,
+                "id": "autodate3332085495",
+                "name": "updated",
+                "onCreate": true,
+                "onUpdate": true,
+                "presentable": false,
+                "system": false,
+                "type": "autodate"
+            }
+        ],
+        "indexes": [],
+        "system": false
+    }
+]

@@ -1,0 +1,126 @@
+
+[
+    {
+        "id": "pbc_932471823",
+        "listRule": "@request.auth.id != \"\" || @request.auth.role = \"Admin\"",
+        "viewRule": "@request.auth.id != \"\" || @request.auth.role = \"Admin\"",
+        "createRule": "@request.auth.role = \"Admin\"",
+        "updateRule": "@request.auth.role = \"Admin\"",
+        "deleteRule": "@request.auth.role = \"Admin\"",
+        "name": "students_refferals_edunexus_plan",
+        "type": "base",
+        "system": false,
+        "schema": [
+            {
+                "id": "text3208210256",
+                "name": "id",
+                "type": "text",
+                "system": true,
+                "required": true,
+                "presentable": false,
+                "options": {
+                    "min": 15,
+                    "max": 15,
+                    "pattern": "^[a-z0-9]+$",
+                    "autogeneratePattern": "[a-z0-9]{15}"
+                }
+            },
+            {
+                "id": "text1860673391",
+                "name": "refferal_name",
+                "type": "text",
+                "system": false,
+                "required": true,
+                "presentable": true,
+                "unique": true,
+                "options": {
+                    "min": 3,
+                    "max": 50,
+                    "pattern": "^[A-Z0-9_]+$"
+                }
+            },
+            {
+                "id": "number3789599758",
+                "name": "discount",
+                "type": "number",
+                "system": false,
+                "required": true,
+                "presentable": true,
+                "options": {
+                    "min": 0,
+                    "max": 100,
+                    "noDecimal": false
+                }
+            },
+            {
+                "id": "select3818173093",
+                "name": "plan_for",
+                "type": "select",
+                "system": false,
+                "required": true,
+                "presentable": true,
+                "options": {
+                    "maxSelect": 5,
+                    "values": [
+                        "Free",
+                        "Chapterwise",
+                        "Full_length", 
+                        "Dpp",
+                        "Combo"
+                    ]
+                }
+            },
+            {
+                "id": "select1751889801",
+                "name": "plan_by",
+                "type": "select",
+                "system": false,
+                "required": false,
+                "presentable": true,
+                "options": {
+                    "maxSelect": 5,
+                    "values": [
+                        "Free",
+                        "Chapterwise",
+                        "Full_length",
+                        "Dpp",
+                        "Combo"
+                    ]
+                }
+            },
+            {
+                "id": "date4141751240",
+                "name": "expiry_date",
+                "type": "date",
+                "system": false,
+                "required": false,
+                "presentable": true,
+                "options": {
+                    "min": "",
+                    "max": ""
+                }
+            },
+            {
+                "id": "autodate2990389176",
+                "name": "created",
+                "type": "date",
+                "system": true, 
+                "required": false,
+                "presentable": false,
+                "options": {"min": "", "max": ""}
+            },
+            {
+                "id": "autodate3332085495",
+                "name": "updated",
+                "type": "date",
+                "system": true, 
+                "required": false,
+                "presentable": false,
+                "options": {"min": "", "max": ""}
+            }
+        ],
+        "indexes": [
+            "CREATE UNIQUE INDEX idx_refferal_name ON students_refferals_edunexus_plan (refferal_name)"
+        ]
+    }
+]

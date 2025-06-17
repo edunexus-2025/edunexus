@@ -1,0 +1,297 @@
+
+[
+    {
+        "id": "pbc_1377172174",
+        "listRule": "@request.auth.id != \"\"",
+        "viewRule": "@request.auth.id != \"\"",
+        "createRule": "",
+        "updateRule": "@request.auth.id = id || @request.auth.role = \"Admin\"",
+        "deleteRule": "@request.auth.role = \"admin\"",
+        "name": "users",
+        "type": "auth",
+        "system": false,
+        "schema": [
+            {
+                "autogeneratePattern": "[a-z0-9]{15}",
+                "hidden": false,
+                "id": "text3208210256",
+                "max": 15,
+                "min": 15,
+                "name": "id",
+                "pattern": "^[a-z0-9]+$",
+                "presentable": false,
+                "primaryKey": true,
+                "required": true,
+                "system": true,
+                "type": "text"
+            },
+            {
+                "cost": 0,
+                "hidden": true,
+                "id": "password901924565",
+                "max": 0,
+                "min": 8,
+                "name": "password",
+                "pattern": "",
+                "presentable": false,
+                "required": true,
+                "system": true,
+                "type": "password"
+            },
+            {
+                "autogeneratePattern": "[a-zA-Z0-9]{50}",
+                "hidden": true,
+                "id": "text2504183744",
+                "max": 60,
+                "min": 30,
+                "name": "tokenKey",
+                "pattern": "",
+                "presentable": false,
+                "primaryKey": false,
+                "required": true,
+                "system": true,
+                "type": "text"
+            },
+            {
+                "exceptDomains": null,
+                "hidden": false,
+                "id": "email3885137012",
+                "name": "email",
+                "onlyDomains": null,
+                "presentable": true,
+                "required": true,
+                "system": true,
+                "type": "email"
+            },
+            {
+                "hidden": false,
+                "id": "bool1547992806",
+                "name": "emailVisibility",
+                "presentable": false,
+                "required": false,
+                "system": true,
+                "type": "bool"
+            },
+            {
+                "hidden": false,
+                "id": "bool256245529",
+                "name": "verified",
+                "presentable": false,
+                "required": false,
+                "system": true,
+                "type": "bool"
+            },
+            {
+                "autogeneratePattern": "",
+                "hidden": false,
+                "id": "text1579384326",
+                "max": 100,
+                "min": 1,
+                "name": "name",
+                "pattern": "",
+                "presentable": true,
+                "primaryKey": false,
+                "required": true,
+                "system": false,
+                "type": "text"
+            },
+            {
+                "autogeneratePattern": "",
+                "hidden": false,
+                "id": "text1146066909",
+                "max": 15,
+                "min": 10,
+                "name": "phone",
+                "pattern": "^[+]?[0-9\\s-()]*$",
+                "presentable": true,
+                "primaryKey": false,
+                "required": false,
+                "system": false,
+                "type": "text"
+            },
+            {
+                "autogeneratePattern": "",
+                "hidden": false,
+                "id": "text3981121951",
+                "max": null,
+                "min": null,
+                "name": "class",
+                "pattern": "",
+                "presentable": true,
+                "primaryKey": false,
+                "required": false,
+                "system": false,
+                "type": "text"
+            },
+            {
+                "hidden": false,
+                "id": "select3616895705",
+                "name": "model",
+                "presentable": true,
+                "required": false,
+                "system": false,
+                "type": "select",
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "Free",
+                        "Chapterwise",
+                        "Full_length",
+                        "Combo",
+                        "Dpp",
+                        "Teacher"
+                    ]
+                }
+            },
+            {
+                "hidden": false,
+                "id": "select1466534506",
+                "name": "role",
+                "presentable": true,
+                "required": false,
+                "system": false,
+                "type": "select",
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "User",
+                        "Admin",
+                        "Teacher"
+                    ]
+                }
+            },
+            {
+                "hidden": false,
+                "id": "date4141751240",
+                "name": "expiry_date",
+                "presentable": true,
+                "required": false,
+                "system": false,
+                "type": "date",
+                "options": { "min": "", "max": "" }
+            },
+            {
+                "exceptDomains": null,
+                "hidden": false,
+                "id": "url742587758",
+                "name": "avatarUrl",
+                "onlyDomains": null,
+                "presentable": true,
+                "required": false,
+                "system": false,
+                "type": "url"
+            },
+            {
+                "name": "avatar",
+                "type": "file",
+                "system": false,
+                "required": false,
+                "presentable": true,
+                "options": {
+                    "maxSelect": 1,
+                    "maxSize": 5242880,
+                    "mimeTypes": ["image/jpeg", "image/png", "image/webp"],
+                    "thumbs": ["50x50"],
+                    "protected": false
+                }
+            },
+            {
+                "hidden": false,
+                "id": "number1767698865",
+                "name": "totalPoints",
+                "presentable": true,
+                "required": false,
+                "system": false,
+                "type": "number",
+                "options": {"min": 0, "noDecimal": true }
+            },
+            {
+                "hidden": false,
+                "id": "number2580276998",
+                "name": "targetYear",
+                "presentable": true,
+                "required": false,
+                "system": false,
+                "type": "number",
+                "options": {"min": 2020, "max": 2035, "noDecimal": true }
+            },
+            {
+                "autogeneratePattern": "",
+                "hidden": false,
+                "id": "text2762015300",
+                "name": "referralCode",
+                "pattern": "",
+                "presentable": true,
+                "primaryKey": false,
+                "required": false,
+                "system": false,
+                "type": "text",
+                "options": {"min": null, "max": null, "pattern": ""}
+            },
+            {
+                "autogeneratePattern": "",
+                "hidden": false,
+                "id": "text2761983308",
+                "name": "referredByCode",
+                "pattern": "",
+                "presentable": false,
+                "primaryKey": false,
+                "required": false,
+                "system": false,
+                "type": "text",
+                "options": {"min": null, "max": null, "pattern": ""}
+            },
+            {
+                "hidden": false,
+                "id": "json3639692647",
+                "name": "referralStats",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "json",
+                "options": {"maxSize": 524288}
+            },
+            {
+                "autogeneratePattern": "",
+                "hidden": false,
+                "id": "text2046671317",
+                "name": "favExam",
+                "pattern": "",
+                "presentable": true,
+                "primaryKey": false,
+                "required": false,
+                "system": false,
+                "type": "text",
+                "options": {"min": null, "max": null, "pattern": ""}
+            },
+            {
+                "hidden": false,
+                "id": "date233413008",
+                "name": "joineddate",
+                "presentable": true,
+                "required": false,
+                "system": false,
+                "type": "date",
+                "options": { "min": "", "max": "" }
+            },
+            {
+                "name": "subscription_by_teacher",
+                "type": "relation",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "options": {
+                    "collectionId": "pbc_2504364897",
+                    "cascadeDelete": false,
+                    "minSelect": 0,
+                    "maxSelect": 1,
+                    "displayFields": null
+                }
+            }
+        ],
+        "indexes": [
+            "CREATE UNIQUE INDEX `idx_tokenKey_pbc_1377172174` ON `users` (`tokenKey`)",
+            "CREATE UNIQUE INDEX `idx_email_pbc_1377172174` ON `users` (`email`) WHERE `email` != ''"
+        ]
+    }
+]
