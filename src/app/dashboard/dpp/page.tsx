@@ -1,10 +1,8 @@
-
-
-// This file is intentionally left almost empty to resolve a routing conflict.
-// The actual page for /dashboard/dpp is located in the (dpp-layout) route group:
+// This page is intentionally left as a minimal placeholder
+// to resolve a parallel route conflict.
+// The actual content for /dashboard/dpp is served by
 // src/app/dashboard/(dpp-layout)/dpp/page.tsx
 
-export default function ConflictingDppPagePlaceholder() {
+export default function DppPlaceholderPage() {
   return null;
 }
-
