@@ -50,7 +50,7 @@ export function NotificationPopover({
 }: NotificationPopoverProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
-  const { user: currentUser, teacher: currentTeacher } = useAuth();
+  const { user: currentUser, teacher: currentTeacher, authRefresh } = useAuth();
   const [processingId, setProcessingId] = useState<string | null>(null);
   const router = useRouter();
 
@@ -75,8 +75,12 @@ export function NotificationPopover({
         console.warn("Challenge related notification missing related_invite_id, cannot navigate to specific invite.");
       }
     } else if (notification.type === 'invitation') {
-      // For now, group invitations just close the popover. Student needs to check Connections or Teacher a different section.
-      // Future: Could navigate to a "Group Invites" page or directly to the group if a link is formed.
+      // Group invitations: if already actioned (approved is not null/undefined), maybe navigate to teacher page or group.
+      // For now, if pending, the buttons will handle action. If actioned, just closes popover.
+      if (notification.approved !== null && notification.approved !== undefined) {
+        // Potentially navigate somewhere if needed, e.g., to the teacher's page or a "my groups" page
+        // Example: if (notification.bywho_if_teacher) router.push(Routes.teacherPublicAdPage(notification.bywho_if_teacher));
+      }
     }
     setIsOpen(false);
   };
@@ -88,14 +92,17 @@ export function NotificationPopover({
     try {
       if (notification.type === 'invitation' && notification.bywho_if_teacher) {
         // Group Invitation Logic
-        await pb.collection('notification').update(notification.id, { approved: accepted });
+        await pb.collection('notification').update(notification.id, { approved: accepted, seen: true });
+        
         if (accepted && currentUser) { // Only students can accept teacher group invites this way
           try {
             // Add teacher to student's subscription_by_teacher list
+            // Using "+=" to append to a relation field
             await pb.collection('users').update(currentUser.id, {
               "subscription_by_teacher+": notification.bywho_if_teacher,
             });
             toast({ title: "Group Invitation Accepted", description: "You've joined the teacher's group!" });
+            authRefresh(); // Refresh auth context to get updated user data
           } catch (userUpdateError) {
             console.error("Failed to update student's teacher subscription:", userUpdateError);
             toast({ title: "Error Joining Group", description: "Could not update your teacher link.", variant: "destructive" });
@@ -113,8 +120,10 @@ export function NotificationPopover({
       } else if (notification.type === 'challenge_invite' && notification.related_invite_id && notification.bywho_if_student) {
         // Challenge Invite Logic
         await pb.collection('students_challenge_invites').update(notification.related_invite_id, {
-          Accepted_or_not: accepted,
+          Accepted_or_not: accepted, // PocketBase stores boolean as true/false
         });
+        await pb.collection('notification').update(notification.id, { approved: accepted, seen: true });
+
         const responseMessage = `${activeUser.name || 'A friend'} has ${accepted ? 'accepted' : 'rejected'} your challenge.`;
         await pb.collection('notification').create({
           bywho_if_student: activeUser.id, // The one responding
@@ -123,6 +132,9 @@ export function NotificationPopover({
           type: accepted ? 'challenge_accepted' : 'challenge_rejected',
           related_challenge_id: notification.related_challenge_id,
           related_invite_id: notification.related_invite_id,
+          seen: false, // New notification for the challenger
+          deleted: false,
+          approved: accepted, // Reflect the action
         });
         toast({ title: accepted ? "Challenge Accepted!" : "Challenge Declined" });
         if (accepted && notification.related_challenge_id) router.push(Routes.challengeLobby(notification.related_challenge_id));
@@ -182,7 +194,6 @@ export function NotificationPopover({
                 <div
                   key={notification.id}
                   className="p-3 rounded-md hover:bg-muted/50 transition-colors border"
-                  // Remove onClick here to allow buttons to work, or handle click carefully
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-grow flex items-start cursor-pointer" onClick={() => handleNotificationClick(notification)}>
@@ -208,7 +219,8 @@ export function NotificationPopover({
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
-                  {(notification.type === 'challenge_invite' || notification.type === 'invitation') && (notification.approved === null || notification.approved === undefined) && (
+                  {/* Accept/Decline buttons for pending invitations */}
+                  {notification.type === 'invitation' && notification.bywho_if_teacher && (notification.approved === null || notification.approved === undefined) && (
                     <div className="mt-2 pt-2 border-t flex justify-end gap-2">
                       <Button
                         size="sm"
@@ -217,8 +229,8 @@ export function NotificationPopover({
                         onClick={() => handleInvitationResponse(notification, false)}
                         disabled={processingId === notification.id}
                       >
-                        {processingId === notification.id ? <Loader2 className="h-3 w-3 animate-spin"/> : <UserX className="h-3 w-3 mr-1"/>}
-                        Reject
+                        {processingId === notification.id && !notification.approved ? <Loader2 className="h-3 w-3 animate-spin"/> : <UserX className="h-3 w-3 mr-1"/>}
+                        Decline
                       </Button>
                       <Button
                         size="sm"
@@ -226,16 +238,35 @@ export function NotificationPopover({
                         onClick={() => handleInvitationResponse(notification, true)}
                         disabled={processingId === notification.id}
                       >
-                         {processingId === notification.id ? <Loader2 className="h-3 w-3 animate-spin"/> : <Check className="h-3 w-3 mr-1"/>}
+                         {processingId === notification.id && notification.approved ? <Loader2 className="h-3 w-3 animate-spin"/> : <Check className="h-3 w-3 mr-1"/>}
                         Accept
                       </Button>
                     </div>
                   )}
-                   {(notification.type === 'challenge_invite' || notification.type === 'invitation') && notification.approved === true && (
-                    <p className="mt-2 text-xs text-green-600 font-medium flex items-center"><Check className="h-3 w-3 mr-1"/>Accepted</p>
+                  {/* Display status if already actioned */}
+                   {notification.type === 'invitation' && notification.approved === true && (
+                    <p className="mt-2 text-xs text-green-600 font-medium flex items-center"><Check className="h-3 w-3 mr-1"/>Accepted Teacher's Invitation</p>
                   )}
-                  {(notification.type === 'challenge_invite' || notification.type === 'invitation') && notification.approved === false && (
-                    <p className="mt-2 text-xs text-red-600 font-medium flex items-center"><UserX className="h-3 w-3 mr-1"/>Declined</p>
+                  {notification.type === 'invitation' && notification.approved === false && (
+                    <p className="mt-2 text-xs text-red-600 font-medium flex items-center"><UserX className="h-3 w-3 mr-1"/>Declined Teacher's Invitation</p>
+                  )}
+
+                  {/* Challenge specific buttons - Assuming challenge invites are different from general 'invitation' type */}
+                  {notification.type === 'challenge_invite' && (notification.approved === null || notification.approved === undefined) && (
+                    <div className="mt-2 pt-2 border-t flex justify-end gap-2">
+                      <Button size="sm" variant="outline" className="text-xs h-7 px-2 border-red-500 text-red-600 hover:bg-red-500/10 hover:text-red-700" onClick={() => handleInvitationResponse(notification, false)} disabled={processingId === notification.id}>
+                         {processingId === notification.id && !notification.approved ? <Loader2 className="h-3 w-3 animate-spin"/> : <UserX className="h-3 w-3 mr-1"/>} Decline Challenge
+                      </Button>
+                      <Button size="sm" className="text-xs h-7 px-2 bg-green-600 hover:bg-green-700 text-white" onClick={() => handleInvitationResponse(notification, true)} disabled={processingId === notification.id}>
+                        {processingId === notification.id && notification.approved ? <Loader2 className="h-3 w-3 animate-spin"/> : <Check className="h-3 w-3 mr-1"/>} Accept Challenge
+                      </Button>
+                    </div>
+                  )}
+                   {notification.type === 'challenge_invite' && notification.approved === true && (
+                    <p className="mt-2 text-xs text-green-600 font-medium flex items-center"><Check className="h-3 w-3 mr-1"/>Challenge Accepted</p>
+                  )}
+                  {notification.type === 'challenge_invite' && notification.approved === false && (
+                    <p className="mt-2 text-xs text-red-600 font-medium flex items-center"><UserX className="h-3 w-3 mr-1"/>Challenge Declined</p>
                   )}
                 </div>
               ))}
@@ -251,7 +282,6 @@ export function NotificationPopover({
          <div className="p-2 border-t text-center">
             <Button variant="link" size="sm" className="text-xs h-auto p-0 text-primary" onClick={() => {
               if (notifications.some(n => n.type === 'challenge_invite')) router.push(Routes.challengeInvites);
-              // else router.push(Routes.notifications); // A general notifications page if you create one
               setIsOpen(false);
             }}>
                 View Details <ChevronRight className="h-3 w-3 ml-1" />
