@@ -1,17 +1,17 @@
 
 'use client';
 
-import { Button } from '@/components/ui/button';
 import { AppConfig, Routes } from '@/lib/constants';
-import { ArrowLeft, LayoutDashboard } from 'lucide-react'; 
-import { useRouter, usePathname } from 'next/navigation';
-import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation'; // useRouter is needed for back functionality
 import { AppLogo } from '@/components/layout/AppLogo';
-import { DppNavigationProvider, useDppNavigation } from '@/contexts/DppNavigationContext';
+import { DppNavigationProvider } from '@/contexts/DppNavigationContext';
 import React, { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+// Button, ArrowLeft and LayoutDashboard are removed as the header is removed.
+// If a consistent back button or dashboard link is needed *within* the content area,
+// it should be added to individual pages or a new shared component for DPP pages.
 
-// Google Ad Placeholder Component
+// Google Ad Placeholder Component - Kept as it's in the main content area
 function GoogleAdPlaceholder() {
   useEffect(() => {
     try {
@@ -29,57 +29,21 @@ function GoogleAdPlaceholder() {
   );
 }
 
+// DppLayoutInner is simplified as the header and footer are removed
 function DppLayoutInner({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const pathname = usePathname();
   const { user } = useAuth();
-  const { backToLessonUrl } = useDppNavigation();
-
-  const handleBackClick = () => {
-    const onQuestionPage = pathname.startsWith('/dashboard/qbank/');
-    const onLessonListPage = pathname.match(/^\/dashboard\/dpp\/[^/]+\/[^/]+\/[^/]+$/);
-
-    if ((onQuestionPage || onLessonListPage) && backToLessonUrl) {
-      router.push(backToLessonUrl);
-    } else {
-      router.back();
-    }
-  };
-  
-  const showLogoInHeader = !pathname.startsWith('/dashboard/qbank/') && !pathname.startsWith('/dashboard/test-results/compete'); // Hide logo on qbank and compete results
   const showAds = user?.studentSubscriptionTier === 'Free';
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <header className="sticky top-0 z-40 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-        <div className="container mx-auto px-4 md:px-6 py-3 flex h-16 items-center justify-between">
-          <Button variant="ghost" onClick={handleBackClick} className="flex items-center gap-2 text-sm hover:bg-muted/50">
-            <ArrowLeft className="h-5 w-5" />
-            <span className="hidden sm:inline">Back</span>
-          </Button>
-          {showLogoInHeader && (
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-              <AppLogo mainTextSize="text-xl" taglineTextSize="text-[0px]" iconSize={28} />
-            </div>
-          )}
-          <div className="w-auto h-10">
-             <Link href={Routes.dashboard} passHref>
-              <Button variant="ghost" size="icon" aria-label="Go to main dashboard" className="hover:bg-muted/50">
-                <LayoutDashboard className="h-5 w-5" />
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </header>
-      <main className="flex-1 bg-background py-6 px-4 md:px-6">
+    <div className="flex flex-col flex-1 bg-background"> {/* Main div now has flex-1 to take available space */}
+      {/* Header removed */}
+      <main className="flex-1 py-6 px-4 md:px-6"> {/* Main content area */}
         <div className="container mx-auto">
           {showAds && <GoogleAdPlaceholder />}
           {children}
         </div>
       </main>
-      <footer className="py-6 border-t bg-card text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} {AppConfig.appName}. All rights reserved.
-      </footer>
+      {/* Footer removed */}
     </div>
   );
 }
