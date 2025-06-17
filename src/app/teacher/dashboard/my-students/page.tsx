@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { escapeForPbFilter } from '@/lib/constants';
 import { Loader2, Check } from 'lucide-react';
-
+import { Badge } from '@/components/ui/badge'; // Corrected: Added Badge import
 
 interface StudentDisplayInfo extends User {
   // Add any student-specific display fields if needed
@@ -128,8 +128,9 @@ function AddStudentModal({
         .map(mapRecordToStudentDisplay)
         .filter(u => {
             if (!u) return false;
+            // Check if the student is *already* subscribed to *this specific* teacher
             const studentAlreadySubscribedToThisTeacher = Array.isArray(u.subscription_by_teacher) && u.subscription_by_teacher.includes(teacherId);
-            return !currentStudentIds.includes(u.id) && !studentAlreadySubscribedToThisTeacher;
+            return !studentAlreadySubscribedToThisTeacher; // Only show students NOT already linked to THIS teacher
         }) as User[];
       
       setSearchResultsModal(mappedResults);
@@ -153,7 +154,8 @@ function AddStudentModal({
     } finally {
       setIsLoadingSearchModal(false);
     }
-  }, [searchTermModal, teacherId, currentStudentIds, toast]);
+  }, [searchTermModal, teacherId, toast]); // Removed currentStudentIds as the filter now checks subscription_by_teacher
+
 
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
@@ -181,7 +183,7 @@ function AddStudentModal({
         description: `${studentToAdd.name} has been successfully added to your students list.`,
       });
       setAddedStudentIdsModal(prev => new Set(prev).add(studentToAdd.id));
-      onStudentAdded(); // Trigger refresh on the parent page
+      onStudentAdded(); 
     } catch (error: any) {
       console.error('AddStudentModal: Failed to add student by updating student record:', error.data?.data || error.message, "Full error:", error);
       let errorMsg = `Could not add ${studentToAdd.name}. Please try again.`;
@@ -314,9 +316,8 @@ export default function TeacherMyStudentsPage() {
     setStudents([]); 
 
     try {
-      // Fetch students whose 'subscription_by_teacher' field contains the current teacher's ID.
       const studentRecords = await pb.collection('users').getFullList<RecordModel>({
-        filter: `subscription_by_teacher ~ "${teacher.id}" && role = "User"`, // Filter for students linked to this teacher
+        filter: `subscription_by_teacher ~ "${teacher.id}" && role = "User"`, 
         fields: 'id,name,email,avatarUrl,model,class,favExam,joineddate,created,phone,role,targetYear,totalPoints,avatar,collectionId,collectionName,subscription_by_teacher',
         '$autoCancel': false,
       });
