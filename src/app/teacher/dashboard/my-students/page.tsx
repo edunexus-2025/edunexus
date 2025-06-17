@@ -146,7 +146,7 @@ export default function TeacherMyStudentsPage() {
 
   if (isLoadingTeacher || (!teacher && isLoadingStudents)) {
     return (
-      <div className="space-y-6 p-4 md:p-8">
+      <div className="space-y-6 p-4 md:p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div className="space-y-1">
             <Skeleton className="h-9 w-64" />
