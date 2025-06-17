@@ -10,27 +10,41 @@ import { Skeleton } from "@/components/ui/skeleton";
 import pb from '@/lib/pocketbase';
 import type { User } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
-import { UserPlus, Users as UsersIcon, AlertCircle, Search, RefreshCw, BarChart3, Check } from 'lucide-react';
+import { UserPlus, Users as UsersIcon, AlertCircle, Search, RefreshCw, BarChart3 } from 'lucide-react';
 import type { RecordModel, ClientResponseError } from 'pocketbase';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { escapeForPbFilter } from '@/lib/constants';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Check } from 'lucide-react';
 
 
 interface StudentDisplayInfo extends User {
   // Add any student-specific display fields if needed
 }
 
+// This function now maps a raw PocketBase user record (from expand) to StudentDisplayInfo
 const mapRecordToStudentDisplay = (record: RecordModel | undefined): StudentDisplayInfo | null => {
   if (!record) return null;
+  let avatarUrlResult;
+  if (record.avatarUrl && typeof record.avatarUrl === 'string' && record.avatarUrl.startsWith('http')) {
+    avatarUrlResult = record.avatarUrl;
+  } else if (record.avatar && typeof record.avatar === 'string' && record.collectionId && record.collectionName) {
+    try {
+      avatarUrlResult = pb.files.getUrl(record, record.avatar);
+    } catch (e) { console.warn("Error getting avatar URL:", e); avatarUrlResult = undefined; }
+  }
+  
+  if (!avatarUrlResult && record.name && typeof record.name === 'string') {
+      avatarUrlResult = `https://ui-avatars.com/api/?name=${encodeURIComponent(record.name.charAt(0))}&background=random&color=fff`;
+  }
+
   return {
     id: record.id,
     email: record.email || 'N/A',
     name: record.name || 'Unnamed User',
-    avatarUrl: record.avatarUrl || (record.avatar ? pb.files.getUrl(record, record.avatar as string) : `https://ui-avatars.com/api/?name=${encodeURIComponent(record.name?.charAt(0) || 'S')}&background=random&color=fff&size=128`),
+    avatarUrl: avatarUrlResult,
     studentSubscriptionTier: record.model as User['studentSubscriptionTier'] || undefined,
     grade: record.class,
     favExam: record.favExam,
@@ -67,8 +81,8 @@ interface AddStudentModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   teacherId: string;
-  currentStudentIds: string[];
-  onStudentAdded: () => void; // Callback to refresh student list
+  currentStudentIds: string[]; // IDs of students already linked to the teacher
+  onStudentAdded: () => void;
 }
 
 function AddStudentModal({
@@ -97,7 +111,7 @@ function AddStudentModal({
     const filterParts = [
       `(name ~ "${searchTermEscaped}" || email ~ "${searchTermEscaped}")`,
       `role = "User"`,
-      `id != "${teacherId}"`,
+      `id != "${teacherId}"`, // Don't show the teacher themselves
     ];
 
     const filterString = filterParts.join(' && ');
@@ -106,25 +120,19 @@ function AddStudentModal({
     try {
       const records = await pb.collection('users').getFullList<RecordModel>({
         filter: filterString,
-        fields: 'id,name,email,avatarUrl,role,model,avatar,collectionId,collectionName,subscription_by_teacher',
+        fields: 'id,name,email,avatarUrl,role,model,avatar,collectionId,collectionName', // Fetch necessary fields
       });
 
       const mappedResults = records
         .map(mapRecordToStudentDisplay)
-        .filter(u => {
-            if (u === null) return false;
-            // Exclude if already in teacher's list OR if already added in this session
-            const isAlreadySubscribed = u.subscription_by_teacher?.includes(teacherId) || currentStudentIds.includes(u.id);
-            return !isAlreadySubscribed;
-        }) as User[];
+        .filter(u => u !== null && !currentStudentIds.includes(u.id)) as User[]; // Exclude already linked students
       
       setSearchResultsModal(mappedResults);
       if (mappedResults.length === 0) {
-        console.log("AddStudentModal: No students found matching filter or all found are already linked/added.");
+        console.log("AddStudentModal: No students found matching filter or all found are already linked.");
       }
 
     } catch (error: any) {
-      // Error handling (same as before)
       const clientError = error as ClientResponseError;
       if (clientError?.isAbort || (clientError?.name === 'ClientResponseError' && clientError?.status === 0)) {
         console.warn('AddStudentModal: Search students request was cancelled.');
@@ -158,9 +166,9 @@ function AddStudentModal({
     setProcessingStudentId(studentToAdd.id);
 
     try {
-      // Update the student's record to add this teacher to their `subscription_by_teacher`
-      await pb.collection('users').update(studentToAdd.id, {
-        "subscription_by_teacher+": teacherId,
+      // Update the teacher's record to add this student
+      await pb.collection('teacher_data').update(teacherId, {
+        "subscription_takenby_student+": studentToAdd.id,
       });
       
       toast({
@@ -170,7 +178,7 @@ function AddStudentModal({
       setAddedStudentIdsModal(prev => new Set(prev).add(studentToAdd.id));
       onStudentAdded(); // Trigger refresh on the parent page
     } catch (error: any) {
-      console.error('AddStudentModal: Failed to add student:', error.data?.data || error.message, "Full error:", error);
+      console.error('AddStudentModal: Failed to add student to teacher_data:', error.data?.data || error.message, "Full error:", error);
       let errorMsg = `Could not add ${studentToAdd.name}. Please try again.`;
       if (error.data?.data) {
         errorMsg = Object.entries(error.data.data).map(([key, val]: [string, any]) => `${key}: ${val.message}`).join('; ');
@@ -205,7 +213,7 @@ function AddStudentModal({
             <UserPlus className="h-6 w-6 text-primary" /> Add Students to Your Roster
           </DialogTitle>
           <DialogDescription>
-            Search for students by name or email (min. 3 characters) to add them directly.
+            Search for students by name or email (min. 3 characters) to add them directly to your list.
           </DialogDescription>
         </DialogHeader>
 
@@ -258,9 +266,9 @@ function AddStudentModal({
             </div>
           )}
           {!isLoadingSearchModal && searchTermModal.trim().length >= 3 && searchResultsModal.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-4">No students found matching your search, or they are already associated with you.</p>
+            <p className="text-sm text-muted-foreground text-center py-4">No students found matching your search, or they are already linked to you.</p>
           )}
-          {!isLoadingSearchModal && searchTermModal.trim().length < 3 && searchResultsModal.length === 0 && (
+           {!isLoadingSearchModal && searchTermModal.trim().length < 3 && searchResultsModal.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-4">Enter at least 3 characters to search.</p>
           )}
         </ScrollArea>
@@ -280,11 +288,11 @@ function AddStudentModal({
 
 export default function TeacherMyStudentsPage() {
   const { teacher, isLoadingTeacher } = useAuth();
-  const { toast } = useToast(); // Main page toast
+  const { toast } = useToast();
   const [students, setStudents] = useState<StudentDisplayInfo[]>([]);
   const [isLoadingStudents, setIsLoadingStudents] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTermMain, setSearchTermMain] = useState(''); // Separate search for main page
+  const [searchTermMain, setSearchTermMain] = useState('');
   const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
 
   const fetchStudents = useCallback(async () => {
@@ -299,43 +307,38 @@ export default function TeacherMyStudentsPage() {
     setStudents([]); 
 
     try {
-      const filterString = `subscription_by_teacher = "${teacher.id}"`;
-      console.log(`Fetching students for teacher ID: ${teacher.id} with filter: ${filterString}`);
-      
-      const studentRecords = await pb.collection('users').getFullList<RecordModel>({
-        filter: filterString,
-        fields: 'id,name,email,avatarUrl,model,class,favExam,joineddate,created,phone,role,targetYear,totalPoints,avatar,collectionId,collectionName,subscription_by_teacher',
+      console.log(`Fetching teacher_data for teacher ID: ${teacher.id} and expanding students.`);
+      const teacherRecord = await pb.collection('teacher_data').getOne(teacher.id, {
+        expand: 'subscription_takenby_student',
+        fields: 'id,expand.subscription_takenby_student.id,expand.subscription_takenby_student.name,expand.subscription_takenby_student.email,expand.subscription_takenby_student.avatarUrl,expand.subscription_takenby_student.model,expand.subscription_takenby_student.class,expand.subscription_takenby_student.favExam,expand.subscription_takenby_student.joineddate,expand.subscription_takenby_student.created,expand.subscription_takenby_student.phone,expand.subscription_takenby_student.role,expand.subscription_takenby_student.targetYear,expand.subscription_takenby_student.totalPoints,expand.subscription_takenby_student.avatar,expand.subscription_takenby_student.collectionId,expand.subscription_takenby_student.collectionName',
       });
       
-      console.log(`Fetched ${studentRecords.length} student records directly.`);
+      const studentDataFromExpand = teacherRecord.expand?.subscription_takenby_student || [];
+      console.log(`Fetched ${studentDataFromExpand.length} student records from expand.`);
       
-      const mappedStudents = studentRecords.map(mapRecordToStudentDisplay).filter(s => s !== null) as StudentDisplayInfo[];
+      const mappedStudents = studentDataFromExpand.map(mapRecordToStudentDisplay).filter(s => s !== null) as StudentDisplayInfo[];
       
       setStudents(mappedStudents);
       if(mappedStudents.length === 0) {
-        console.log("No students found linked to this teacher via 'subscription_by_teacher'.");
+        console.log("No students found linked to this teacher via 'subscription_takenby_student' expand.");
       }
 
     } catch (err: any) {
       const clientError = err as ClientResponseError;
-      if (clientError?.isAbort || (clientError?.name === 'ClientResponseError' && clientError?.status === 0)) {
-        console.warn('TeacherMyStudentsPage: Fetch students request was cancelled.');
-      } else {
-        let detailedErrorMessage = `Could not load students. Error: ${clientError?.data?.message || clientError?.message || 'Unknown error'}.`;
-        if (clientError?.status === 404) {
-             detailedErrorMessage += " Ensure the 'users' collection exists and the filter is correct."
-        } else if (clientError?.status === 400 || clientError?.status === 403) {
-            detailedErrorMessage += ` This often indicates an issue with the 'users' collection API List Rule. Please verify these in PocketBase. Ensure 'users' collection List Rule allows teachers to view students, and that 'subscription_by_teacher' is filterable.`;
-        }
-        console.error("TeacherMyStudentsPage: Failed to fetch students. Full error:", clientError);
-        setError(detailedErrorMessage);
-        toast({
-            title: "Error Fetching Students",
-            description: detailedErrorMessage,
-            variant: "destructive",
-            duration: 9000,
-        });
+      let detailedErrorMessage = `Could not load students. Error: ${clientError?.data?.message || clientError?.message || 'Unknown error'}.`;
+      if (clientError?.status === 404) {
+           detailedErrorMessage += " Ensure the teacher record exists and 'subscription_takenby_student' field is setup correctly."
+      } else if (clientError?.status === 400 || clientError?.status === 403) {
+          detailedErrorMessage += ` This often indicates an issue with the 'teacher_data' collection API View/List Rule or the expand. Please verify these in PocketBase. Ensure 'subscription_takenby_student' is expandable.`;
       }
+      console.error("TeacherMyStudentsPage: Failed to fetch students. Full error:", clientError);
+      setError(detailedErrorMessage);
+      toast({
+          title: "Error Fetching Students",
+          description: detailedErrorMessage,
+          variant: "destructive",
+          duration: 9000,
+      });
     } finally {
       setIsLoadingStudents(false);
     }
@@ -489,10 +492,12 @@ export default function TeacherMyStudentsPage() {
           isOpen={isAddStudentModalOpen}
           onOpenChange={setIsAddStudentModalOpen}
           teacherId={teacher.id}
-          currentStudentIds={students.map(s => s.id)}
-          onStudentAdded={fetchStudents} // Pass the refresh callback
+          currentStudentIds={students.map(s => s.id)} // Pass current student IDs to modal for filtering
+          onStudentAdded={fetchStudents}
         />
       )}
     </div>
   );
 }
+
+    
