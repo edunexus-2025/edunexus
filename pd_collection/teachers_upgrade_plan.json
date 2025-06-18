@@ -2,8 +2,8 @@
 [
     {
         "id": "pbc_3477515458",
-        "listRule": "@request.auth.id != \"\" && teacher = @request.auth.id",
-        "viewRule": "@request.auth.id != \"\" && teacher = @request.auth.id",
+        "listRule": "",
+        "viewRule": "",
         "createRule": "@request.auth.id != \"\" && teacher = @request.auth.id",
         "updateRule": "@request.auth.id != \"\" && teacher = @request.auth.id",
         "deleteRule": "@request.auth.id != \"\" && teacher = @request.auth.id",

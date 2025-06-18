@@ -68,6 +68,7 @@ export default function TeacherPublicPlansPage() {
   const [processingPaymentForPlanId, setProcessingPaymentForPlanId] = useState<string | null>(null);
 
   const edunexusName = edunexusNameParam ? escapeForPbFilter(edunexusNameParam) : '';
+  const activeUser = currentUser || currentTeacher;
 
   const fetchData = useCallback(async (isMountedGetter: () => boolean = () => true) => {
     if (!edunexusName) { if (isMountedGetter()) { setError("Teacher identifier missing in URL."); setIsLoading(false); } return; }
@@ -81,6 +82,7 @@ export default function TeacherPublicPlansPage() {
       const teacherAvatarUrl = getPbFileUrl(teacherData, 'profile_picture') || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherData.name?.charAt(0) || 'T')}&background=random&color=fff&size=128`;
 
       const contentPlans = await pb.collection('teachers_upgrade_plan').getFullList<TeacherPlanType>({ filter: `teacher = "${teacherData.id}"`, sort: '-created' });
+      console.log(`Fetched ${contentPlans.length} content plans for teacher ${teacherData.id}`);
       
       let studentSubscriptions: StudentSubscribedPlanRecord[] = [];
       if (currentUser?.id && teacherData.id) {
@@ -216,7 +218,7 @@ export default function TeacherPublicPlansPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {contentPlans.map(plan => {
               const isSubscribed = isStudentSubscribedToPlan(plan.id);
-              const isOwnPlan = currentTeacher?.id === teacherData.id; // Check if viewer is the teacher themself
+              const isOwnPlan = currentTeacher?.id === teacherData.id; 
 
               return (
                 <Card key={plan.id} className="shadow-md hover:shadow-lg transition-shadow bg-card border flex flex-col">
