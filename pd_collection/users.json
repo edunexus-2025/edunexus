@@ -1,4 +1,3 @@
-
 [
     {
         "id": "pbc_1377172174",
@@ -11,12 +10,13 @@
         "type": "auth",
         "schema": [
             {
+                "system": true,
                 "id": "text3208210256",
                 "name": "id",
                 "type": "text",
-                "system": true,
                 "required": true,
                 "presentable": false,
+                "unique": false,
                 "options": {
                     "min": 15,
                     "max": 15,
@@ -25,12 +25,13 @@
                 }
             },
             {
+                "system": true,
                 "id": "password901924565",
                 "name": "password",
                 "type": "password",
-                "system": true,
                 "required": true,
                 "presentable": false,
+                "unique": false,
                 "options": {
                     "min": 8,
                     "max": null,
@@ -39,12 +40,13 @@
                 }
             },
             {
+                "system": true,
                 "id": "text2504183744",
                 "name": "tokenKey",
                 "type": "text",
-                "system": true,
                 "required": true,
                 "presentable": false,
+                "unique": false,
                 "options": {
                     "min": 30,
                     "max": 60,
@@ -53,10 +55,10 @@
                 }
             },
             {
+                "system": true,
                 "id": "email3885137012",
                 "name": "email",
                 "type": "email",
-                "system": true,
                 "required": true,
                 "presentable": true, 
                 "unique": true,
@@ -66,30 +68,33 @@
                 }
             },
             {
+                "system": true,
                 "id": "bool1547992806",
                 "name": "emailVisibility",
                 "type": "bool",
-                "system": true,
                 "required": false,
                 "presentable": false,
+                "unique": false,
                 "options": {}
             },
             {
+                "system": true,
                 "id": "bool256245529",
                 "name": "verified",
                 "type": "bool",
-                "system": true,
                 "required": false,
                 "presentable": false,
+                "unique": false,
                 "options": {}
             },
             {
+                "system": false,
                 "id": "text1579384326",
                 "name": "name",
                 "type": "text",
-                "system": false,
                 "required": true, 
                 "presentable": true, 
+                "unique": false,
                 "options": {
                     "min": 1,
                     "max": 100, 
@@ -98,12 +103,13 @@
                 }
             },
             {
+                "system": false,
                 "id": "text1146066909",
                 "name": "phone",
                 "type": "text",
-                "system": false,
                 "required": false,
                 "presentable": true,
+                "unique": false,
                 "options": {
                     "min": 10,
                     "max": 15, 
@@ -112,12 +118,13 @@
                 }
             },
             {
+                "system": false,
                 "id": "text3981121951",
                 "name": "class",
                 "type": "text",
-                "system": false,
                 "required": false,
                 "presentable": true,
+                "unique": false,
                 "options": {
                     "min": null,
                     "max": 50, 
@@ -126,12 +133,13 @@
                 }
             },
             {
+                "system": false,
                 "id": "select3616895705",
                 "name": "model",
                 "type": "select",
-                "system": false,
                 "required": false,
                 "presentable": true, 
+                "unique": false,
                 "options": {
                     "maxSelect": 1,
                     "values": [
@@ -145,12 +153,13 @@
                 }
             },
             {
+                "system": false,
                 "id": "select1466534506",
                 "name": "role",
                 "type": "select",
-                "system": false,
                 "required": false,
                 "presentable": true, 
+                "unique": false,
                 "options": {
                     "maxSelect": 1,
                     "values": [
@@ -161,36 +170,39 @@
                 }
             },
             {
+                "system": false,
                 "id": "date4141751240",
                 "name": "expiry_date",
                 "type": "date",
-                "system": false,
                 "required": false,
                 "presentable": true, 
+                "unique": false,
                 "options": {
                     "min": "",
                     "max": ""
                 }
             },
             {
+                "system": false,
                 "id": "url742587758",
                 "name": "avatarUrl",
                 "type": "url",
-                "system": false,
                 "required": false,
                 "presentable": true, 
+                "unique": false,
                 "options": {
                     "exceptDomains": null,
                     "onlyDomains": null
                 }
             },
             {
+                "system": false,
                 "id": "file_avatar_user", 
                 "name": "avatar",
                 "type": "file",
-                "system": false,
                 "required": false,
                 "presentable": true,
+                "unique": false,
                 "options": {
                     "maxSelect": 1,
                     "maxSize": 5242880,
@@ -200,12 +212,13 @@
                 }
             },
             {
+                "system": false,
                 "id": "number1767698865",
                 "name": "totalPoints",
                 "type": "number",
-                "system": false,
                 "required": false,
                 "presentable": true, 
+                "unique": false,
                 "options": {
                     "min": 0,
                     "max": null,
@@ -213,12 +226,13 @@
                 }
             },
             {
+                "system": false,
                 "id": "number2580276998",
                 "name": "targetYear",
                 "type": "number",
-                "system": false,
                 "required": false,
                 "presentable": true, 
+                "unique": false,
                 "options": {
                     "min": 2020,
                     "max": 2035, 
@@ -226,12 +240,13 @@
                 }
             },
             {
+                "system": false,
                 "id": "text2762015300",
                 "name": "referralCode",
                 "type": "text",
-                "system": false,
                 "required": false,
                 "presentable": true, 
+                "unique": false,
                 "options": {
                     "min": null,
                     "max": 50, 
@@ -240,12 +255,13 @@
                 }
             },
             {
+                "system": false,
                 "id": "text2761983308",
                 "name": "referredByCode",
                 "type": "text",
-                "system": false,
                 "required": false,
                 "presentable": false,
+                "unique": false,
                 "options": {
                     "min": null,
                     "max": 50, 
@@ -254,23 +270,25 @@
                 }
             },
             {
+                "system": false,
                 "id": "json3639692647",
                 "name": "referralStats",
                 "type": "json",
-                "system": false,
                 "required": false,
                 "presentable": false,
+                "unique": false,
                 "options": {
                     "maxSize": 524288 
                 }
             },
             {
+                "system": false,
                 "id": "text2046671317",
                 "name": "favExam",
                 "type": "text",
-                "system": false,
                 "required": false,
                 "presentable": true, 
+                "unique": false,
                 "options": {
                     "min": null,
                     "max": 50, 
@@ -279,24 +297,26 @@
                 }
             },
             {
+                "system": false,
                 "id": "date233413008",
                 "name": "joineddate",
                 "type": "date",
-                "system": false,
                 "required": false,
                 "presentable": true, 
+                "unique": false,
                 "options": {
                     "min": "",
                     "max": ""
                 }
             },
             {
+                "system": false,
                 "id": "relation165744913",
                 "name": "subscription_by_teacher",
                 "type": "relation",
-                "system": false,
                 "required": false,
                 "presentable": false,
+                "unique": false,
                 "options": {
                     "collectionId": "pbc_2504364897",
                     "cascadeDelete": false,
@@ -306,57 +326,63 @@
                 }
             },
             {
+                "system": false,
                 "id": "number3978063606",
                 "name": "Free",
                 "type": "number",
-                "system": false,
                 "required": false,
                 "presentable": false,
+                "unique": false,
                 "options": { "min": null, "max": null, "noDecimal": false }
             },
             {
+                "system": false,
                 "id": "number1249738983",
                 "name": "Chapterwise",
                 "type": "number",
-                "system": false,
                 "required": false,
                 "presentable": false,
+                "unique": false,
                 "options": { "min": null, "max": null, "noDecimal": false }
             },
             {
+                "system": false,
                 "id": "number445073569",
                 "name": "Full_Length",
                 "type": "number",
-                "system": false,
                 "required": false,
                 "presentable": false,
+                "unique": false,
                 "options": { "min": null, "max": null, "noDecimal": false }
             },
             {
+                "system": false,
                 "id": "number4159239364",
                 "name": "Dpp",
                 "type": "number",
-                "system": false,
                 "required": false,
                 "presentable": false,
+                "unique": false,
                 "options": { "min": null, "max": null, "noDecimal": false }
             },
             {
+                "system": false,
                 "id": "number1895636814",
                 "name": "Combo",
                 "type": "number",
-                "system": false,
                 "required": false,
                 "presentable": false,
+                "unique": false,
                 "options": { "min": null, "max": null, "noDecimal": false }
             },
             {
+                "system": false,
                 "id": "select1567209069",
                 "name": "college_maker_plan",
                 "type": "select",
-                "system": false,
                 "required": false,
                 "presentable": false,
+                "unique": false,
                 "options": {
                     "maxSelect": 1,
                     "values": [
@@ -373,7 +399,7 @@
             "CREATE INDEX `idx_4EcXbculaF` ON `users` (`referralCode`)"
         ],
         "system": false,
-        "authRule": "@request.auth.id != \"\"",
+        "authRule": "",
         "manageRule": null,
         "authAlert": {
             "enabled": true,
@@ -383,13 +409,13 @@
             }
         },
         "oauth2": {
-            "enabled": true,
             "mappedFields": {
                 "id": "",
                 "name": "",
                 "username": "",
                 "avatarURL": ""
-            }
+            },
+            "enabled": true
         },
         "passwordAuth": {
             "enabled": true,
