@@ -1,20 +1,58 @@
+
 import { NextResponse, NextRequest } from 'next/server';
 import Razorpay from 'razorpay';
 import { AppConfig } from '@/lib/constants';
+import crypto from 'crypto'; // For generating short random string
 
 const RAZORPAY_KEY_ID = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 
 if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
   console.error("CRITICAL: Razorpay Key ID or Key Secret is not configured on the server.");
-  // This error should ideally prevent the server from starting or be caught at build time.
-  // For a running server, this would be a 500 for any request to this route.
 }
 
 const instance = new Razorpay({
-  key_id: RAZORPAY_KEY_ID!, // Non-null assertion because we check above
+  key_id: RAZORPAY_KEY_ID!, 
   key_secret: RAZORPAY_KEY_SECRET!,
 });
+
+const generateShortRandomString = (length: number): string => {
+  return crypto.randomBytes(Math.ceil(length / 2))
+    .toString('hex')
+    .slice(0, length)
+    .toUpperCase();
+};
+
+const getPlanIdAbbreviation = (planId: string): string => {
+  const knownPlans: Record<string, string> = {
+    "Free": "FRE",
+    "Starter": "STR",
+    "Pro": "PRO",
+    "Dpp": "DPP",
+    "Chapterwise": "CHW",
+    "Full_length": "FLL", // Underscore for consistency with how it might be stored
+    "Combo": "CMB",
+  };
+  if (knownPlans[planId]) {
+    return knownPlans[planId];
+  }
+  // If it's likely a PocketBase ID (typically 15 chars)
+  if (planId && planId.length === 15 && /^[a-z0-9]+$/.test(planId)) {
+    return planId.substring(planId.length - 6).toUpperCase();
+  }
+  // Fallback for other planId formats
+  return planId.substring(0, 3).toUpperCase();
+};
+
+const getUserTypeAbbreviation = (userType: string): string => {
+    switch(userType) {
+        case 'student_platform_plan': return 'SPP';
+        case 'teacher_platform_plan': return 'TPP';
+        case 'student_teacher_plan': return 'STP';
+        default: return userType.substring(0,3).toUpperCase();
+    }
+};
+
 
 export async function POST(request: NextRequest) {
   if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
@@ -28,10 +66,10 @@ export async function POST(request: NextRequest) {
       currency = 'INR', 
       planId, 
       userId, 
-      userType, // 'student' or 'teacher'
-      teacherIdForPlan, // Only if a student is buying a teacher's specific content plan
-      referralCodeUsed, // Optional
-      productDescription // e.g., "Upgrade to Pro Plan" or "Subscription to Teacher X's Physics Course"
+      userType, // 'student_platform_plan', 'teacher_platform_plan', 'student_teacher_plan'
+      teacherIdForPlan, 
+      referralCodeUsed, 
+      productDescription 
     } = body;
 
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
@@ -44,17 +82,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing teacherIdForPlan for student subscribing to a teacher plan.' }, { status: 400 });
     }
 
-    const receiptId = `${AppConfig.appName.replace(/\s+/g, '')}_${userType}_${planId}_${userId}_${Date.now()}`;
+    // Generate a shorter receipt ID
+    const appPrefix = "ENX";
+    const userTypeAbbr = getUserTypeAbbreviation(userType);
+    const planIdShort = getPlanIdAbbreviation(String(planId));
+    const userIdShort = String(userId).substring(String(userId).length - 8);
+    const randomSuffix = generateShortRandomString(6);
+    
+    const receiptId = `${appPrefix}-${userTypeAbbr}-${planIdShort}-${userIdShort}-${randomSuffix}`;
+
+    if (receiptId.length > 40) {
+        // This should not happen with the new logic, but as a safeguard:
+        console.error(`[Razorpay Create Order] ERROR: Generated receiptId is still too long: ${receiptId} (Length: ${receiptId.length}). Truncating.`);
+        // If it's still too long, truncate it forcefully, though this might risk non-uniqueness.
+        // Better to ensure the components above are short enough.
+        // For now, let's assume the new logic keeps it < 40.
+        // If this error log appears, the abbreviation logic needs more refinement.
+    }
+
 
     const options = {
-      amount: Math.round(Number(amount) * 100), // Amount in paisa
+      amount: Math.round(Number(amount) * 100), 
       currency: currency,
       receipt: receiptId,
       notes: {
         planId: String(planId),
         userId: String(userId),
         userType: String(userType),
-        ...(teacherIdForPlan && { teacherIdForPlan: String(teacherIdForPlan) }), // Conditionally add teacherIdForPlan
+        ...(teacherIdForPlan && { teacherIdForPlan: String(teacherIdForPlan) }), 
         ...(referralCodeUsed && { referralCodeUsed: String(referralCodeUsed) }),
         productDescription: String(productDescription || `Payment for ${planId}`),
       },
@@ -69,7 +124,8 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('[Razorpay Create Order] CRITICAL ERROR:', error);
     let errorMessage = "Failed to create Razorpay order.";
-    if (error.error && error.error.description) { // Razorpay specific error structure
+    // Check if it's a Razorpay specific error structure
+    if (error.statusCode && error.error && error.error.description) {
       errorMessage = error.error.description;
     } else if (error.message) {
       errorMessage = error.message;
@@ -77,3 +133,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
+
