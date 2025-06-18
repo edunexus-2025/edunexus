@@ -32,7 +32,7 @@ interface TeacherDataRecord extends RecordModel {
 interface StudentSubscribedPlanRecord extends RecordModel {
   student: string;
   teacher: string;
-  teachers_plan_id: string;
+  teachers_plan_id: string; // This is the relation to teachers_upgrade_plan
   payment_status: 'successful' | 'pending' | 'failed';
   expiry_date?: string;
 }
@@ -56,7 +56,7 @@ const getPbFileUrl = (record: RecordModel | null | undefined, fieldName: string)
 export default function TeacherPublicPlansPage() {
   const params = useParams();
   const router = useRouter();
-  const { user: currentUser, teacher: currentTeacher } = useAuth();
+  const { user: currentUser, teacher: currentTeacher, authRefresh } = useAuth(); // Added authRefresh
   const { toast } = useToast();
   const edunexusNameParam = typeof params.edunexusName === 'string' ? params.edunexusName : '';
 
@@ -95,9 +95,8 @@ export default function TeacherPublicPlansPage() {
       console.log(`[TeacherPlansPage] Attempting to fetch contentPlans with filter: '${plansFilter}'`);
       
       const rawContentPlans = await pb.collection('teachers_upgrade_plan').getFullList<RecordModel>({ filter: plansFilter, sort: '-created' });
-      // Log the raw data before any mapping or type assertion
       console.log(`[TeacherPlansPage] RAW contentPlans fetched (${rawContentPlans.length}):`, JSON.parse(JSON.stringify(rawContentPlans)));
-      const contentPlans = rawContentPlans as TeacherPlanType[]; // Type assertion
+      const contentPlans = rawContentPlans as TeacherPlanType[]; 
       
       console.log(`[TeacherPlansPage] Mapped contentPlans. Length: ${contentPlans.length} for teacher ${teacherData.id}`);
       
@@ -133,7 +132,7 @@ export default function TeacherPublicPlansPage() {
       }
     }
     finally { if (isMountedGetter()) setIsLoading(false); }
-  }, [edunexusName, currentUser?.id, currentTeacher?.id]); // Ensure all dependencies are listed
+  }, [edunexusName, currentUser?.id, currentTeacher?.id]); 
 
   useEffect(() => { 
     let isMounted = true; 
@@ -209,7 +208,8 @@ export default function TeacherPublicPlansPage() {
         await pb.collection('users').update(currentUser.id, { "subscription_by_teacher+": pageData.teacherData.id });
         await pb.collection('teachers_upgrade_plan').update(plan.id, { "enrolled_students+": currentUser.id });
         toast({ title: "Enrollment Successful!", description: `You are now enrolled in "${plan.Plan_name}".` });
-        fetchData(); 
+        await authRefresh(); // Refresh global user state
+        fetchData(); // Re-fetch page data to update subscription status
       } catch(err: any) {
         toast({ title: "Enrollment Failed", description: `Could not enroll you: ${err.data?.message || err.message}`, variant: "destructive" });
       } finally { setProcessingPaymentForPlanId(null); }
@@ -234,7 +234,11 @@ export default function TeacherPublicPlansPage() {
               body: JSON.stringify({ razorpay_order_id: response.razorpay_order_id, razorpay_payment_id: response.razorpay_payment_id, razorpay_signature: response.razorpay_signature, planId: plan.id, userId: currentUser.id, userType: 'student_teacher_plan', teacherIdForPlan: pageData.teacherData.id, referralCodeUsed: appliedReferralDetails?.code || referralCodeInput.trim() || null, productDescription: `${pageData.teacherData.name}'s Plan - ${plan.Plan_name}` }),
             });
             const verificationData = await verificationResponse.json();
-            if (verificationResponse.ok && verificationData.verified) { toast({ title: "Payment Successful!", description: "Processing your subscription..." }); fetchData(); }
+            if (verificationResponse.ok && verificationData.verified) { 
+              toast({ title: "Payment Successful!", description: "Processing your subscription..." }); 
+              await authRefresh(); // Refresh global user state
+              fetchData(); // Re-fetch page data
+            }
             else { toast({ title: "Payment Verification Failed", description: verificationData.error || "Contact support.", variant: "destructive" }); }
           } catch (verifyError: any) { toast({ title: "Verification Error", description: verifyError.message || "An error occurred.", variant: "destructive" }); }
           setProcessingPaymentForPlanId(null);
@@ -261,7 +265,7 @@ export default function TeacherPublicPlansPage() {
     <div className="flex flex-col min-h-screen bg-muted/30 dark:bg-slate-950">
       <main className="flex-1 container mx-auto px-2 sm:px-4 py-6 md:py-8 max-w-4xl">
         {(currentUser || currentTeacher) && (
-             <Button variant="outline" size="sm" onClick={() => router.push(currentTeacher ? Routes.teacherDashboard : Routes.dashboard)} className="mb-4">
+             <Button variant="outline" size="sm" onClick={() => router.push(activeUser?.collectionName === 'teacher_data' ? Routes.teacherDashboard : Routes.dashboard)} className="mb-4">
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
             </Button>
         )}
@@ -392,5 +396,3 @@ export default function TeacherPublicPlansPage() {
     </div>
   );
 }
-
-    
