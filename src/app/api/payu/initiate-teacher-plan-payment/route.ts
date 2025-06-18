@@ -3,15 +3,15 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto'; // Node.js crypto module for SHA512
 
 // These are read from .env.local (or your deployment environment variables)
-const CLIENT_FACING_PAYU_CLIENT_ID = process.env.NEXT_PUBLIC_PAYU_CLIENT_ID; // For the form data, 'key'
-const SERVER_SIDE_PAYU_CLIENT_ID = process.env.PAYU_CLIENT_ID_SERVER;     // For hash calculation
-const SERVER_SIDE_PAYU_CLIENT_SECRET = process.env.PAYU_CLIENT_SECRET;   // For hash calculation
-const PAYU_ACTION_URL = process.env.PAYU_PAYMENT_URL || 'https://secure.payu.in/_payment'; // Default to live if not set
+const PAYU_FORM_KEY = process.env.NEXT_PUBLIC_PAYU_CLIENT_ID;         // Your PayU Client ID for the FORM `key` param
+const PAYU_HASH_KEY_SERVER = process.env.NEXT_PUBLIC_PAYU_CLIENT_ID;  // Your PayU Client ID for SERVER-SIDE HASHING
+const PAYU_HASH_SALT_SERVER = process.env.PAYU_CLIENT_SECRET;        // Your PayU Client Secret (Salt) for SERVER-SIDE HASHING
+const PAYU_ACTION_URL = process.env.PAYU_PAYMENT_URL || 'https://secure.payu.in/_payment';
 const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_BASE_URL;
 
 export async function POST(request: Request) {
-  if (!CLIENT_FACING_PAYU_CLIENT_ID || !SERVER_SIDE_PAYU_CLIENT_ID || !SERVER_SIDE_PAYU_CLIENT_SECRET) {
-    console.error("[PayU Initiate ERROR] CRITICAL: PayU Client ID (Client or Server) or Client Secret is NOT configured on the server. Check .env.local and deployment variables.");
+  if (!PAYU_FORM_KEY || !PAYU_HASH_KEY_SERVER || !PAYU_HASH_SALT_SERVER) {
+    console.error("[PayU Initiate ERROR] CRITICAL: PayU Client ID or Client Secret (Salt) is NOT configured on the server. Check .env.local and deployment variables.");
     return NextResponse.json({ error: 'Payment gateway server configuration error (Client ID/Secret missing). Please contact support.' }, { status: 500 });
   }
   if (!APP_BASE_URL) {
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const {
       amount, // Expected as string, e.g., "10.00"
-      planId, 
+      planId,
       teacherId,
       teacherEmail,
       teacherName,
@@ -43,31 +43,30 @@ export async function POST(request: Request) {
     const surl = `${APP_BASE_URL}/api/payu/handle-teacher-plan-response`;
     const furl = `${APP_BASE_URL}/api/payu/handle-teacher-plan-response`;
 
-    const udf1 = planId;     
-    const udf2 = teacherId;  
+    const udf1 = planId;
+    const udf2 = teacherId;
     const udf3 = "";
     const udf4 = "";
     const udf5 = "";
-    
+
     const hashStringParams = [
-      SERVER_SIDE_PAYU_CLIENT_ID, // Use the server-side Client ID for hashing
+      PAYU_HASH_KEY_SERVER, // Use server-side Client ID for hashing
       txnid,
       amount,
       productinfo,
       firstname,
       email,
-      udf1, udf2, udf3, udf4, udf5, 
+      udf1, udf2, udf3, udf4, udf5,
       "", "", "", "", "", // udf6-udf10
-      SERVER_SIDE_PAYU_CLIENT_SECRET // Use the server-side Client Secret (Salt equivalent)
+      PAYU_HASH_SALT_SERVER // Use server-side Client Secret (Salt)
     ];
     const hashString = hashStringParams.join('|');
-    
-    // --- Debugging Logs ---
+
     console.log("--------------------------------------------------------------------");
     console.log("[PayU Initiate DEBUG] Preparing to hash for PayU request.");
-    console.log("[PayU Initiate DEBUG] Client Facing Client ID (for form 'key'):", CLIENT_FACING_PAYU_CLIENT_ID ? `${CLIENT_FACING_PAYU_CLIENT_ID.substring(0,3)}...` : "NOT SET!");
-    console.log("[PayU Initiate DEBUG] Server Client ID (for HASH):", SERVER_SIDE_PAYU_CLIENT_ID ? `${SERVER_SIDE_PAYU_CLIENT_ID.substring(0,3)}...` : "NOT SET!");
-    console.log("[PayU Initiate DEBUG] Server Client Secret (for HASH):", SERVER_SIDE_PAYU_CLIENT_SECRET ? `******` : "NOT SET!"); // Mask secret
+    console.log("[PayU Initiate DEBUG] PAYU_FORM_KEY (for form 'key'):", PAYU_FORM_KEY ? `${PAYU_FORM_KEY.substring(0,3)}...` : "NOT SET!");
+    console.log("[PayU Initiate DEBUG] PAYU_HASH_KEY_SERVER (for HASH):", PAYU_HASH_KEY_SERVER ? `${PAYU_HASH_KEY_SERVER.substring(0,3)}...` : "NOT SET!");
+    console.log("[PayU Initiate DEBUG] PAYU_HASH_SALT_SERVER (Client Secret/Salt for HASH):", PAYU_HASH_SALT_SERVER ? `******` : "NOT SET!");
     console.log("[PayU Initiate DEBUG] Transaction ID (txnid):", txnid);
     console.log("[PayU Initiate DEBUG] Amount:", amount);
     console.log("[PayU Initiate DEBUG] Product Info:", productinfo);
@@ -76,32 +75,29 @@ export async function POST(request: Request) {
     console.log("[PayU Initiate DEBUG] Phone (sent to PayU in form data, NOT in this hash):", phone);
     console.log("[PayU Initiate DEBUG] UDF1 (planId):", udf1);
     console.log("[PayU Initiate DEBUG] UDF2 (teacherId):", udf2);
-    console.log("[PayU Initiate DEBUG] UDF3-5:", udf3, udf4, udf5);
-    console.log("[PayU Initiate DEBUG] Full hashStringParams array (for HASH calculation):", JSON.stringify(hashStringParams.map((p,i) => i === hashStringParams.length -1 ? '******' : p))); // Mask secret in log
-    console.log("[PayU Initiate DEBUG] Raw String to be Hashed (hashString):\n", hashString.replace(SERVER_SIDE_PAYU_CLIENT_SECRET!, "******")); // Mask secret
-    // --- End Debugging Logs ---
+    console.log("[PayU Initiate DEBUG] Full hashStringParams array (for HASH calculation):", JSON.stringify(hashStringParams.map((p,i) => (i === 0 || i === hashStringParams.length -1) ? (p ? '******' : 'EMPTY_OR_NOT_SET') : p)));
+    console.log("[PayU Initiate DEBUG] Raw String to be Hashed (hashString):\n", hashString.replace(PAYU_HASH_KEY_SERVER!, "******KEY******").replace(PAYU_HASH_SALT_SERVER!, "******SALT******"));
     
     const hash = crypto.createHash('sha512').update(hashString).digest('hex');
     console.log("[PayU Initiate DEBUG] Calculated SHA512 Hash:", hash);
     console.log("--------------------------------------------------------------------");
 
     const payuFormInputs = {
-      key: CLIENT_FACING_PAYU_CLIENT_ID, // This is the 'key' param for the PayU form, use public client ID
+      key: PAYU_FORM_KEY, // This is the 'key' param for the PayU form, use the public Client ID
       txnid,
       amount,
       productinfo,
       firstname,
       email,
-      phone, 
+      phone,
       surl,
       furl,
       hash,
-      udf1: udf1, 
-      udf2: udf2, 
+      udf1: udf1,
+      udf2: udf2,
       udf3: udf3,
       udf4: udf4,
       udf5: udf5,
-      // service_provider: 'payu_paisa', // Often required for PayU Test environment. Check if needed for LIVE.
     };
 
     return NextResponse.json(payuFormInputs, { status: 200 });
