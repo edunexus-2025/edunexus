@@ -69,13 +69,17 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
-      // Previous replit.dev URLs removed as they are likely replaced by the new one.
-      // Add them back if they are still needed for other purposes.
       {
         protocol: 'https',
         hostname: 'i.ibb.co',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'f3605bbf-1d05-4292-9f0b-d3cd0ac21935-00-2eeov1wweb7qq.sisko.replit.dev', // Added this from the error
+        port: '',
+        pathname: '/api/files/**', // Path from the error URL
       },
       // Existing cluster-specific URLs, keep if still needed, otherwise remove
       {
@@ -105,8 +109,6 @@ const nextConfig: NextConfig = {
       'https://6000-firebase-studio-1748410223729.cluster-ancjwrkgr5dvux4qug5rbzyc2y.cloudworkstations.dev',
       'https://9000-firebase-studio-1748410223729.cluster-ancjwrkgr5dvux4qug5rbzyc2y.cloudworkstations.dev',
       'https://3000-firebase-studio-1748410223729.cluster-ancjwrkgr5dvux4qug5rbzyc2y.cloudworkstations.dev',
-      // Add the new PocketBase Replit domain if needed for specific dev scenarios, though remotePatterns usually covers image loading.
-      // 'https://ae8425c5-5ede-4664-bdaa-b238298ae1be-00-4oi013hd9264.sisko.replit.dev',
     ],
   },
   
