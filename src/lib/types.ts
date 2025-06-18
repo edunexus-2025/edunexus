@@ -6,7 +6,7 @@ export type UserSubscriptionTierStudent = 'Free' | 'Chapterwise' | 'Full_length'
 export type UserSubscriptionTierTeacher = 'Free' | 'Starter' | 'Pro';
 
 export interface Plan {
-  id: UserSubscriptionTierStudent | UserSubscriptionTierTeacher | 'TeacherAds'; // Added TeacherAds
+  id: UserSubscriptionTierStudent | UserSubscriptionTierTeacher | 'Ads Model'; // Added Ads Model
   name: string;
   description: string;
   price: string;
@@ -18,6 +18,7 @@ export interface Plan {
   commissionRate?: number; // For teacher platform plans
   maxContentPlans?: number; // For teacher platform plans
   qbAccess?: boolean; // For teacher platform plans
+  customActivationLink?: string; // For plans like Ads Model that have a different flow
 }
 
 export type User = {
@@ -241,7 +242,6 @@ export interface TeacherPlan extends RecordModel { // Updated to use RecordModel
   created: string;
   updated: string;
   enrolledStudentCount?: number; // For client-side display
-  // Removed max_students as it was removed from schema
 }
 
 export interface StudentSubscribedPlan extends RecordModel {
@@ -271,8 +271,6 @@ export interface StudentSubscribedPlan extends RecordModel {
   }
 }
 
-// This type might become redundant or used for payout history.
-// For now, keeping it but the Wallet page will primarily use StudentSubscribedPlan for history.
 export interface TeacherWalletTransaction extends RecordModel {
   id: string;
   teacher: string;
@@ -311,4 +309,36 @@ export interface TeacherReferralCode extends RecordModel {
   expiry_date?: string;
   created: string;
   updated: string;
+}
+
+// For the new teacher_test_student_results collection
+export interface TeacherTestAnswerLogItem {
+  questionId: string;
+  selectedOption: string | null;
+  correctOption: string | null;
+  isCorrect: boolean;
+  markedForReview?: boolean; // Optional, can be added if needed
+  timeSpentSeconds: number;
+}
+
+export interface TeacherTestStudentResult extends RecordModel {
+  student: string;
+  teacher_test: string;
+  teacher: string;
+  test_name_cache: string;
+  start_time: string; // ISO Date
+  end_time?: string; // ISO Date
+  duration_taken_seconds?: number;
+  total_questions_in_test: number;
+  attempted_questions: number;
+  correct_answers: number;
+  incorrect_answers: number;
+  unattempted_questions: number;
+  score_obtained: number;
+  max_score_possible: number;
+  percentage?: number;
+  answers_log?: string | TeacherTestAnswerLogItem[]; // Can be JSON string or parsed array
+  status: 'completed' | 'in_progress' | 'terminated_time_up' | 'terminated_pin_attempts_exceeded';
+  plan_type_at_attempt: UserSubscriptionTierStudent | 'TeacherPlan_Student';
+  teacher_plan_id_if_applicable?: string;
 }

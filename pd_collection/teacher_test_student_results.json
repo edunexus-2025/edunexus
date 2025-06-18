@@ -1,0 +1,125 @@
+
+[
+  {
+    "id": "pbc_teacher_test_results",
+    "name": "teacher_test_student_results",
+    "type": "base",
+    "system": false,
+    "listRule": "@request.auth.id != \"\" && (student = @request.auth.id || teacher = @request.auth.id)",
+    "viewRule": "@request.auth.id != \"\" && (student = @request.auth.id || teacher = @request.auth.id)",
+    "createRule": "@request.auth.id != \"\" && @request.data.student:isset && @request.data.student = @request.auth.id",
+    "updateRule": "@request.auth.role = \"admin\"",
+    "deleteRule": "@request.auth.role = \"admin\"",
+    "schema": [
+      {
+        "id": "tts_result_id",
+        "name": "id",
+        "type": "text",
+        "system": true,
+        "required": true,
+        "options": { "min": 15, "max": 15, "pattern": "^[a-z0-9]+$", "autogeneratePattern": "[a-z0-9]{15}" }
+      },
+      {
+        "id": "tts_student_rel",
+        "name": "student",
+        "type": "relation",
+        "required": true,
+        "options": { "collectionId": "pbc_1377172174", "cascadeDelete": true, "minSelect": 1, "maxSelect": 1, "displayFields": ["id", "name", "email"] }
+      },
+      {
+        "id": "tts_teacher_test_rel",
+        "name": "teacher_test",
+        "type": "relation",
+        "required": true,
+        "options": { "collectionId": "pbc_2863365490", "cascadeDelete": false, "minSelect": 1, "maxSelect": 1, "displayFields": ["id", "testName"] }
+      },
+      {
+        "id": "tts_teacher_rel",
+        "name": "teacher",
+        "type": "relation",
+        "required": true,
+        "options": { "collectionId": "pbc_2504364897", "cascadeDelete": false, "minSelect": 1, "maxSelect": 1, "displayFields": ["id", "name"] }
+      },
+      {
+        "id": "tts_score_num",
+        "name": "score",
+        "type": "number",
+        "required": true,
+        "options": { "min": 0, "noDecimal": false }
+      },
+      {
+        "id": "tts_max_score_num",
+        "name": "max_score",
+        "type": "number",
+        "required": true,
+        "options": { "min": 0, "noDecimal": false }
+      },
+      {
+        "id": "tts_percentage_num",
+        "name": "percentage",
+        "type": "number",
+        "required": false,
+        "options": { "min": 0, "max": 100, "noDecimal": false }
+      },
+      {
+        "id": "tts_answers_log_json",
+        "name": "answers_log",
+        "type": "json",
+        "required": false,
+        "options": { "maxSize": 1048576 }
+      },
+      {
+        "id": "tts_duration_taken_num",
+        "name": "duration_taken_seconds",
+        "type": "number",
+        "required": false,
+        "options": { "min": 0, "noDecimal": true }
+      },
+      {
+        "id": "tts_status_select",
+        "name": "status",
+        "type": "select",
+        "required": true,
+        "options": { "maxSelect": 1, "values": ["completed", "in_progress", "terminated_time_up", "terminated_proctoring"] }
+      },
+      {
+        "id": "tts_plan_context_text",
+        "name": "plan_context",
+        "type": "text",
+        "required": false,
+        "options": { "min": null, "max": 100, "pattern": "" }
+      },
+      {
+        "id": "tts_attempt_date_auto",
+        "name": "attempt_date",
+        "type": "date",
+        "system": false,
+        "required": false,
+        "presentable": true,
+        "options": { "min": "", "max": "" }
+      },
+      {
+        "id": "tts_created_auto",
+        "name": "created",
+        "type": "date",
+        "system": true,
+        "required": false,
+        "options": { "min": "", "max": "" }
+      },
+      {
+        "id": "tts_updated_auto",
+        "name": "updated",
+        "type": "date",
+        "system": true,
+        "required": false,
+        "options": { "min": "", "max": "" }
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX idx_tts_student ON teacher_test_student_results (student)",
+      "CREATE INDEX idx_tts_teacher_test ON teacher_test_student_results (teacher_test)",
+      "CREATE INDEX idx_tts_teacher ON teacher_test_student_results (teacher)"
+    ]
+  }
+]
+    

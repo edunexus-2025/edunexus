@@ -1,8 +1,9 @@
+
 [
     {
         "id": "pbc_2863365490",
         "listRule": "@request.auth.id != \"\" && teacherId = @request.auth.id",
-        "viewRule": "@request.auth.id != \"\" && teacherId = @request.auth.id",
+        "viewRule": "@request.auth.id != \"\"",
         "createRule": "@request.auth.id != \"\" && teacherId = @request.auth.id",
         "updateRule": "@request.auth.id != \"\" && teacherId = @request.auth.id",
         "deleteRule": "@request.auth.id != \"\" && teacherId = @request.auth.id",
@@ -44,7 +45,7 @@
                 "min": 1,
                 "name": "testName",
                 "pattern": "",
-                "presentable": false,
+                "presentable": true,
                 "primaryKey": false,
                 "required": true,
                 "system": false,
@@ -54,11 +55,11 @@
                 "autogeneratePattern": "",
                 "hidden": false,
                 "id": "text2254405824",
-                "max": null,
+                "max": null, 
                 "min": 1,
                 "name": "duration",
-                "pattern": "",
-                "presentable": false,
+                "pattern": "^[0-9]+$",
+                "presentable": true,
                 "primaryKey": false,
                 "required": true,
                 "system": false,
@@ -69,7 +70,7 @@
                 "id": "select3616895705",
                 "maxSelect": 1,
                 "name": "model",
-                "presentable": false,
+                "presentable": true,
                 "required": true,
                 "system": false,
                 "type": "select",
@@ -86,7 +87,7 @@
                 "id": "select2363381545",
                 "maxSelect": 1,
                 "name": "type",
-                "presentable": false,
+                "presentable": true,
                 "required": true,
                 "system": false,
                 "type": "select",
@@ -94,8 +95,7 @@
                     "maxSelect": 1,
                     "values": [
                         "Free",
-                        "Premium",
-                        "Free & Premium"
+                        "Premium"
                     ]
                 }
             },
@@ -104,7 +104,7 @@
                 "id": "select2063623452",
                 "maxSelect": 1,
                 "name": "status",
-                "presentable": false,
+                "presentable": true,
                 "required": true,
                 "system": false,
                 "type": "select",
@@ -119,10 +119,10 @@
             },
             {
                 "cascadeDelete": false,
-                "collectionId": "pbc_1874489316",
+                "collectionId": "pbc_1874489316", 
                 "hidden": false,
                 "id": "relation2329695445",
-                "maxSelect": 999,
+                "maxSelect": 200, 
                 "minSelect": 0,
                 "name": "questions",
                 "presentable": false,
@@ -134,7 +134,7 @@
                 "hidden": false,
                 "id": "number3496344499",
                 "name": "totalScore",
-                "presentable": false,
+                "presentable": true,
                 "required": false,
                 "system": false,
                 "type": "number",
@@ -148,7 +148,7 @@
                 "hidden": false,
                 "id": "number1847253182",
                 "name": "PerNegativeScore",
-                "presentable": false,
+                "presentable": true,
                 "required": false,
                 "system": false,
                 "type": "number",
@@ -159,116 +159,28 @@
                 }
             },
             {
-                "hidden": false,
-                "id": "number1707412729",
-                "name": "PhysicsQuestions",
-                "presentable": false,
-                "required": false,
-                "system": false,
-                "type": "number",
-                "options": {
-                    "min": 0,
-                    "max": null,
-                    "noDecimal": true
-                }
+                "hidden": true, "id": "number1707412729", "name": "PhysicsQuestions", "type": "number", "required": false, "system": false, "options": {"min": 0, "max": null, "noDecimal": true }
             },
             {
-                "hidden": false,
-                "id": "number520241329",
-                "name": "ChemistryQuestions",
-                "presentable": false,
-                "required": false,
-                "system": false,
-                "type": "number",
-                "options": {
-                    "min": 0,
-                    "max": null,
-                    "noDecimal": true
-                }
+                "hidden": true, "id": "number520241329", "name": "ChemistryQuestions", "type": "number", "required": false, "system": false, "options": {"min": 0, "max": null, "noDecimal": true }
             },
             {
-                "hidden": false,
-                "id": "number3399273475",
-                "name": "MathsQuestions",
-                "presentable": false,
-                "required": false,
-                "system": false,
-                "type": "number",
-                "options": {
-                    "min": 0,
-                    "max": null,
-                    "noDecimal": true
-                }
+                "hidden": true, "id": "number3399273475", "name": "MathsQuestions", "type": "number", "required": false, "system": false, "options": {"min": 0, "max": null, "noDecimal": true }
             },
             {
-                "hidden": false,
-                "id": "number4168650354",
-                "name": "BiologyQuestions",
-                "presentable": false,
-                "required": false,
-                "system": false,
-                "type": "number",
-                 "options": {
-                    "min": 0,
-                    "max": null,
-                    "noDecimal": true
-                }
+                "hidden": true, "id": "number4168650354", "name": "BiologyQuestions", "type": "number", "required": false, "system": false, "options": {"min": 0, "max": null, "noDecimal": true }
             },
             {
-                "hidden": false,
-                "id": "number2751317907",
-                "name": "PhysicsScore",
-                "presentable": false,
-                "required": false,
-                "system": false,
-                "type": "number",
-                 "options": {
-                    "min": 0,
-                    "max": null,
-                    "noDecimal": false
-                }
+                "hidden": true, "id": "number2751317907", "name": "PhysicsScore", "type": "number", "required": false, "system": false, "options": {"min": 0, "max": null, "noDecimal": false }
             },
             {
-                "hidden": false,
-                "id": "number1027891066",
-                "name": "ChemistryScore",
-                "presentable": false,
-                "required": false,
-                "system": false,
-                "type": "number",
-                 "options": {
-                    "min": 0,
-                    "max": null,
-                    "noDecimal": false
-                }
+                "hidden": true, "id": "number1027891066", "name": "ChemistryScore", "type": "number", "required": false, "system": false, "options": {"min": 0, "max": null, "noDecimal": false }
             },
             {
-                "hidden": false,
-                "id": "number3948510286",
-                "name": "MathsScore",
-                "presentable": false,
-                "required": false,
-                "system": false,
-                "type": "number",
-                "options": {
-                    "min": 0,
-                    "max": null,
-                    "noDecimal": false
-                }
+                "hidden": true, "id": "number3948510286", "name": "MathsScore", "type": "number", "required": false, "system": false, "options": {"min": 0, "max": null, "noDecimal": false }
             },
             {
-                "hidden": false,
-                "id": "number1210194381",
-                "name": "BiologyScore",
-                "presentable": false,
-                "required": false,
-                "system": false,
-                "type": "number",
-                "options": {
-                    "min": 0,
-                    "max": null,
-                    "noDecimal": false
-                }
+                "hidden": true, "id": "number1210194381", "name": "BiologyScore", "type": "number", "required": false, "system": false, "options": {"min": 0, "max": null, "noDecimal": false }
             },
             {
                 "hidden": false,
@@ -289,7 +201,7 @@
                 "id": "select3991840572",
                 "maxSelect": 1,
                 "name": "QBExam",
-                "presentable": false,
+                "presentable": true,
                 "required": true,
                 "system": false,
                 "type": "select",
@@ -309,8 +221,7 @@
                 "presentable": false,
                 "required": false,
                 "system": false,
-                "type": "bool",
-                "options": {}
+                "type": "bool"
             },
             {
                 "hidden": false,
@@ -333,8 +244,7 @@
                 "presentable": false,
                 "required": false,
                 "system": false,
-                "type": "bool",
-                "options": {}
+                "type": "bool"
             },
             {
                 "hidden": false,
@@ -365,18 +275,17 @@
                 "presentable": false,
                 "required": false,
                 "system": false,
-                "type": "bool",
-                "options": {}
+                "type": "bool"
             },
             {
                 "autogeneratePattern": "",
                 "hidden": false,
                 "id": "text2738425650",
-                "max": null,
+                "max": 500, 
                 "min": null,
                 "name": "Test_Description",
                 "pattern": "",
-                "presentable": false,
+                "presentable": true,
                 "primaryKey": false,
                 "required": false,
                 "system": false,
@@ -389,7 +298,7 @@
                 "onCreate": true,
                 "onUpdate": false,
                 "presentable": false,
-                "system": false,
+                "system": true, 
                 "type": "autodate"
             },
             {
@@ -399,13 +308,13 @@
                 "onCreate": true,
                 "onUpdate": true,
                 "presentable": false,
-                "system": false,
+                "system": true,
                 "type": "autodate"
             }
         ],
-        "indexes": [],
+        "indexes": [
+            "CREATE INDEX idx_teacher_tests_teacherId ON teacher_tests (teacherId)"
+        ],
         "system": false
     }
 ]
-
-    

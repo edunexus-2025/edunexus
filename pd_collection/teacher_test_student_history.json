@@ -1,0 +1,96 @@
+
+[
+  {
+    "id": "pbc_teacher_test_history",
+    "name": "teacher_test_student_history",
+    "type": "base",
+    "system": false,
+    "listRule": "@request.auth.id != \"\" && (student = @request.auth.id || teacher_id_cache = @request.auth.id)",
+    "viewRule": "@request.auth.id != \"\" && (student = @request.auth.id || teacher_id_cache = @request.auth.id)",
+    "createRule": "@request.auth.id != \"\" && student = @request.auth.id",
+    "updateRule": "@request.auth.id = student",
+    "deleteRule": "@request.auth.id = student || @request.auth.role = \"Admin\"",
+    "schema": [
+      {
+        "id": "tts_id_pk", "name": "id", "type": "text", "system": true, "required": true,
+        "options": { "min": 15, "max": 15, "pattern": "^[a-z0-9]+$", "autogeneratePattern": "[a-z0-9]{15}" }
+      },
+      {
+        "id": "tts_student_rel", "name": "student", "type": "relation", "required": true, "system": false,
+        "options": { "collectionId": "pbc_1377172174", "cascadeDelete": true, "minSelect": 1, "maxSelect": 1 }
+      },
+      {
+        "id": "tts_test_taken_rel", "name": "test_taken", "type": "relation", "required": true, "system": false,
+        "options": { "collectionId": "pbc_2863365490", "cascadeDelete": false, "minSelect": 1, "maxSelect": 1 }
+      },
+      {
+        "id": "tts_test_name_text", "name": "test_name_cache", "type": "text", "required": true,
+        "options": { "min": 1, "max": 150 }
+      },
+      {
+        "id": "tts_teacher_id_rel_cache", "name": "teacher_id_cache", "type": "relation", "required": true, "system": false,
+        "options": { "collectionId": "pbc_2504364897", "cascadeDelete": false, "minSelect": 1, "maxSelect": 1, "displayFields": ["id"] }
+      },
+      { "id": "tts_start_time_date", "name": "start_time", "type": "date", "required": true },
+      { "id": "tts_end_time_date", "name": "end_time", "type": "date", "required": false },
+      {
+        "id": "tts_duration_num", "name": "duration_taken_seconds", "type": "number", "required": false,
+        "options": { "min": 0, "noDecimal": true }
+      },
+      {
+        "id": "tts_total_qs_num", "name": "total_questions", "type": "number", "required": true,
+        "options": { "min": 0, "noDecimal": true }
+      },
+      {
+        "id": "tts_attempted_qs_num", "name": "attempted_questions", "type": "number", "required": true,
+        "options": { "min": 0, "noDecimal": true }
+      },
+      {
+        "id": "tts_correct_ans_num", "name": "correct_answers", "type": "number", "required": true,
+        "options": { "min": 0, "noDecimal": true }
+      },
+      {
+        "id": "tts_incorrect_ans_num", "name": "incorrect_answers", "type": "number", "required": true,
+        "options": { "min": 0, "noDecimal": true }
+      },
+      {
+        "id": "tts_unattempted_qs_num", "name": "unattempted_questions", "type": "number", "required": true,
+        "options": { "min": 0, "noDecimal": true }
+      },
+      {
+        "id": "tts_score_num", "name": "score_obtained", "type": "number", "required": true,
+        "options": { "noDecimal": false }
+      },
+      {
+        "id": "tts_max_score_num", "name": "max_score_possible", "type": "number", "required": true,
+        "options": { "min": 0, "noDecimal": false }
+      },
+      {
+        "id": "tts_percentage_num", "name": "percentage", "type": "number", "required": false,
+        "options": { "min": 0, "max": 100, "noDecimal": false }
+      },
+      {
+        "id": "tts_answers_json", "name": "answers_log", "type": "json", "required": false,
+        "options": { "maxSize": 1048576 }
+      },
+      {
+        "id": "tts_status_select", "name": "status", "type": "select", "required": true,
+        "options": { "maxSelect": 1, "values": ["completed", "in_progress", "terminated_time_up", "terminated_manual"] }
+      },
+      {
+        "id": "tts_marked_review_not_ans_num", "name": "marked_for_review_not_answered", "type": "number",
+        "options": { "min": 0, "noDecimal": true }, "required": false
+      },
+      {
+        "id": "tts_marked_review_ans_num", "name": "marked_for_review_answered", "type": "number",
+        "options": { "min": 0, "noDecimal": true }, "required": false
+      },
+      { "id": "tts_created_date", "name": "created", "type": "date", "system": true },
+      { "id": "tts_updated_date", "name": "updated", "type": "date", "system": true }
+    ],
+    "indexes": [
+      "CREATE INDEX idx_tts_student_test ON teacher_test_student_history (student, test_taken)",
+      "CREATE INDEX idx_tts_teacher_cache ON teacher_test_student_history (teacher_id_cache)"
+    ]
+  }
+]

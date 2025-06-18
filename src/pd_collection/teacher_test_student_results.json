@@ -1,0 +1,244 @@
+
+[
+  {
+    "id": "pbc_teacher_test_results",
+    "name": "teacher_test_student_results",
+    "type": "base",
+    "system": false,
+    "listRule": "@request.auth.id != \"\" && (student = @request.auth.id || teacher = @request.auth.id)",
+    "viewRule": "@request.auth.id != \"\" && (student = @request.auth.id || teacher = @request.auth.id)",
+    "createRule": "@request.auth.id != \"\" && @request.data.student = @request.auth.id",
+    "updateRule": "@request.auth.id != \"\" && student = @request.auth.id && status = \"in_progress\"",
+    "deleteRule": "@request.auth.role = \"Admin\"",
+    "schema": [
+      {
+        "id": "text_tts_result_id",
+        "name": "id",
+        "type": "text",
+        "system": true,
+        "required": true,
+        "presentable": false,
+        "options": { "min": 15, "max": 15, "pattern": "^[a-z0-9]+$", "autogeneratePattern": "[a-z0-9]{15}" }
+      },
+      {
+        "id": "relation_tts_student",
+        "name": "student",
+        "type": "relation",
+        "system": false,
+        "required": true,
+        "presentable": false,
+        "options": {
+          "collectionId": "pbc_1377172174",
+          "cascadeDelete": false,
+          "minSelect": 1,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "id": "relation_tts_teacher_test",
+        "name": "teacher_test",
+        "type": "relation",
+        "system": false,
+        "required": true,
+        "presentable": false,
+        "options": {
+          "collectionId": "pbc_2863365490",
+          "cascadeDelete": false,
+          "minSelect": 1,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "id": "relation_tts_teacher",
+        "name": "teacher",
+        "type": "relation",
+        "system": false,
+        "required": true,
+        "presentable": false,
+        "options": {
+          "collectionId": "pbc_2504364897",
+          "cascadeDelete": false,
+          "minSelect": 1,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "id": "text_tts_test_name_cache",
+        "name": "test_name_cache",
+        "type": "text",
+        "system": false,
+        "required": true,
+        "presentable": true,
+        "options": { "min": 1, "max": 150, "pattern": "" }
+      },
+      {
+        "id": "date_tts_start_time",
+        "name": "start_time",
+        "type": "date",
+        "system": false,
+        "required": true,
+        "presentable": true,
+        "options": { "min": "", "max": "" }
+      },
+      {
+        "id": "date_tts_end_time",
+        "name": "end_time",
+        "type": "date",
+        "system": false,
+        "required": false,
+        "presentable": false,
+        "options": { "min": "", "max": "" }
+      },
+      {
+        "id": "number_tts_duration_taken",
+        "name": "duration_taken_seconds",
+        "type": "number",
+        "system": false,
+        "required": false,
+        "presentable": true,
+        "options": { "min": 0, "noDecimal": true }
+      },
+      {
+        "id": "number_tts_total_questions",
+        "name": "total_questions_in_test",
+        "type": "number",
+        "system": false,
+        "required": true,
+        "presentable": true,
+        "options": { "min": 1, "noDecimal": true }
+      },
+      {
+        "id": "number_tts_attempted",
+        "name": "attempted_questions",
+        "type": "number",
+        "system": false,
+        "required": true,
+        "presentable": true,
+        "options": { "min": 0, "noDecimal": true }
+      },
+      {
+        "id": "number_tts_correct",
+        "name": "correct_answers",
+        "type": "number",
+        "system": false,
+        "required": true,
+        "presentable": true,
+        "options": { "min": 0, "noDecimal": true }
+      },
+      {
+        "id": "number_tts_incorrect",
+        "name": "incorrect_answers",
+        "type": "number",
+        "system": false,
+        "required": true,
+        "presentable": true,
+        "options": { "min": 0, "noDecimal": true }
+      },
+      {
+        "id": "number_tts_unattempted",
+        "name": "unattempted_questions",
+        "type": "number",
+        "system": false,
+        "required": true,
+        "presentable": true,
+        "options": { "min": 0, "noDecimal": true }
+      },
+      {
+        "id": "number_tts_score",
+        "name": "score_obtained",
+        "type": "number",
+        "system": false,
+        "required": true,
+        "presentable": true,
+        "options": { "noDecimal": false }
+      },
+      {
+        "id": "number_tts_max_score",
+        "name": "max_score_possible",
+        "type": "number",
+        "system": false,
+        "required": true,
+        "presentable": true,
+        "options": { "min": 0, "noDecimal": false }
+      },
+      {
+        "id": "number_tts_percentage",
+        "name": "percentage",
+        "type": "number",
+        "system": false,
+        "required": false,
+        "presentable": true,
+        "options": { "min": 0, "max": 100, "noDecimal": false }
+      },
+      {
+        "id": "json_tts_answers_log",
+        "name": "answers_log",
+        "type": "json",
+        "system": false,
+        "required": false,
+        "presentable": false,
+        "options": { "maxSize": 1048576 }
+      },
+      {
+        "id": "select_tts_status",
+        "name": "status",
+        "type": "select",
+        "system": false,
+        "required": true,
+        "presentable": true,
+        "options": {
+          "maxSelect": 1,
+          "values": ["completed", "in_progress", "terminated_time_up", "terminated_pin_attempts_exceeded"]
+        }
+      },
+      {
+        "id": "select_tts_plan_type",
+        "name": "plan_type_at_attempt",
+        "type": "select",
+        "system": false,
+        "required": true,
+        "presentable": false,
+        "options": {
+          "maxSelect": 1,
+          "values": ["Free", "Chapterwise", "Full_length", "Dpp", "Combo", "TeacherPlan_Student"]
+        }
+      },
+      {
+        "id": "relation_tts_teacher_plan",
+        "name": "teacher_plan_id_if_applicable",
+        "type": "relation",
+        "system": false,
+        "required": false,
+        "presentable": false,
+        "options": {
+          "collectionId": "pbc_3477515458",
+          "cascadeDelete": false,
+          "minSelect": 0,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "id": "date_tts_created",
+        "name": "created",
+        "type": "date",
+        "system": true, "required": false, "options": {"min": "", "max": ""}
+      },
+      {
+        "id": "date_tts_updated",
+        "name": "updated",
+        "type": "date",
+        "system": true, "required": false, "options": {"min": "", "max": ""}
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX idx_tts_student ON teacher_test_student_results (student)",
+      "CREATE INDEX idx_tts_teacher_test ON teacher_test_student_results (teacher_test)",
+      "CREATE INDEX idx_tts_teacher ON teacher_test_student_results (teacher)"
+    ],
+    "options": {}
+  }
+]

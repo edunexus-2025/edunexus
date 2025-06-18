@@ -15,20 +15,8 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import type { TestPagesRecord } from '@/lib/types'; // Import the updated type
 
-interface TestSeriesDisplay {
-  id: string;
-  title: string;
-  testCode: string;
-  questionCount: number;
-  durationMinutes: number;
-  syllabusCovered: string[];
-  accessType: 'Free' | 'Premium' | 'Mixed';
-  model: 'Chapterwise' | 'Full Length';
-  exam: 'MHT CET' | 'JEE MAIN' | 'NEET' | string;
-  derivedSubject?: string;
-  isFree: boolean;
-}
 
 const inferSubjectFromTestName = (testName: string): string | undefined => {
     const lowerTestName = testName.toLowerCase();
@@ -46,7 +34,7 @@ export default function TestSeriesDetailPage() {
   const { toast } = useToast();
   const testSeriesId = typeof params.testSeriesId === 'string' ? params.testSeriesId : '';
 
-  const [testData, setTestData] = useState<TestSeriesDisplay | null>(null);
+  const [testData, setTestData] = useState<TestPagesRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,31 +46,60 @@ export default function TestSeriesDetailPage() {
     }
     if (isMountedGetter()) { setIsLoading(true); setError(null); }
     try {
-      const record = await pb.collection('test_pages').getOne<RecordModel>(testSeriesId);
+      let record: RecordModel;
+      let collectionName: 'test_pages' | 'teacher_tests' = 'test_pages';
+      
+      try {
+        record = await pb.collection('test_pages').getOne<RecordModel>(testSeriesId);
+      } catch (testPagesError: any) {
+        if (testPagesError.status === 404) {
+          try {
+            record = await pb.collection('teacher_tests').getOne<RecordModel>(testSeriesId);
+            collectionName = 'teacher_tests';
+          } catch (teacherTestsError: any) {
+            throw teacherTestsError; // Re-throw if not found in teacher_tests either
+          }
+        } else {
+          throw testPagesError; // Re-throw original error
+        }
+      }
+      
       if (!isMountedGetter()) return;
 
-      const typeArray: string[] = Array.isArray(record.Type) ? record.Type : (typeof record.Type === 'string' ? [record.Type] : []);
-      let accessTypeDisplay: TestSeriesDisplay['accessType'] = 'Premium';
-      if (typeArray.includes("Free") && typeArray.includes("Premium")) accessTypeDisplay = 'Mixed';
-      else if (typeArray.includes("Free")) accessTypeDisplay = 'Free';
+      const typeArray: string[] = Array.isArray(record.Type) ? record.Type : (typeof record.Type === 'string' ? [record.Type] : (Array.isArray(record.type) ? record.type : (typeof record.type === 'string' ? [record.type] : [])));
       
-      const isFreeTest = accessTypeDisplay === 'Free' || accessTypeDisplay === 'Mixed';
       const syllabusArray = typeof record.TestTags === 'string'
         ? record.TestTags.split(',').map(tag => tag.trim()).filter(tag => tag)
         : (record.Test_Description ? [record.Test_Description] : ['Syllabus not specified']);
 
-      const mappedData: TestSeriesDisplay = {
+      let totalQuestions = 0;
+      if (collectionName === 'test_pages') {
+          totalQuestions = typeof record.TotalQuestion === 'number' ? record.TotalQuestion : 0;
+      } else if (collectionName === 'teacher_tests') {
+          const questionIds = record.questions as string[] | undefined;
+          totalQuestions = Array.isArray(questionIds) ? questionIds.length : 0;
+      }
+      
+      const derivedSubject = record.Model === 'Chapterwise' || record.model === 'Chapterwise' 
+        ? inferSubjectFromTestName(record.TestName || record.testName || '') 
+        : undefined;
+
+      const mappedData: TestPagesRecord = {
+        ...record, // Spread existing record properties
         id: record.id,
-        title: record.TestName || 'Untitled Test',
-        testCode: record.id.substring(0, 8).toUpperCase(),
-        questionCount: typeof record.TotalQuestion === 'number' ? record.TotalQuestion : 0,
-        durationMinutes: typeof record.TotalTime === 'string' ? parseInt(record.TotalTime, 10) : (typeof record.TotalTime === 'number' ? record.TotalTime : 0),
-        syllabusCovered: syllabusArray,
-        accessType: accessTypeDisplay,
-        model: record.Model as TestSeriesDisplay['model'] || 'Full Length',
-        exam: record.Exam || 'General',
-        derivedSubject: record.Model === 'Chapterwise' ? inferSubjectFromTestName(record.TestName || '') : undefined,
-        isFree: isFreeTest,
+        TestName: record.TestName || record.testName || 'Untitled Test', // Handle both potential field names
+        TotalTime: String(record.TotalTime || record.duration || '0'),
+        Type: typeArray,
+        Model: (record.Model || record.model) as TestPagesRecord['Model'] || 'Full Length',
+        Exam: record.Exam || record.QBExam || 'General',
+        TestTags: record.TestTags || undefined,
+        PhysicsQuestion: record.PhysicsQuestion as string[] | undefined,
+        ChemistryQuestion: record.ChemistryQuestion as string[] | undefined,
+        MathsQuestion: record.MathsQuestion as string[] | undefined,
+        BiologyQuestion: record.BiologyQuestion as string[] | undefined,
+        derivedSubject: derivedSubject, // Add derivedSubject
+        TotalQuestion: totalQuestions, // Add TotalQuestion
+        collectionName: collectionName, // Store which collection it came from
       };
       if (isMountedGetter()) setTestData(mappedData);
     } catch (err: any) {
@@ -104,20 +121,6 @@ export default function TestSeriesDetailPage() {
     fetchTestDetails(() => isMounted);
     return () => { isMounted = false; };
   }, [fetchTestDetails]);
-
-  const handleStartTest = () => {
-    if (!testData || !currentUser) {
-      toast({ title: "Cannot start test", description: "Test data or user information is missing.", variant: "destructive"});
-      return;
-    }
-    // This function is no longer directly used by the main button, but kept for potential future use or if other components call it.
-    // The main button now links to instructions first.
-    if (testData.model !== 'Chapterwise') {
-      toast({ title: "Not Yet Implemented", description: "Full Length test interface is coming soon!", variant: "default" });
-      return;
-    }
-    router.push(Routes.studentTestChapterwise(testData.id));
-  };
   
 
   if (isLoading) {
@@ -156,6 +159,12 @@ export default function TestSeriesDetailPage() {
     );
   }
 
+  const isFreeTest = testData.Type.includes("Free");
+  const isTeacherTest = testData.collectionName === 'teacher_tests';
+  const startButtonText = isTeacherTest ? "Enter PIN & View Instructions" : "View Instructions & Start";
+  const startButtonLink = isTeacherTest ? Routes.studentTestEnterPin(testData.id) : Routes.studentTestInstructions(testData.id);
+
+
   return (
     <div className="bg-muted/30 min-h-screen">
         <div className="container mx-auto max-w-5xl py-6 px-0 md:px-4">
@@ -165,35 +174,34 @@ export default function TestSeriesDetailPage() {
             <Card className="shadow-xl overflow-hidden border-none rounded-xl">
                 <CardContent className="p-6 space-y-6 bg-background">
                     <div className="flex flex-wrap items-center gap-2 mb-2">
-                        <Badge variant="outline" className="text-xs border-primary/40 text-primary/90 bg-primary/5"><CalendarDays className="h-3.5 w-3.5 mr-1.5"/>For: {testData.exam}</Badge>
-                        <Badge variant="outline" className="text-xs border-indigo-400 text-indigo-600 bg-indigo-50"><NotebookText className="h-3.5 w-3.5 mr-1.5"/>{testData.model}</Badge>
-                        {testData.model === 'Chapterwise' && testData.derivedSubject && (
+                        <Badge variant="outline" className="text-xs border-primary/40 text-primary/90 bg-primary/5"><CalendarDays className="h-3.5 w-3.5 mr-1.5"/>For: {testData.Exam}</Badge>
+                        <Badge variant="outline" className="text-xs border-indigo-400 text-indigo-600 bg-indigo-50"><NotebookText className="h-3.5 w-3.5 mr-1.5"/>{testData.Model}</Badge>
+                        {testData.Model === 'Chapterwise' && testData.derivedSubject && (
                              <Badge variant="outline" className="text-xs border-teal-400 text-teal-600 bg-teal-50"><ListChecks className="h-3.5 w-3.5 mr-1.5"/>{testData.derivedSubject}</Badge>
                         )}
-                         {testData.isFree && (<Badge className="bg-green-500 text-white text-xs px-2.5 py-1 shadow-sm">Free</Badge>)}
+                         {isFreeTest && (<Badge className="bg-green-500 text-white text-xs px-2.5 py-1 shadow-sm">Free</Badge>)}
                     </div>
-                    <h1 className="text-3xl md:text-4xl font-bold text-foreground leading-tight">{testData.title}</h1>
-                    <p className="text-sm text-muted-foreground font-mono">Test Code: {testData.testCode}</p>
+                    <h1 className="text-3xl md:text-4xl font-bold text-foreground leading-tight">{testData.TestName}</h1>
+                    <p className="text-sm text-muted-foreground font-mono">Test Code: {testData.id.substring(0, 8).toUpperCase()}</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 pt-4 border-t mt-4">
-                        <div className="flex items-center gap-2 text-foreground"><HelpCircle className="h-5 w-5 text-primary" /><span>Questions: {testData.questionCount}</span></div>
-                        <div className="flex items-center gap-2 text-foreground"><Clock className="h-5 w-5 text-primary" /><span>Duration: {testData.durationMinutes} minutes</span></div>
+                        <div className="flex items-center gap-2 text-foreground"><HelpCircle className="h-5 w-5 text-primary" /><span>Questions: {testData.TotalQuestion || 0}</span></div>
+                        <div className="flex items-center gap-2 text-foreground"><Clock className="h-5 w-5 text-primary" /><span>Duration: {parseInt(testData.TotalTime, 10) || 0} minutes</span></div>
                     </div>
                     <div>
                         <h3 className="text-md font-semibold mb-1.5 flex items-center gap-2 text-foreground"><ListChecks className="h-5 w-5 text-primary"/> Syllabus Covered</h3>
                         <ul className="list-disc list-inside pl-2 space-y-1 text-sm text-muted-foreground">
-                           {testData.syllabusCovered.map((item, index) => (<li key={index}>{item}</li>))}
+                           {(testData.TestTags ? testData.TestTags.split(',').map(tag => tag.trim()).filter(tag => tag) : (testData.Test_Description ? [testData.Test_Description] : ['Syllabus not specified'])).map((item, index) => (<li key={index}>{item}</li>))}
                         </ul>
                     </div>
-                     {testData.isFree && (<div className="flex items-center gap-2 text-green-600 font-medium pt-3"><CheckCircle className="h-5 w-5" /><span>Free Access</span></div>)}
+                     {isFreeTest && (<div className="flex items-center gap-2 text-green-600 font-medium pt-3"><CheckCircle className="h-5 w-5" /><span>Free Access</span></div>)}
                 </CardContent>
                 <CardFooter className="p-6 bg-background border-t">
-                     <Link href={Routes.studentTestInstructions(testData.id)} passHref className="w-full sm:w-auto">
+                     <Link href={startButtonLink} passHref className="w-full sm:w-auto">
                         <Button 
                             size="lg" 
                             className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground text-base py-3 px-6 shadow-md"
-                            // The disabled prop is removed as instructions should be viewable
                           >
-                            {testData.model === 'Chapterwise' ? <><PlayCircle className="h-5 w-5 mr-2"/> View Instructions & Start</> : <>View Instructions (Full Length - Coming Soon)</>}
+                            <PlayCircle className="h-5 w-5 mr-2"/> {startButtonText}
                         </Button>
                       </Link>
                 </CardFooter>
@@ -203,3 +211,4 @@ export default function TestSeriesDetailPage() {
   );
 }
 
+    

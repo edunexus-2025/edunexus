@@ -1,4 +1,3 @@
-
 import type { Plan, UserSubscriptionTierStudent, UserSubscriptionTierTeacher } from '@/lib/types';
 
 export const AppConfig = {
@@ -345,5 +344,3 @@ export const teacherPlatformPlansData: Plan[] = [
     customActivationLink: Routes.teacherUpgradeAds, // Special link for this plan
   },
 ];
-
-    
