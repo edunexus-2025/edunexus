@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useCallback, ReactNode } from 'react';
@@ -15,11 +16,11 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AppConfig, Routes, escapeForPbFilter, APP_BASE_URL } from '@/lib/constants';
 import {
-  AlertCircle, GraduationCap, BarChart2, Users, Link as LinkIcon, Instagram, Facebook, Youtube, Twitter, Send as TelegramIcon, Globe as WebsiteIcon, ExternalLink, ShieldCheck, Star, TrendingUp, ListChecks, BookOpenCheck
+  AlertCircle, GraduationCap, BarChart2, Users, Link as LinkIcon, Instagram, Facebook, Youtube, Twitter, Send as TelegramIcon, Globe as WebsiteIcon, ExternalLink, ShieldCheck, Star, TrendingUp, ListChecks, BookOpenCheck, ArrowLeft // Added ArrowLeft
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { User, TeacherPlan as TeacherPlanType } from '@/lib/types';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
 
 // --- Types ---
 interface TeacherDataRecord extends RecordModel {
@@ -57,10 +58,10 @@ interface TeacherAdRecord extends RecordModel {
 interface TeacherAdPageData {
   teacherData: TeacherDataRecord;
   adData: TeacherAdRecord | null;
-  featuredPlans: TeacherPlanType[]; // Keep for featured plans if any
+  featuredPlans: TeacherPlanType[];
   teacherAvatarUrl: string;
   adSpecificAvatarUrl?: string | null;
-  hasAnyContentPlans?: boolean; // Still useful to know, even if not directly gating the link
+  hasAnyContentPlans?: boolean;
 }
 
 interface SocialLinkProps {
@@ -86,7 +87,7 @@ const getPbFileUrl = (record: RecordModel | null | undefined, fieldName: string)
 export default function TeacherPublicAdPage() {
   const params = useParams();
   const router = useRouter();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, teacher: currentTeacher } = useAuth(); // Student user or Teacher user viewing the page
   const { toast } = useToast();
   const edunexusNameParam = typeof params.edunexusName === 'string' ? params.edunexusName : '';
 
@@ -95,6 +96,7 @@ export default function TeacherPublicAdPage() {
   const [error, setError] = useState<string | null>(null);
 
   const edunexusName = edunexusNameParam ? escapeForPbFilter(edunexusNameParam) : '';
+  const activeUser = currentUser || currentTeacher;
 
   const SocialLink: React.FC<SocialLinkProps> = ({ href, icon, label }) => {
     if (!href || !href.trim()) return null;
@@ -136,6 +138,7 @@ export default function TeacherPublicAdPage() {
       } catch (adError: any) { if (isMountedGetter()) console.warn("Ad data not found or error fetching, proceeding with teacher data only:", adError.data || adError.message); }
 
       if (!isMountedGetter()) return;
+      // Check if the teacher has *any* plans, not just featured ones for the "Explore Plans" button
       if (teacherData.id) {
         const allTeacherPlans = await pb.collection('teachers_upgrade_plan').getList(1, 1, { filter: `teacher = "${teacherData.id}"`, count: true });
         if (isMountedGetter()) hasAnyContentPlans = allTeacherPlans.totalItems > 0;
@@ -183,6 +186,7 @@ export default function TeacherPublicAdPage() {
         }
     };
     
+    // Call setupSubscriptions after initial data might have set teacherId
     if (pageData?.teacherData?.id) {
         setupSubscriptions();
     }
@@ -192,7 +196,7 @@ export default function TeacherPublicAdPage() {
       if (unsubscribeAds) unsubscribeAds();
       if (unsubscribeTeacherData) unsubscribeTeacherData();
     };
-  }, [fetchData, edunexusName, pageData?.teacherData?.id]);
+  }, [fetchData, edunexusName, pageData?.teacherData?.id]); // Added pageData.teacherData.id to re-run effect if teacherData changes
 
 
   if (isLoading) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> <main className="flex-1 container mx-auto px-2 sm:px-4 py-6 md:py-8 max-w-4xl"> <Skeleton className="h-12 w-3/4 mb-4" /> <Card className="shadow-xl"><CardHeader className="p-4 sm:p-6 text-center border-b"> <Skeleton className="h-24 w-24 rounded-full mx-auto mb-3" /> <Skeleton className="h-8 w-1/2 mx-auto" /> <Skeleton className="h-5 w-1/3 mx-auto mt-1" /> </CardHeader> <CardContent className="p-4 sm:p-6 space-y-6"> <Skeleton className="h-20 w-full" /> <Skeleton className="h-32 w-full" /> </CardContent> </Card> </main> </div> ); }
@@ -216,6 +220,11 @@ export default function TeacherPublicAdPage() {
   return (
     <div className="flex flex-col min-h-screen bg-muted/30 dark:bg-slate-950">
       <main className="flex-1 container mx-auto px-2 sm:px-4 py-6 md:py-8 max-w-4xl">
+        {activeUser && (
+             <Button variant="outline" size="sm" onClick={() => router.push(activeUser.collectionName === 'teacher_data' ? Routes.teacherDashboard : Routes.dashboard)} className="mb-4">
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
+            </Button>
+        )}
         <Card className="shadow-xl border-t-4 border-primary rounded-xl overflow-hidden">
           <CardHeader className="p-4 sm:p-6 text-center bg-gradient-to-br from-primary/10 via-background to-background border-b"> <Avatar className="h-28 w-28 sm:h-32 sm:w-32 text-4xl border-4 border-card shadow-lg mx-auto mb-3 bg-muted"> {finalAvatar ? <AvatarImage src={finalAvatar} alt={teacherData.name} data-ai-hint="teacher profile picture"/> : null} <AvatarFallback className="bg-primary/20 text-primary">{teacherData.name?.charAt(0).toUpperCase() || 'T'}</AvatarFallback> </Avatar> <CardTitle className="text-2xl sm:text-3xl font-bold text-foreground">{teacherData.name}</CardTitle> {teacherData.institute_name && <p className="text-md text-muted-foreground">{teacherData.institute_name}</p>} {teacherData.EduNexus_Name && <p className="text-sm text-accent font-mono">@{teacherData.EduNexus_Name}</p>} <div className="mt-3 flex flex-wrap justify-center gap-2"> {teacherData.level && <Badge variant="secondary">{teacherData.level}</Badge>} {teacherData.subjects_offered && teacherData.subjects_offered.map(sub => <Badge key={sub} variant="outline">{sub}</Badge>)} {teacherData.favExam && teacherData.favExam.map(exam => <Badge key={exam} variant="outline" className="border-primary/50 text-primary/90 bg-primary/5">{exam}</Badge>)} </div> </CardHeader>
           <CardContent className="p-4 sm:p-6 space-y-8">
@@ -223,7 +232,6 @@ export default function TeacherPublicAdPage() {
             {socialLinksList.length > 0 && ( <section> <h2 className="text-xl font-semibold text-primary mb-4">Connect With Me</h2> <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"> {socialLinksList.map(link => <SocialLink key={link.label} {...link} />)} </div> </section> )}
             {adData && (Object.values(adData).some(val => typeof val === 'number' && val > 0) || (adData.total_student_trained || adData.total_edunexus_subscription_offered)) && ( <section> <h2 className="text-xl font-semibold text-primary mb-4">My Achievements & Reach</h2> <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4"> {getStatCard(<Users className="h-6 w-6" />, "Students Trained", adData.total_student_trained)} {getStatCard(<Star className="h-6 w-6" />, "100 Percentilers", adData.students_of_100_percentile_if_any)} {getStatCard(<TrendingUp className="h-6 w-6" />, "99+ Percentilers", adData.students_above_99_percentile_if_any)} {getStatCard(<BarChart2 className="h-6 w-6" />, "98+ Percentilers", adData.students_above_98_percentile_if_any)} {getStatCard(<GraduationCap className="h-6 w-6" />, "90+ Percentilers", adData.students_above_90_percentile_if_any)} {getStatCard(<ShieldCheck className="h-6 w-6" />, `${AppConfig.appName} Plans Sold`, adData.total_edunexus_subscription_offered)} </div> </section> )}
             
-            {/* Always show the "Explore Content Plans" section if EduNexus_Name exists */}
             {teacherData.EduNexus_Name && (
               <section className="mt-8 pt-6 border-t text-center">
                 <h2 className="text-xl font-semibold text-primary mb-3">Explore My Content Plans</h2>
