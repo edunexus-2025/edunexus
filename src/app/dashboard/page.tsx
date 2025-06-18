@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Routes, AppConfig, escapeForPbFilter, slugify } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { ArrowRight, ShieldCheck, Zap, ListChecks, TrendingUp, Loader2, Search, Users, Library, AlertCircle, BookOpenCheck, Target as TargetIcon, Megaphone, ChevronLeft, ChevronRight as ChevronRightIcon, Brain, MessageSquare, Activity, CalendarDays, Swords, FileText, BookHeart, NotebookText } from 'lucide-react';
 import Image from 'next/image';
@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { User, UserSubscriptionTierStudent, ChallengeInviteRecordType } from '@/lib/types';
 import { Progress } from '@/components/ui/progress';
 import pb from '@/lib/pocketbase';
-import type { RecordModel, UnsubscribeFunc, ClientResponseError } from 'pocketbase';
+import type { RecordModel, ClientResponseError } from 'pocketbase';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -214,10 +214,33 @@ export default function DashboardPage() {
     } catch (error: any) {
       const clientError = error as ClientResponseError;
       if (clientError?.isAbort || (clientError?.name === 'ClientResponseError' && clientError?.status === 0)) {
-          console.warn('DashboardPage: Global search request was cancelled.');
+          console.warn('DashboardPage: Global search request was cancelled or network issue.');
+          setSearchError("Search cancelled or network issue. Please try again.");
       } else {
-          console.error("DashboardPage: Global search failed:", clientError.data || clientError);
-          setSearchError("Search failed. Please try again.");
+          let errorMsg = "Search failed due to an unexpected error.";
+          let consoleErrorDetails: any = clientError;
+
+          if (clientError && typeof clientError === 'object') {
+              errorMsg = `Search failed: ${clientError.message || 'Server error'}`;
+              if (clientError.data && typeof clientError.data === 'object' && Object.keys(clientError.data).length > 0) {
+                  const pbErrorData = clientError.data as { message?: string; data?: Record<string, { message: string }> };
+                  errorMsg = `Search failed: ${pbErrorData.message || clientError.message || 'PocketBase error'}`;
+                  if (pbErrorData.data) {
+                      const fieldErrors = Object.entries(pbErrorData.data).map(([key, val]) => `${key}: ${val.message}`).join('; ');
+                      if (fieldErrors) errorMsg += ` Details: ${fieldErrors}`;
+                  }
+                  consoleErrorDetails = clientError.data;
+              }
+          } else if (typeof error === 'string') {
+            errorMsg = error;
+          }
+          console.error(
+            "DashboardPage: Global search failed. Status:", clientError?.status, 
+            "Message:", clientError?.message, 
+            "Response Data:", consoleErrorDetails, 
+            "Full Error Object:", JSON.stringify(clientError) // Stringify to see structure
+          );
+          setSearchError(errorMsg);
       }
     } finally {
       setIsLoadingSearch(false);
