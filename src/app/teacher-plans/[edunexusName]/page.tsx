@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useCallback, ReactNode } from 'react';
@@ -19,7 +18,7 @@ import {
   AlertCircle, GraduationCap, ShoppingCart, DollarSign, Loader2, Tag, CheckCircle, Star, Info, BookOpenCheck, ArrowLeft
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { User, Plan as AppPlanType, TeacherPlan as TeacherPlanType, UserSubscriptionTierStudent } from '@/lib/types';
+import type { User, Plan as AppPlanType, TeacherPlan as TeacherPlanType, UserSubscriptionTierStudent, TeacherReferralCode } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, isPast } from 'date-fns';
 
@@ -32,7 +31,7 @@ interface TeacherDataRecord extends RecordModel {
 interface StudentSubscribedPlanRecord extends RecordModel {
   student: string;
   teacher: string;
-  teachers_plan_id: string; // This is the relation to teachers_upgrade_plan
+  teachers_plan_id: string;
   payment_status: 'successful' | 'pending' | 'failed';
   expiry_date?: string;
 }
@@ -66,6 +65,11 @@ export default function TeacherPublicPlansPage() {
   const [referralCodeInput, setReferralCodeInput] = useState('');
   const [processingPaymentForPlanId, setProcessingPaymentForPlanId] = useState<string | null>(null);
 
+  const [appliedReferralDetails, setAppliedReferralDetails] = useState<{ code: string; discountPercentage: number; applicablePlanIds: string[]; expiry_date?: string; } | null>(null);
+  const [isVerifyingReferral, setIsVerifyingReferral] = useState(false);
+  const [referralError, setReferralError] = useState<string | null>(null);
+
+
   const edunexusName = edunexusNameParam ? escapeForPbFilter(edunexusNameParam) : '';
   const activeUser = currentUser || currentTeacher;
 
@@ -90,7 +94,7 @@ export default function TeacherPublicPlansPage() {
       const plansFilter = `teacher = "${teacherData.id}"`;
       console.log(`[TeacherPlansPage] Attempting to fetch contentPlans with filter: '${plansFilter}'`);
       const contentPlans = await pb.collection('teachers_upgrade_plan').getFullList<TeacherPlanType>({ filter: plansFilter, sort: '-created' });
-      console.log(`[TeacherPlansPage] Fetched ${contentPlans.length} content plans for teacher ${teacherData.id}. Raw plans:`, JSON.parse(JSON.stringify(contentPlans)));
+      console.log(`Fetched ${contentPlans.length} content plans for teacher ${teacherData.id}`);
       
       let studentSubscriptions: StudentSubscribedPlanRecord[] = [];
       if (currentUser?.id && teacherData.id) {
@@ -124,7 +128,7 @@ export default function TeacherPublicPlansPage() {
       }
     }
     finally { if (isMountedGetter()) setIsLoading(false); }
-  }, [edunexusName, currentUser?.id, currentTeacher?.id]); // Added currentTeacher?.id
+  }, [edunexusName, currentUser?.id, currentTeacher?.id]);
 
   useEffect(() => { 
     let isMounted = true; 
@@ -132,7 +136,49 @@ export default function TeacherPublicPlansPage() {
     return () => { isMounted = false; }; 
   }, [fetchData]);
 
-  const handleSubscribeToTeacherPlan = async (plan: TeacherPlanType) => {
+  const handleApplyReferralCode = async () => {
+    if (!referralCodeInput.trim() || !pageData?.teacherData?.id) {
+      setReferralError("Please enter a code and ensure teacher data is loaded.");
+      return;
+    }
+    setIsVerifyingReferral(true);
+    setReferralError(null);
+    setAppliedReferralDetails(null);
+
+    try {
+      const codeString = referralCodeInput.trim().toUpperCase();
+      const filter = `teacher = "${pageData.teacherData.id}" && referral_code_string = "${escapeForPbFilter(codeString)}"`;
+      const promoRecord = await pb.collection('teacher_refferal_code').getFirstListItem<TeacherReferralCode>(filter);
+
+      if (promoRecord.expiry_date && isPast(new Date(promoRecord.expiry_date))) {
+        setReferralError("This referral code has expired.");
+        toast({ title: "Code Expired", variant: "destructive" });
+        return;
+      }
+      
+      setAppliedReferralDetails({
+        code: promoRecord.referral_code_string,
+        discountPercentage: Number(promoRecord.discount_percentage),
+        applicablePlanIds: Array.isArray(promoRecord.applicable_plan_ids) ? promoRecord.applicable_plan_ids : [],
+        expiry_date: promoRecord.expiry_date
+      });
+      toast({ title: "Referral Code Applied!", description: `Discount of ${promoRecord.discount_percentage}% will be applied to eligible plans.` });
+
+    } catch (error: any) {
+      if (error.status === 404) {
+        setReferralError("Invalid or expired referral code for this teacher.");
+        toast({ title: "Invalid Code", variant: "destructive" });
+      } else {
+        setReferralError("Could not verify code. Please try again.");
+        toast({ title: "Verification Error", variant: "destructive" });
+      }
+    } finally {
+      setIsVerifyingReferral(false);
+    }
+  };
+
+
+  const handleSubscribeToTeacherPlan = async (plan: TeacherPlanType, finalPrice: number) => {
     if (!currentUser || !currentUser.id) { toast({ title: "Login Required", description: "Please login as a student to subscribe.", variant: "destructive" }); router.push(Routes.login + `?redirect=${encodeURIComponent(window.location.pathname)}`); return; }
     if (!pageData?.teacherData?.id) { toast({ title: "Error", description: "Teacher information is missing.", variant: "destructive" }); return; }
     setProcessingPaymentForPlanId(plan.id);
@@ -140,17 +186,17 @@ export default function TeacherPublicPlansPage() {
     const razorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
     if (!razorpayKeyId) { console.error("[TeacherPlansPage] CRITICAL: Razorpay Key ID not configured."); toast({ title: "Payment Error", description: "Gateway client key missing. Contact support.", variant: "destructive" }); setProcessingPaymentForPlanId(null); return; }
 
-    const amountForApi = parseFloat(plan.plan_price || "0"); 
+    const amountForApi = parseFloat(finalPrice.toFixed(2)); 
     if (isNaN(amountForApi)) { toast({ title: "Payment Error", description: "Invalid plan price.", variant: "destructive" }); setProcessingPaymentForPlanId(null); return; }
     
-    if (amountForApi <= 0) {
-      toast({ title: "Free Plan Enrollment", description: `Enrolling you in "${plan.Plan_name}"...`, variant: "default"});
+    if (amountForApi <= 0) { // Allows for 100% discount or free plans
+      toast({ title: "Enrollment Initiated", description: `Processing enrollment for "${plan.Plan_name}"...`, variant: "default"});
       try {
         const today = new Date(); const expiryDateISO = new Date(today.setFullYear(today.getFullYear() + 1)).toISOString();
         await pb.collection('students_teachers_upgrade_plan').create({
           student: currentUser.id, teacher: pageData.teacherData.id, teachers_plan_id: plan.id, teachers_plan_name_cache: plan.Plan_name,
           payment_status: 'successful', starting_date: new Date().toISOString(), expiry_date: expiryDateISO,
-          amount_paid_to_edunexus: 0, amount_recieved_to_teacher: 0, referral_code_used: referralCodeInput.trim() || null,
+          amount_paid_to_edunexus: 0, amount_recieved_to_teacher: 0, referral_code_used: appliedReferralDetails?.code || referralCodeInput.trim() || null,
         });
         await pb.collection('users').update(currentUser.id, { "subscription_by_teacher+": pageData.teacherData.id });
         await pb.collection('teachers_upgrade_plan').update(plan.id, { "enrolled_students+": currentUser.id });
@@ -165,7 +211,7 @@ export default function TeacherPublicPlansPage() {
     try {
       const orderResponse = await fetch('/api/razorpay/create-order', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: amountForApi, currency: 'INR', planId: plan.id, userId: currentUser.id, userType: 'student_teacher_plan', teacherIdForPlan: pageData.teacherData.id, referralCodeUsed: referralCodeInput.trim() || null, productDescription: `${pageData.teacherData.name}'s Plan - ${plan.Plan_name}` }),
+        body: JSON.stringify({ amount: amountForApi, currency: 'INR', planId: plan.id, userId: currentUser.id, userType: 'student_teacher_plan', teacherIdForPlan: pageData.teacherData.id, referralCodeUsed: appliedReferralDetails?.code || referralCodeInput.trim() || null, productDescription: `${pageData.teacherData.name}'s Plan - ${plan.Plan_name}` }),
       });
       const responseText = await orderResponse.text();
       if (!orderResponse.ok) { let errorData = { error: `Server error (${orderResponse.status}): ${responseText || 'Failed to create order.'}` }; try { errorData = JSON.parse(responseText); } catch (e) {} throw new Error(errorData.error); }
@@ -177,7 +223,7 @@ export default function TeacherPublicPlansPage() {
           toast({ title: "Payment Initiated", description: "Verifying your payment..." });
           try {
             const verificationResponse = await fetch('/api/razorpay/verify-payment', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ razorpay_order_id: response.razorpay_order_id, razorpay_payment_id: response.razorpay_payment_id, razorpay_signature: response.razorpay_signature, planId: plan.id, userId: currentUser.id, userType: 'student_teacher_plan', teacherIdForPlan: pageData.teacherData.id, referralCodeUsed: referralCodeInput.trim() || null, productDescription: `${pageData.teacherData.name}'s Plan - ${plan.Plan_name}` }),
+              body: JSON.stringify({ razorpay_order_id: response.razorpay_order_id, razorpay_payment_id: response.razorpay_payment_id, razorpay_signature: response.razorpay_signature, planId: plan.id, userId: currentUser.id, userType: 'student_teacher_plan', teacherIdForPlan: pageData.teacherData.id, referralCodeUsed: appliedReferralDetails?.code || referralCodeInput.trim() || null, productDescription: `${pageData.teacherData.name}'s Plan - ${plan.Plan_name}` }),
             });
             const verificationData = await verificationResponse.json();
             if (verificationResponse.ok && verificationData.verified) { toast({ title: "Payment Successful!", description: "Processing your subscription..." }); fetchData(); }
@@ -186,7 +232,7 @@ export default function TeacherPublicPlansPage() {
           setProcessingPaymentForPlanId(null);
         },
         prefill: { name: currentUser.name || "", email: currentUser.email || "", contact: currentUser.phoneNumber || "" },
-        notes: { plan_id: plan.id, student_id: currentUser.id, teacher_id: pageData.teacherData.id, user_type: 'student_teacher_plan', app_name: AppConfig.appName, referral_code: referralCodeInput.trim() || null },
+        notes: { plan_id: plan.id, student_id: currentUser.id, teacher_id: pageData.teacherData.id, user_type: 'student_teacher_plan', app_name: AppConfig.appName, referral_code: appliedReferralDetails?.code || referralCodeInput.trim() || null },
         theme: { color: "#3F51B5" }, modal: { ondismiss: () => { toast({ title: "Payment Cancelled", variant: "default" }); setProcessingPaymentForPlanId(null); } }
       };
       const rzp = new window.Razorpay(options); rzp.on('payment.failed', (resp: any) => { toast({ title: "Payment Failed", description: `Error: ${resp.error.description}`, variant: "destructive" }); setProcessingPaymentForPlanId(null); }); rzp.open();
@@ -207,14 +253,14 @@ export default function TeacherPublicPlansPage() {
     <div className="flex flex-col min-h-screen bg-muted/30 dark:bg-slate-950">
       <main className="flex-1 container mx-auto px-2 sm:px-4 py-6 md:py-8 max-w-4xl">
         {(currentUser || currentTeacher) && (
-             <Button variant="outline" size="sm" onClick={() => router.push(currentUser ? Routes.dashboard : Routes.teacherDashboard)} className="mb-4">
+             <Button variant="outline" size="sm" onClick={() => router.push(currentTeacher ? Routes.teacherDashboard : Routes.dashboard)} className="mb-4">
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
             </Button>
         )}
         <Card className="shadow-xl border-t-4 border-primary rounded-xl overflow-hidden mb-8">
           <CardHeader className="p-4 sm:p-6 text-center bg-gradient-to-br from-primary/10 via-background to-background border-b">
             <Avatar className="h-24 w-24 sm:h-28 sm:w-28 text-4xl border-4 border-card shadow-lg mx-auto mb-3 bg-muted">
-              {teacherAvatarUrl ? <AvatarImage src={teacherAvatarUrl} alt={teacherData.name} data-ai-hint="teacher profile picture"/> : null}
+              {teacherAvatarUrl ? <NextImage src={teacherAvatarUrl} alt={teacherData.name} width={112} height={112} className="rounded-full object-cover" data-ai-hint="teacher avatar"/> : null}
               <AvatarFallback className="bg-primary/20 text-primary">{teacherData.name?.charAt(0).toUpperCase() || 'T'}</AvatarFallback>
             </Avatar>
             <CardTitle className="text-2xl sm:text-3xl font-bold text-foreground">{teacherData.name}'s Content Plans</CardTitle>
@@ -224,22 +270,34 @@ export default function TeacherPublicPlansPage() {
         
         <Card className="mb-8 shadow-md">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2"><Tag className="text-primary h-5 w-5"/>Have a Referral Code?</CardTitle>
+            <CardTitle className="text-lg flex items-center gap-2"><Tag className="text-primary h-5 w-5"/>Have a Referral Code from {teacherData.name}?</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col sm:flex-row gap-2 items-start">
               <Input 
                 type="text" 
-                placeholder="Enter referral code from teacher" 
+                placeholder="Enter referral code" 
                 value={referralCodeInput}
-                onChange={(e) => setReferralCodeInput(e.target.value.toUpperCase())}
+                onChange={(e) => {
+                  setReferralCodeInput(e.target.value.toUpperCase());
+                  setReferralError(null);
+                  if (appliedReferralDetails && e.target.value.toUpperCase() !== appliedReferralDetails.code) {
+                    setAppliedReferralDetails(null);
+                  }
+                }}
                 className="flex-grow"
               />
-              <Button variant="outline" className="w-full sm:w-auto" onClick={() => toast({title: "Referral Code Noted", description:"The code will be applied at checkout if valid for the selected plan."})}>
+              <Button variant="outline" className="w-full sm:w-auto" onClick={handleApplyReferralCode} disabled={isVerifyingReferral || !referralCodeInput.trim()}>
+                {isVerifyingReferral ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
                 Apply Code
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Enter code before selecting a plan to see potential discounts.</p>
+            {referralError && <p className="text-sm text-destructive mt-2">{referralError}</p>}
+            {appliedReferralDetails && !referralError && (
+              <div className="text-sm text-green-600 mt-2 flex items-center gap-1">
+                <CheckCircle className="h-4 w-4"/> Code "{appliedReferralDetails.code}" applied! {appliedReferralDetails.discountPercentage > 0 ? `${appliedReferralDetails.discountPercentage}% off eligible plans.` : 'Discount applied.'}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -249,14 +307,36 @@ export default function TeacherPublicPlansPage() {
               const isSubscribed = isStudentSubscribedToPlan(plan.id);
               const isOwnPlan = currentTeacher?.id === teacherData.id; 
 
+              let finalPrice = parseFloat(plan.plan_price || "0");
+              let originalPriceDisplay: string | null = null;
+              if (appliedReferralDetails && 
+                  finalPrice > 0 &&
+                  (appliedReferralDetails.applicablePlanIds.length === 0 || appliedReferralDetails.applicablePlanIds.includes(plan.id)) &&
+                  (!appliedReferralDetails.expiry_date || !isPast(new Date(appliedReferralDetails.expiry_date)))) {
+                originalPriceDisplay = `₹${finalPrice.toFixed(0)}`;
+                finalPrice = finalPrice * (1 - appliedReferralDetails.discountPercentage / 100);
+                finalPrice = Math.max(0, finalPrice); // Ensure price doesn't go negative
+              }
+              const effectivePriceString = `₹${finalPrice.toFixed(0)}`;
+
+
               return (
-                <Card key={plan.id} className="shadow-md hover:shadow-lg transition-shadow bg-card border flex flex-col">
+                <Card key={plan.id} className={cn("shadow-md hover:shadow-lg transition-shadow bg-card border flex flex-col", isSubscribed && "border-2 border-green-500 ring-1 ring-green-500/30 bg-green-500/5")}>
                   <CardHeader className="pb-3">
+                    {isSubscribed && <Badge variant="default" className="absolute top-3 right-3 bg-green-500 text-white">Subscribed</Badge>}
                     <CardTitle className="text-lg font-semibold text-foreground">{plan.Plan_name}</CardTitle>
                     <div className="flex items-baseline">
-                      <span className="text-2xl font-bold text-primary">₹{plan.plan_price}</span>
+                      {originalPriceDisplay && (
+                        <span className="text-xl line-through text-muted-foreground mr-2">{originalPriceDisplay}</span>
+                      )}
+                      <span className="text-2xl font-bold text-primary">{effectivePriceString}</span>
                       <span className="text-sm text-muted-foreground ml-1">/ {plan.plan}</span>
                     </div>
+                    {originalPriceDisplay && appliedReferralDetails && (
+                         <Badge variant="secondary" className="text-xs mt-1 bg-green-100 text-green-700 border-green-300">
+                            {appliedReferralDetails.discountPercentage}% off with code {appliedReferralDetails.code}!
+                        </Badge>
+                    )}
                   </CardHeader>
                   <CardContent className="text-sm text-muted-foreground space-y-1 flex-grow">
                     <p className="text-xs font-semibold text-muted-foreground uppercase">Features:</p>
@@ -277,7 +357,7 @@ export default function TeacherPublicPlansPage() {
                       <Button 
                         size="sm" 
                         className="w-full bg-primary hover:bg-primary/90"
-                        onClick={() => handleSubscribeToTeacherPlan(plan)}
+                        onClick={() => handleSubscribeToTeacherPlan(plan, finalPrice)}
                         disabled={processingPaymentForPlanId === plan.id}
                       >
                         {processingPaymentForPlanId === plan.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ShoppingCart className="mr-2 h-4 w-4"/>}
