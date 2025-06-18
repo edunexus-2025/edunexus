@@ -176,72 +176,78 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    let unsubscribeDppLogs: UnsubscribeFunc | null = null;
-    let isEffectMounted = true; 
+    let isMounted = true;
     const currentUserId = user?.id;
     if (!authLoading && currentUserId) {
       fetchDailyDppQuestionCount(currentUserId);
-      const setupSubscription = async () => {
-        if(!isEffectMounted) return;
-        try {
-            unsubscribeDppLogs = await pb.collection('daily_dpp_question_logs').subscribe('*', (e) => {
-                if (isEffectMounted && e.record.user === currentUserId) {
-                     fetchDailyDppQuestionCount(currentUserId);
-                }
-            }, { '$autoCancel': false });
-        } catch (subError) {
-            if(isEffectMounted) console.error("Error subscribing to daily DPP logs:", subError);
-        }
-      };
-      setupSubscription();
     } else if (!authLoading && !currentUserId) {
       setDailyDppQuestionCount(0); setIsLoadingDppCount(false);
     } else if (authLoading) {
       setIsLoadingDppCount(true);
     }
-    return () => { isEffectMounted = false; if (unsubscribeDppLogs) unsubscribeDppLogs(); };
+    return () => { isMounted = false; };
   }, [authLoading, user?.id, fetchDailyDppQuestionCount]);
 
   const performSearch = useCallback(async (term: string) => {
     setIsLoadingSearch(true); setSearchError(null); setTeacherResults([]); setTestResults([]);
     const termEscaped = escapeForPbFilter(term);
     try {
+      const teacherFilterParts = [
+        `(can_create_ads = true && ads_subscription = "Ads Model")`,
+        `(name ~ "${termEscaped}" || EduNexus_Name ~ "${termEscaped}")`
+      ];
+      const teacherFilter = teacherFilterParts.join(" && ");
+      
+      console.log("[DashboardPage] INFO: Searching teachers with filter:", teacherFilter);
+
       const [teachers, tests] = await Promise.all([
-        pb.collection('teacher_data').getFullList<TeacherSearchResult>({ filter: `(can_create_ads = true && ads_subscription = "Ads Model") && (name ~ "${termEscaped}" || EduNexus_Name ~ "${termEscaped}")`, fields: 'id,name,EduNexus_Name,institute_name,profile_picture,collectionId,collectionName', '$autoCancel': false }).then(records => records.map(r => ({ ...r, avatarUrl: r.profile_picture ? pb.files.getUrl(r, r.profile_picture) : `https://ui-avatars.com/api/?name=${encodeURIComponent(r.name?.charAt(0) || 'T')}&background=random&color=fff&size=128` }))),
-        pb.collection('test_pages').getFullList<TestSearchResult>({ filter: `(TestName ~ "${termEscaped}" || TestTags ~ "${termEscaped}")`, fields: 'id,TestName,Model,Exam', '$autoCancel': false, })
+        pb.collection('teacher_data').getFullList<TeacherSearchResult>({ 
+          filter: teacherFilter, 
+          fields: 'id,name,EduNexus_Name,institute_name,profile_picture,collectionId,collectionName', 
+          '$autoCancel': false 
+        }).then(records => records.map(r => ({ 
+          ...r, 
+          avatarUrl: r.profile_picture ? pb.files.getUrl(r, r.profile_picture) : `https://ui-avatars.com/api/?name=${encodeURIComponent(r.name?.charAt(0) || 'T')}&background=random&color=fff&size=128` 
+        }))),
+        pb.collection('test_pages').getFullList<TestSearchResult>({ 
+          filter: `(TestName ~ "${termEscaped}" || TestTags ~ "${termEscaped}")`, 
+          fields: 'id,TestName,Model,Exam', 
+          '$autoCancel': false, 
+        })
       ]);
       setTeacherResults(teachers); setTestResults(tests);
     } catch (error: any) {
       const clientError = error as ClientResponseError;
-      if (clientError?.isAbort || (clientError?.name === 'ClientResponseError' && clientError?.status === 0)) {
-          console.warn('DashboardPage: Global search request was cancelled or network issue.');
-          setSearchError("Search cancelled or network issue. Please try again.");
-      } else {
-          let errorMsg = "Search failed due to an unexpected error.";
-          let consoleErrorDetails: any = clientError;
-
-          if (clientError && typeof clientError === 'object') {
-              errorMsg = `Search failed: ${clientError.message || 'Server error'}`;
-              if (clientError.data && typeof clientError.data === 'object' && Object.keys(clientError.data).length > 0) {
-                  const pbErrorData = clientError.data as { message?: string; data?: Record<string, { message: string }> };
-                  errorMsg = `Search failed: ${pbErrorData.message || clientError.message || 'PocketBase error'}`;
-                  if (pbErrorData.data) {
-                      const fieldErrors = Object.entries(pbErrorData.data).map(([key, val]) => `${key}: ${val.message}`).join('; ');
-                      if (fieldErrors) errorMsg += ` Details: ${fieldErrors}`;
-                  }
-                  consoleErrorDetails = clientError.data;
-              }
-          } else if (typeof error === 'string') {
-            errorMsg = error;
-          }
-          console.error(
-            "DashboardPage: Global search failed. Status:", clientError?.status, 
-            "Message:", clientError?.message, 
-            "Response Data:", consoleErrorDetails, 
-            "Full Error Object:", JSON.stringify(clientError) // Stringify to see structure
-          );
-          setSearchError(errorMsg);
+      let filterDebugInfo = '(can_create_ads = true && ads_subscription = "Ads Model")';
+      if (termEscaped) {
+        filterDebugInfo += ` && (name ~ "${termEscaped}" || EduNexus_Name ~ "${termEscaped}")`;
       }
+      
+      const detailedConsoleMessage = `DashboardPage: Global search failed. 
+      Status: ${clientError?.status || 'N/A'}. 
+      Message: "${clientError?.data?.message || clientError?.message || 'No specific message from server'}". 
+      Filter used for teachers: ${filterDebugInfo}. 
+      Response Data: ${JSON.stringify(clientError?.data || {})}. 
+      Full Error Object: ${JSON.stringify(clientError)}. 
+      
+      POSSIBLE CAUSE & FIX:
+      This error (HTTP 400 - Bad Request) often means that one or more fields used in the filter for the 'teacher_data' collection are NOT marked as 'Filterable' in your PocketBase Admin UI.
+      Please go to your PocketBase Admin -> Collections -> 'teacher_data' -> Edit collection.
+      For EACH of the following fields, ensure the 'Filterable' toggle is ENABLED in their options:
+      - can_create_ads (Boolean)
+      - ads_subscription (Select)
+      - name (Text)
+      - EduNexus_Name (Text)
+      Save the collection changes and try searching again.
+      `;
+      
+      console.error(detailedConsoleMessage);
+      
+      let userFriendlyError = `Search failed: ${clientError?.data?.message || clientError?.message || 'Server error'}.`;
+      if (clientError?.status === 400) {
+        userFriendlyError = "Search failed. Please ensure all search-related fields in the 'teacher_data' collection (can_create_ads, ads_subscription, name, EduNexus_Name) are marked 'Filterable' in PocketBase admin settings. If the issue persists, contact support.";
+      }
+      setSearchError(userFriendlyError);
     } finally {
       setIsLoadingSearch(false);
     }
@@ -338,7 +344,7 @@ export default function DashboardPage() {
       </Card>
 
       {isLoadingSearch && ( <div className="space-y-4 mt-4"><Card><CardContent className="p-4"><Skeleton className="h-8 w-1/3 mb-3" /><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full mt-2" /></CardContent></Card></div> )}
-      {searchError && ( <Card className="mt-4 text-center p-6 bg-destructive/10 border-destructive"><AlertCircle className="mx-auto h-10 w-10 text-destructive mb-2" /><CardTitle className="text-destructive">Search Error</CardTitle><CardDescription className="text-destructive/80">{searchError}</CardDescription></Card> )}
+      {searchError && ( <Card className="mt-4 text-center p-6 bg-destructive/10 border-destructive"><AlertCircle className="mx-auto h-10 w-10 text-destructive mb-2" /><CardTitle className="text-destructive">Search Error</CardTitle><CardDescription className="text-destructive/80 whitespace-pre-wrap">{searchError}</CardDescription></Card> )}
       {!isLoadingSearch && !searchError && globalSearchTerm.trim().length >= 2 && (
         <div className="mt-6 space-y-6">
           {teacherResults.length > 0 && ( <Card><CardHeader><CardTitle className="text-lg flex items-center gap-2"><Users className="h-5 w-5 text-accent" /> Teachers ({teacherResults.length})</CardTitle></CardHeader><CardContent className="space-y-3">{teacherResults.map((teacher) => ( <Link key={teacher.id} href={teacher.EduNexus_Name ? Routes.teacherPublicAdPage(teacher.EduNexus_Name) : '#'} passHref className={!teacher.EduNexus_Name ? 'pointer-events-none opacity-70' : ''} title={!teacher.EduNexus_Name ? 'This teacher does not have a public profile page setup yet.' : `View ${teacher.name}'s profile`}><Card className="p-3 hover:shadow-md transition-shadow cursor-pointer border border-border/70 bg-card"><div className="flex items-center gap-3"><Avatar className="h-10 w-10"><AvatarImage src={teacher.avatarUrl} alt={teacher.name} data-ai-hint="teacher photo"/><AvatarFallback>{getAvatarFallback(teacher.name)}</AvatarFallback></Avatar><div><p className="font-semibold text-sm text-foreground">{teacher.name}</p><p className="text-xs text-muted-foreground">{teacher.EduNexus_Name ? `@${teacher.EduNexus_Name}` : teacher.institute_name || 'Educator'}</p></div><ArrowRight className="h-4 w-4 text-muted-foreground ml-auto" /></div></Card></Link> ))}</CardContent></Card> )}
