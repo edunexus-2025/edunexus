@@ -32,10 +32,10 @@ interface TeacherDisplayedTest {
 interface StudentSubscribedPlan extends RecordModel {
   id: string;
   student: string;
-  teacher: string; // This is the ID of the teacher in teacher_data
+  teacher: string; 
   teachers_plan_id: string;
   payment_status: 'pending' | 'successful' | 'failed' | 'refunded';
-  expiry_date: string;
+  expiry_date?: string; // Optional, as it might not be set for all plans
   teachers_plan_name_cache?: string;
 }
 
@@ -84,7 +84,7 @@ export default function MyTeacherPage() {
     const teacherId = user.subscription_by_teacher[0];
     if (!teacherId || typeof teacherId !== 'string' || teacherId.trim() === '') {
       if (isMountedGetter()) {
-        setError("Invalid teacher ID linked to your account. Please contact support.");
+        setError("Invalid teacher ID linked to your account. Please contact support or your teacher to re-link.");
         setIsLoadingPage(false);
       }
       return;
@@ -137,67 +137,69 @@ export default function MyTeacherPage() {
       const contentPlanRecords = await pb.collection('teachers_upgrade_plan').getFullList<TeacherPlanType>({ filter: contentPlansFilter, sort: '-created', '$autoCancel': false });
       if (isMountedGetter()) setTeacherContentPlans(contentPlanRecords); else return;
       
-      // Fetch all successful subscriptions for the student, then filter client-side
       const studentAllSuccessfulSubscriptionsFilter = `student = "${user.id}" && payment_status = "successful"`;
       console.log(`MyTeacherPage: Fetching ALL student subscriptions with filter: ${studentAllSuccessfulSubscriptionsFilter}`);
       try {
         const allStudentSubRecords = await pb.collection('students_teachers_upgrade_plan').getFullList<StudentSubscribedPlan>({
           filter: studentAllSuccessfulSubscriptionsFilter,
-          sort: '-expiry_date', 
+          sort: '-created', // Sort by creation, then filter by expiry
+          fields: 'id,student,teacher,teachers_plan_id,payment_status,expiry_date,teachers_plan_name_cache,created',
           '$autoCancel': false,
         });
 
         if (isMountedGetter()) {
-          // Client-side filtering for the specific teacherId
-          const relevantSubRecords = allStudentSubRecords.filter(sub => sub.teacher === teacherId);
+          const relevantSubRecordsForThisTeacher = allStudentSubRecords.filter(sub => sub.teacher === teacherId);
 
-          if (relevantSubRecords.length > 0) {
-            const activeSub = relevantSubRecords.find(sub => !sub.expiry_date || new Date(sub.expiry_date) > new Date());
-            setCurrentStudentSubscription(activeSub || relevantSubRecords[0]);
-            console.log("MyTeacherPage: Successfully set currentStudentSubscription. Active:", activeSub, "Fallback (latest):", relevantSubRecords[0]);
+          if (relevantSubRecordsForThisTeacher.length > 0) {
+            const now = new Date();
+            const activeSubscriptions = relevantSubRecordsForThisTeacher.filter(sub => {
+              if (!sub.expiry_date) return true; // Active if no expiry date
+              try {
+                return new Date(sub.expiry_date) > now; // Active if expiry date is in the future
+              } catch (e) {
+                console.warn(`MyTeacherPage: Invalid expiry_date format for subscription ${sub.id}: ${sub.expiry_date}. Treating as expired.`);
+                return false; 
+              }
+            });
+
+            if (activeSubscriptions.length > 0) {
+              activeSubscriptions.sort((a, b) => {
+                const dateA = a.expiry_date ? new Date(a.expiry_date).getTime() : Infinity;
+                const dateB = b.expiry_date ? new Date(b.expiry_date).getTime() : Infinity;
+                if (dateB !== dateA) return dateB - dateA; // Latest expiry first
+                return new Date(b.created).getTime() - new Date(a.created).getTime(); // Newest created if expiry same/null
+              });
+              setCurrentStudentSubscription(activeSubscriptions[0]);
+              console.log("MyTeacherPage: Successfully set active student subscription for this teacher:", activeSubscriptions[0]);
+            } else {
+              setCurrentStudentSubscription(null);
+              console.log(`MyTeacherPage: No *active* successful subscription found for student "${user.id}" with teacher "${teacherId}". All successful plans may have expired.`);
+            }
           } else {
             setCurrentStudentSubscription(null);
-            console.log(`MyTeacherPage: No successful subscription found for student "${user.id}" with teacher "${teacherId}" after client-side filtering.`);
+            console.log(`MyTeacherPage: No successful subscription records found for student "${user.id}" with teacher "${teacherId}" after client-side filtering.`);
           }
         }
       } catch (subError: any) {
         if (isMountedGetter()) {
-          if (subError.status === 404) {
-            setCurrentStudentSubscription(null);
-            console.log(`MyTeacherPage: No 'students_teachers_upgrade_plan' records found for student "${user.id}" at all using filter: ${studentAllSuccessfulSubscriptionsFilter}.`);
-          } else if (subError.status === 400) {
-            console.error(
+          // Specific handling for 400 error as per console log
+          if (subError.status === 400) {
+             console.error(
               `MyTeacherPage: ClientResponseError 400 when fetching 'students_teachers_upgrade_plan'.
               Filter used: "${studentAllSuccessfulSubscriptionsFilter}".
               This error often indicates that the 'teacher' field in your PocketBase 'students_teachers_upgrade_plan' collection (for records matching the student and payment_status) contains an ID that is NOT a valid ID from the 'teacher_data' collection.
-              Please verify data integrity in PocketBase for student "${user.id}".
-              PocketBase error:`,
-              subError.data || subError.message,
-              "Full Error:", subError
+              Please verify data integrity in PocketBase for student "${user.id}" and teacher target "${teacherId}".
+              PocketBase error:`, subError.data || subError.message, "Full Error:", subError
             );
-            toast({
-              title: "Subscription Plan Error",
-              description: `Could not load your specific plan details with this teacher due to a data validation issue. Please contact support if this issue persists. (Error Ref: STUP_FILTER_400)`,
-              variant: "destructive", // Changed to destructive for 400
-              duration: 10000,
-            });
-             setCurrentStudentSubscription(null); // Ensure it's null on this specific error
+            setError(`There's an issue with your subscription data for this teacher. Please contact support. (Ref: STUP_INTEGRITY)`);
+          } else if (subError.status === 404) {
+            setCurrentStudentSubscription(null);
+            console.log(`MyTeacherPage: No 'students_teachers_upgrade_plan' records found for student "${user.id}" at all.`);
           } else {
-             console.error(
-              `MyTeacherPage: Other ClientResponseError when fetching 'students_teachers_upgrade_plan' for student ${user.id}.
-              Filter used: "${studentAllSuccessfulSubscriptionsFilter}".
-              PocketBase error:`,
-              subError.data || subError.message,
-              "Full Error:", subError
-            );
-            toast({
-              title: "Subscription Plan Error",
-              description: `Could not load your specific plan details with this teacher due to a data access issue. Please contact support if this issue persists. (Error Ref: STUP_DATA_FETCH_FAIL)`,
-              variant: "default",
-              duration: 10000,
-            });
-            setCurrentStudentSubscription(null); 
+             console.error(`MyTeacherPage: Other ClientResponseError when fetching 'students_teachers_upgrade_plan' for student ${user.id}. Filter: ${studentAllSuccessfulSubscriptionsFilter}. PocketBase error:`, subError.data || subError.message, "Full Error:", subError);
+            setError(`Could not load your plan details with this teacher due to a data access issue. (Ref: STUP_DATA_FAIL)`);
           }
+          setCurrentStudentSubscription(null); // Ensure it's null on error
         }
       }
 
@@ -241,7 +243,7 @@ export default function MyTeacherPage() {
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <Avatar className="h-20 w-20 border-2 border-primary-foreground/50">
               <AvatarImage src={subscribedTeacherInfo.avatarUrl} alt={subscribedTeacherInfo.name} data-ai-hint="teacher profile"/>
-              <AvatarFallback className="text-3xl bg-primary-foreground/20 text-primary-foreground">{subscribedTeacherInfo.name?.charAt(0).toUpperCase}</AvatarFallback>
+              <AvatarFallback className="text-3xl bg-primary-foreground/20 text-primary-foreground">{subscribedTeacherInfo.name?.charAt(0).toUpperCase()}</AvatarFallback>
             </Avatar>
             <div className="text-center sm:text-left">
               <CardDescription className="text-sm text-primary-foreground/80">Content from</CardDescription>
@@ -259,7 +261,7 @@ export default function MyTeacherPage() {
                 </p>
               }
             </div>
-          ) : error && !isLoadingPage ? (
+          ) : error && !isLoadingPage ? ( // Display data-related error if it exists, but not general loading errors
              <div className="mt-4 p-3 bg-red-700/30 rounded-lg text-center sm:text-left">
                 <p className="text-xs font-medium text-red-100 uppercase tracking-wider">Subscription Info Error:</p>
                 <p className="text-sm text-red-50 line-clamp-2" title={error}>{error}</p>
@@ -267,7 +269,7 @@ export default function MyTeacherPage() {
           ) : !isLoadingPage ? (
             <div className="mt-4 p-3 bg-blue-700/30 rounded-lg text-center sm:text-left">
                <p className="text-xs font-medium text-blue-100 uppercase tracking-wider">No Active Plan</p>
-               <p className="text-sm text-blue-50">You are not currently subscribed to a specific paid plan from this teacher.</p>
+               <p className="text-sm text-blue-50">You are not currently subscribed to an active plan from this teacher, or previous plans may have expired.</p>
             </div>
           ): null}
         </CardHeader>
@@ -292,19 +294,35 @@ export default function MyTeacherPage() {
       <section className="mt-8 pt-6 border-t">
         <h2 className="text-xl font-semibold mb-4 text-foreground">More from {subscribedTeacherInfo.name} (Content Plans)</h2>
         {teacherContentPlans.length === 0 ? (<Card className="text-center p-10 border-dashed"><Info className="mx-auto h-12 w-12 text-muted-foreground mb-4" /><p className="text-muted-foreground">{subscribedTeacherInfo.name} has not created any specific content plans yet.</p></Card>)
-        : (<div className="grid grid-cols-1 md:grid-cols-2 gap-4">{teacherContentPlans.map(plan => (
-          <Card key={plan.id} className="shadow-md hover:shadow-lg transition-shadow bg-card border border-border h-full flex flex-col">
-            <CardHeader className="pb-3"><CardTitle className="text-lg font-semibold text-foreground">{plan.Plan_name}</CardTitle><div className="flex items-baseline"><span className="text-2xl font-bold text-primary">₹{plan.plan_price}</span><span className="text-sm text-muted-foreground ml-1">/ {plan.plan}</span></div></CardHeader>
-            <CardContent className="text-sm text-muted-foreground space-y-1 flex-grow"><p className="text-xs font-semibold text-muted-foreground uppercase">Features:</p><ul className="list-disc list-inside pl-2">{[plan.plan_point_1, plan.plan_point_2, plan.plan_point_3, plan.plan_point_4, plan.plan_point_5].filter(Boolean).map((point, idx) => <li key={idx}>{point}</li>)}</ul></CardContent>
-            <CardFooter className="pt-3 mt-auto">
-              {currentStudentSubscription?.teachers_plan_id === plan.id ? (<Button variant="default" disabled className="w-full bg-green-600 hover:bg-green-700"><CheckCircle className="mr-2 h-4 w-4" />Currently Subscribed</Button>) :
-               (<Button variant="outline" className="w-full" onClick={() => alert(`Subscription to "${plan.Plan_name}" from teacher coming soon!`)}>View & Subscribe <ChevronRight className="ml-2 h-4 w-4" /></Button>)}
-            </CardFooter>
-          </Card>))}</div>
+        : (<div className="grid grid-cols-1 md:grid-cols-2 gap-4">{teacherContentPlans.map(plan => {
+            const isThisTheSubscribedPlan = currentStudentSubscription?.teachers_plan_id === plan.id;
+            return (
+              <Card key={plan.id} className={cn("shadow-md hover:shadow-lg transition-shadow bg-card border border-border h-full flex flex-col", isThisTheSubscribedPlan && "border-2 border-green-500 ring-1 ring-green-500/30 bg-green-500/5")}>
+                <CardHeader className="pb-3">
+                  {isThisTheSubscribedPlan && <Badge variant="default" className="absolute top-3 right-3 bg-green-500 text-white">Your Active Plan</Badge>}
+                  <CardTitle className="text-lg font-semibold text-foreground">{plan.Plan_name}</CardTitle>
+                  <div className="flex items-baseline">
+                    <span className="text-2xl font-bold text-primary">₹{plan.plan_price}</span>
+                    <span className="text-sm text-muted-foreground ml-1">/ {plan.plan}</span>
+                  </div>
+                </CardHeader>
+                <CardContent className="text-sm text-muted-foreground space-y-1 flex-grow">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase">Features:</p>
+                  <ul className="list-disc list-inside pl-2">
+                    {[plan.plan_point_1, plan.plan_point_2, plan.plan_point_3, plan.plan_point_4, plan.plan_point_5]
+                      .filter(Boolean).map((point, idx) => <li key={idx}>{point}</li>)}
+                  </ul>
+                </CardContent>
+                <CardFooter className="pt-3 mt-auto">
+                  {isThisTheSubscribedPlan ? (<Button variant="outline" disabled className="w-full bg-green-100 text-green-700 border-green-400"><CheckCircle className="mr-2 h-4 w-4" />Currently Subscribed</Button>) :
+                   (<Button variant="outline" className="w-full" onClick={() => alert(`Subscription to "${plan.Plan_name}" from teacher coming soon!`)}>View & Subscribe <ChevronRight className="ml-2 h-4 w-4" /></Button>)}
+                </CardFooter>
+              </Card>
+            );
+        })}</div>
         )}
       </section>
     </div>
   );
 }
 
-    
