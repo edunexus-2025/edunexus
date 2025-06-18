@@ -27,8 +27,17 @@ export default function TeacherUpgradePlatformPlanPage() {
   const currentTeacherTier = teacher?.teacherSubscriptionTier || 'Free';
 
   const handleUpgrade = async (plan: Plan) => {
-    if (!teacher?.id || !teacher.email || !teacher.name || !teacher.phoneNumber) {
-      toast({ title: "Error", description: "Teacher details missing (name, email, phone). Please complete your profile.", variant: "destructive" });
+    if (!teacher?.id || 
+        !teacher.email || teacher.email.trim() === '' ||
+        !teacher.name || teacher.name.trim() === '' ||
+        !teacher.phoneNumber || teacher.phoneNumber.trim() === '') {
+      toast({ 
+        title: "Profile Incomplete", 
+        description: "Your teacher profile (name, email, or phone number) is incomplete. Please update it in your settings before upgrading.", 
+        variant: "destructive",
+        duration: 7000 
+      });
+      setIsProcessingUpgrade(null); // Reset processing state if validation fails
       return;
     }
 
@@ -40,11 +49,7 @@ export default function TeacherUpgradePlatformPlanPage() {
     setIsProcessingUpgrade(plan.id);
 
     const payUKey = process.env.NEXT_PUBLIC_PAYU_KEY;
-    // PAYU_PAYMENT_URL is not prefixed with NEXT_PUBLIC_ because form submission happens server-side (or should)
-    // For client-side JS submission (like Razorpay SDK), it might be needed.
-    // However, for a standard HTML form post, the action URL is what matters.
-    // The backend API `/api/payu/initiate-teacher-plan-payment` will receive this if needed, or use its own env var.
-    const payUPaymentUrlFromServer = process.env.PAYU_PAYMENT_URL || 'https://secure.payu.in/_payment'; // Fallback for server
+    const payUPaymentUrlFromServer = process.env.PAYU_PAYMENT_URL || 'https://secure.payu.in/_payment'; 
     const appBaseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL || window.location.origin;
 
     if (!payUKey || !appBaseUrl) {
@@ -57,9 +62,8 @@ export default function TeacherUpgradePlatformPlanPage() {
     const productinfo = `${AppConfig.appName} Teacher Plan - ${plan.name}`;
     const firstname = teacher.name.split(' ')[0] || 'Teacher';
     const email = teacher.email;
-    const phone = teacher.phoneNumber.replace(/\D/g, ''); // Remove non-digits
+    const phone = teacher.phoneNumber.replace(/\D/g, ''); 
     const txnid = generateTransactionId();
-    // These URLs point to our backend API route that will handle the PayU response
     const surl = `${appBaseUrl}/api/payu/handle-teacher-plan-response`;
     const furl = `${appBaseUrl}/api/payu/handle-teacher-plan-response`;
     
@@ -72,8 +76,12 @@ export default function TeacherUpgradePlatformPlanPage() {
       phone,
       surl,
       furl,
-      planId: plan.id, // To identify which plan was chosen
-      teacherId: teacher.id, // To identify the teacher
+      planId: plan.id, 
+      teacherId: teacher.id, 
+      // Pass these explicitly as the API route expects them by these names
+      teacherEmail: teacher.email,
+      teacherName: teacher.name,
+      teacherPhone: teacher.phoneNumber,
     };
 
     try {
@@ -88,12 +96,11 @@ export default function TeacherUpgradePlatformPlanPage() {
         throw new Error(errorData.error || `Failed to initiate payment (status: ${response.status})`);
       }
 
-      const payuFormData = await response.json(); // This should contain key, hash, and other params
+      const payuFormData = await response.json(); 
 
-      // Create a dynamic form and submit it
       const form = document.createElement('form');
       form.method = 'POST';
-      form.action = payUPaymentUrlFromServer; // Use the PayU URL
+      form.action = payUPaymentUrlFromServer; 
 
       for (const key in payuFormData) {
         const input = document.createElement('input');
@@ -104,7 +111,6 @@ export default function TeacherUpgradePlatformPlanPage() {
       }
       document.body.appendChild(form);
       form.submit();
-      // The page will redirect to PayU. No need to set isProcessingUpgrade to null here.
     } catch (error: any) {
       console.error("Failed to initiate PayU payment:", error);
       toast({ title: "Payment Initiation Failed", description: error.message || "Could not start the payment process.", variant: "destructive" });
@@ -212,3 +218,5 @@ export default function TeacherUpgradePlatformPlanPage() {
     </div>
   );
 }
+
+    
