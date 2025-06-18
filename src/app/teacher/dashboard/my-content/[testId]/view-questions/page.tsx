@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, AlertCircle, Edit3, ChevronLeft, ChevronRight, Save, Loader2 } from 'lucide-react';
 import { Routes } from '@/lib/constants';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import pb from '@/lib/pocketbase';
 import type { RecordModel, ClientResponseError } from 'pocketbase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -44,9 +44,44 @@ interface QuestionRecord extends RecordModel {
 
 type DisplayableQuestion = QuestionRecord;
 
-// This hostname might still appear in old database URLs
 const OLD_HOSTNAME = "f3605bbf-1d05-4292-9f0b-d3cd0ac21935-00-2eeov1wweb7qq.sisko.replit.dev";
-// The new, correct hostname will be derived from the environment variable
+let CORRECT_NEW_POCKETBASE_HOSTNAME: string | null = null;
+const pbUrlFromEnv = process.env.NEXT_PUBLIC_POCKETBASE_URL;
+
+if (pbUrlFromEnv) {
+  try {
+    CORRECT_NEW_POCKETBASE_HOSTNAME = new URL(pbUrlFromEnv).hostname;
+  } catch (e) {
+    console.error("ViewTestQuestionsPage: Invalid NEXT_PUBLIC_POCKETBASE_URL in environment:", pbUrlFromEnv, e);
+    // Try fallback since env var was present but invalid
+    try {
+      CORRECT_NEW_POCKETBASE_HOSTNAME = new URL('https://ae8425c5-5ede-4664-bdaa-b238298ae1be-00-4oi013hd9264.sisko.replit.dev').hostname;
+      console.warn("ViewTestQuestionsPage: Using fallback PocketBase hostname because environment URL was invalid.");
+    } catch (fallbackError) {
+      console.error("ViewTestQuestionsPage: Failed to parse fallback URL after invalid env var. Image correction will likely fail.", fallbackError);
+    }
+  }
+} else {
+  console.warn("ViewTestQuestionsPage: NEXT_PUBLIC_POCKETBASE_URL is not set. Using hardcoded fallback for image correction.");
+  try {
+    CORRECT_NEW_POCKETBASE_HOSTNAME = new URL('https://ae8425c5-5ede-4664-bdaa-b238298ae1be-00-4oi013hd9264.sisko.replit.dev').hostname;
+  } catch (fallbackError) {
+    console.error("ViewTestQuestionsPage: Failed to parse hardcoded fallback URL. Image correction will likely fail.", fallbackError);
+  }
+}
+
+const correctImageUrlHostname = (url: string | null | undefined): string | null => {
+  if (!url || typeof url !== 'string') return url; // Return original if not a string or null/undefined
+  if (!CORRECT_NEW_POCKETBASE_HOSTNAME) {
+    console.warn("ViewTestQuestionsPage: CORRECT_NEW_POCKETBASE_HOSTNAME is not set, cannot correct image URL hostname.");
+    return url; // Return original if the target hostname isn't set
+  }
+  if (url.includes(OLD_HOSTNAME)) {
+    return url.replace(OLD_HOSTNAME, CORRECT_NEW_POCKETBASE_HOSTNAME);
+  }
+  return url;
+};
+
 
 const renderLatex = (text: string | undefined | null): React.ReactNode => {
   if (!text) return null;
@@ -107,28 +142,6 @@ export default function ViewTestQuestionsPage() {
   const [editableCorrectOption, setEditableCorrectOption] = useState<QuestionRecord['CorrectOption'] | undefined>(undefined);
   const [isSavingCorrectOption, setIsSavingCorrectOption] = useState(false);
   
-  const [newPocketBaseHostname, setNewPocketBaseHostname] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (process.env.NEXT_PUBLIC_POCKETBASE_URL) {
-      try {
-        const url = new URL(process.env.NEXT_PUBLIC_POCKETBASE_URL);
-        setNewPocketBaseHostname(url.hostname);
-      } catch (e) {
-        console.error("Invalid NEXT_PUBLIC_POCKETBASE_URL:", e);
-        // Fallback or error handling if URL is malformed
-      }
-    }
-  }, []);
-
-
-  const correctImageUrlHostname = useCallback((url: string | null | undefined): string | null => {
-    if (!url || typeof url !== 'string' || !newPocketBaseHostname) return url; // Return original if new hostname isn't set yet
-    if (url.includes(OLD_HOSTNAME)) {
-      return url.replace(OLD_HOSTNAME, newPocketBaseHostname);
-    }
-    return url;
-  }, [newPocketBaseHostname]);
 
   useEffect(() => {
     let isMounted = true;
@@ -347,7 +360,7 @@ export default function ViewTestQuestionsPage() {
       </div>
     );
   }
-
+  
   const correctedQuestionImage = correctImageUrlHostname(currentQuestion.QuestionImage);
   const correctedOptionAImage = correctImageUrlHostname(currentQuestion.OptionAImage);
   const correctedOptionBImage = correctImageUrlHostname(currentQuestion.OptionBImage);
