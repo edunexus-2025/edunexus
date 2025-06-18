@@ -51,6 +51,7 @@ export async function POST(request: Request) {
 
     // Construct the hash string. The order is CRITICAL and must match PayU's documentation.
     // Standard order: key|txnid|amount|productinfo|firstname|email|udf1|udf2|udf3|udf4|udf5|udf6|udf7|udf8|udf9|udf10|SALT
+    // REMOVED 'phone' from this array as it's not standard for request hash generation.
     const hashStringParams = [
       PAYU_MERCHANT_KEY,
       txnid,
@@ -82,14 +83,14 @@ export async function POST(request: Request) {
     console.log("[PayU Initiate DEBUG] Product Info:", productinfo);
     console.log("[PayU Initiate DEBUG] First Name:", firstname);
     console.log("[PayU Initiate DEBUG] Email:", email);
-    console.log("[PayU Initiate DEBUG] Phone:", phone);
+    console.log("[PayU Initiate DEBUG] Phone (sent to PayU, NOT in hash string):", phone); // Log phone separately
     console.log("[PayU Initiate DEBUG] UDF1 (planId):", udf1);
     console.log("[PayU Initiate DEBUG] UDF2 (teacherId):", udf2);
     console.log("[PayU Initiate DEBUG] UDF3:", udf3);
     console.log("[PayU Initiate DEBUG] UDF4:", udf4);
     console.log("[PayU Initiate DEBUG] UDF5:", udf5);
-    console.log("[PayU Initiate DEBUG] UDF6-10 are empty strings.");
-    console.log("[PayU Initiate DEBUG] Full hashStringParams array:", JSON.stringify(hashStringParams));
+    console.log("[PayU Initiate DEBUG] UDF6-10 are empty strings in hash.");
+    console.log("[PayU Initiate DEBUG] Full hashStringParams array (for HASH calculation):", JSON.stringify(hashStringParams));
     console.log("[PayU Initiate DEBUG] Raw String to be Hashed (hashString):\n", hashString);
     console.log("--------------------------------------------------------------------");
     // --- END DEBUGGING LOGS ---
@@ -103,7 +104,7 @@ export async function POST(request: Request) {
       productinfo,
       firstname,
       email,
-      phone,
+      phone, // Phone is sent to PayU in the form
       surl,
       furl,
       hash,
@@ -112,10 +113,7 @@ export async function POST(request: Request) {
       udf3: udf3,
       udf4: udf4,
       udf5: udf5,
-      // Note: Only explicitly send UDFs if they have values or PayU requires them as form params.
-      // Empty UDFs (udf6-10) are part of the hash, but not necessarily sent as form fields if empty.
-      // Check PayU documentation for which params are optional/mandatory in the form submission.
-      // service_provider: 'payu_paisa', // Often required for PayU Test environment. For live, it might not be needed or might be different.
+      // service_provider: 'payu_paisa', // Often required for PayU Test environment.
     };
 
     return NextResponse.json(payuFormInputs, { status: 200 });
