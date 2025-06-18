@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useCallback, ReactNode } from 'react';
@@ -55,7 +56,7 @@ const getPbFileUrl = (record: RecordModel | null | undefined, fieldName: string)
 export default function TeacherPublicPlansPage() {
   const params = useParams();
   const router = useRouter();
-  const { user: currentUser, teacher: currentTeacher } = useAuth(); 
+  const { user: currentUser, teacher: currentTeacher } = useAuth();
   const { toast } = useToast();
   const edunexusNameParam = typeof params.edunexusName === 'string' ? params.edunexusName : '';
 
@@ -68,7 +69,6 @@ export default function TeacherPublicPlansPage() {
   const [appliedReferralDetails, setAppliedReferralDetails] = useState<{ code: string; discountPercentage: number; applicablePlanIds: string[]; expiry_date?: string; } | null>(null);
   const [isVerifyingReferral, setIsVerifyingReferral] = useState(false);
   const [referralError, setReferralError] = useState<string | null>(null);
-
 
   const edunexusName = edunexusNameParam ? escapeForPbFilter(edunexusNameParam) : '';
   const activeUser = currentUser || currentTeacher;
@@ -93,8 +93,13 @@ export default function TeacherPublicPlansPage() {
 
       const plansFilter = `teacher = "${teacherData.id}"`;
       console.log(`[TeacherPlansPage] Attempting to fetch contentPlans with filter: '${plansFilter}'`);
-      const contentPlans = await pb.collection('teachers_upgrade_plan').getFullList<TeacherPlanType>({ filter: plansFilter, sort: '-created' });
-      console.log(`Fetched ${contentPlans.length} content plans for teacher ${teacherData.id}`);
+      
+      const rawContentPlans = await pb.collection('teachers_upgrade_plan').getFullList<RecordModel>({ filter: plansFilter, sort: '-created' });
+      // Log the raw data before any mapping or type assertion
+      console.log(`[TeacherPlansPage] RAW contentPlans fetched (${rawContentPlans.length}):`, JSON.parse(JSON.stringify(rawContentPlans)));
+      const contentPlans = rawContentPlans as TeacherPlanType[]; // Type assertion
+      
+      console.log(`[TeacherPlansPage] Mapped contentPlans. Length: ${contentPlans.length} for teacher ${teacherData.id}`);
       
       let studentSubscriptions: StudentSubscribedPlanRecord[] = [];
       if (currentUser?.id && teacherData.id) {
@@ -113,7 +118,7 @@ export default function TeacherPublicPlansPage() {
       if (!isMountedGetter()) return;
       setPageData({ teacherData, contentPlans, teacherAvatarUrl, studentSubscriptionsToThisTeacher: studentSubscriptions });
       if (contentPlans.length === 0) {
-        console.warn(`[TeacherPlansPage] No content plans were found for teacher ${teacherData.id} using filter "${plansFilter}". Check PocketBase data and 'teachers_upgrade_plan' API rules if they are not fully public or if the teacher has no plans linked.`);
+        console.warn(`[TeacherPlansPage] No content plans were found for teacher ${teacherData.id} using filter "${plansFilter}". Check PocketBase data and 'teachers_upgrade_plan' API rules (should be public).`);
       }
 
     } catch (err: any) { 
@@ -128,7 +133,7 @@ export default function TeacherPublicPlansPage() {
       }
     }
     finally { if (isMountedGetter()) setIsLoading(false); }
-  }, [edunexusName, currentUser?.id, currentTeacher?.id]);
+  }, [edunexusName, currentUser?.id, currentTeacher?.id]); // Ensure all dependencies are listed
 
   useEffect(() => { 
     let isMounted = true; 
@@ -148,11 +153,14 @@ export default function TeacherPublicPlansPage() {
     try {
       const codeString = referralCodeInput.trim().toUpperCase();
       const filter = `teacher = "${pageData.teacherData.id}" && referral_code_string = "${escapeForPbFilter(codeString)}"`;
+      console.log(`[TeacherPlansPage] Applying referral code. Filter: ${filter}`);
       const promoRecord = await pb.collection('teacher_refferal_code').getFirstListItem<TeacherReferralCode>(filter);
+      console.log(`[TeacherPlansPage] Promo record found:`, promoRecord);
 
       if (promoRecord.expiry_date && isPast(new Date(promoRecord.expiry_date))) {
         setReferralError("This referral code has expired.");
         toast({ title: "Code Expired", variant: "destructive" });
+        setIsVerifyingReferral(false);
         return;
       }
       
@@ -165,6 +173,7 @@ export default function TeacherPublicPlansPage() {
       toast({ title: "Referral Code Applied!", description: `Discount of ${promoRecord.discount_percentage}% will be applied to eligible plans.` });
 
     } catch (error: any) {
+      console.error("[TeacherPlansPage] Error applying referral code:", error);
       if (error.status === 404) {
         setReferralError("Invalid or expired referral code for this teacher.");
         toast({ title: "Invalid Code", variant: "destructive" });
@@ -177,7 +186,6 @@ export default function TeacherPublicPlansPage() {
     }
   };
 
-
   const handleSubscribeToTeacherPlan = async (plan: TeacherPlanType, finalPrice: number) => {
     if (!currentUser || !currentUser.id) { toast({ title: "Login Required", description: "Please login as a student to subscribe.", variant: "destructive" }); router.push(Routes.login + `?redirect=${encodeURIComponent(window.location.pathname)}`); return; }
     if (!pageData?.teacherData?.id) { toast({ title: "Error", description: "Teacher information is missing.", variant: "destructive" }); return; }
@@ -189,7 +197,7 @@ export default function TeacherPublicPlansPage() {
     const amountForApi = parseFloat(finalPrice.toFixed(2)); 
     if (isNaN(amountForApi)) { toast({ title: "Payment Error", description: "Invalid plan price.", variant: "destructive" }); setProcessingPaymentForPlanId(null); return; }
     
-    if (amountForApi <= 0) { // Allows for 100% discount or free plans
+    if (amountForApi <= 0) { 
       toast({ title: "Enrollment Initiated", description: `Processing enrollment for "${plan.Plan_name}"...`, variant: "default"});
       try {
         const today = new Date(); const expiryDateISO = new Date(today.setFullYear(today.getFullYear() + 1)).toISOString();
@@ -315,10 +323,9 @@ export default function TeacherPublicPlansPage() {
                   (!appliedReferralDetails.expiry_date || !isPast(new Date(appliedReferralDetails.expiry_date)))) {
                 originalPriceDisplay = `₹${finalPrice.toFixed(0)}`;
                 finalPrice = finalPrice * (1 - appliedReferralDetails.discountPercentage / 100);
-                finalPrice = Math.max(0, finalPrice); // Ensure price doesn't go negative
+                finalPrice = Math.max(0, finalPrice); 
               }
               const effectivePriceString = `₹${finalPrice.toFixed(0)}`;
-
 
               return (
                 <Card key={plan.id} className={cn("shadow-md hover:shadow-lg transition-shadow bg-card border flex flex-col", isSubscribed && "border-2 border-green-500 ring-1 ring-green-500/30 bg-green-500/5")}>
@@ -385,3 +392,5 @@ export default function TeacherPublicPlansPage() {
     </div>
   );
 }
+
+    
