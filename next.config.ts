@@ -73,7 +73,7 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
-      { // Ensure this Replit domain for images from teacher_question_data (type: "url") is present
+      { // Replit domain from the error - ensure pathname is correct
         protocol: 'https',
         hostname: 'f3605bbf-1d05-4292-9f0b-d3cd0ac21935-00-2eeov1wweb7qq.sisko.replit.dev',
         port: '',
