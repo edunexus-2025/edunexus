@@ -1,18 +1,18 @@
 
-import type { NextConfig } from 'next';
+import type { NextConfig, RemotePattern } from 'next'; // Corrected type import
 
 // Updated PocketBase URL to be used for image remote patterns
 const pocketbaseUrlString = 'https://ae8425c5-5ede-4664-bdaa-b238298ae1be-00-4oi013hd9264.sisko.replit.dev';
-const pocketbaseRemotePatterns: Array<import('next/dist/shared/lib/image-config').RemotePattern> = [];
+const pocketbaseRemotePatterns: Array<RemotePattern> = []; // Corrected type usage
 
 if (pocketbaseUrlString) {
   try {
     const url = new URL(pocketbaseUrlString);
     pocketbaseRemotePatterns.push({
-      protocol: url.protocol.slice(0, -1) as 'http' | 'https', // Remove the trailing ':'
+      protocol: url.protocol.slice(0, -1) as 'http' | 'https',
       hostname: url.hostname,
-      port: url.port || '', // Add port if specified
-      pathname: '/api/files/**', // Common path for PocketBase files
+      port: url.port || '',
+      pathname: '/api/files/**',
     });
     console.log(`[next.config.js] Successfully added PocketBase remote pattern: ${url.protocol}//${url.hostname}${url.port ? ':' + url.port : ''}/api/files/**`);
   } catch (e) {
@@ -73,12 +73,15 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
-      { // Replit domain from the error - ensure pathname is correct
+      // The ae8425... host is added dynamically via pocketbaseRemotePatterns if pocketbaseUrlString is correct
+      // Adding the problematic f360... hostname explicitly to address the "unconfigured host" error.
+      // WARNING: This is a workaround. The underlying data in the database should be corrected.
+      {
         protocol: 'https',
         hostname: 'f3605bbf-1d05-4292-9f0b-d3cd0ac21935-00-2eeov1wweb7qq.sisko.replit.dev',
         port: '',
-        pathname: '/api/files/**', 
-      }// Existing cluster-specific URLs, keep if still needed, otherwise remove
+        pathname: '/api/files/**', // Assuming the same path structure
+      },
       {
         protocol: 'https',
         hostname: '9000-firebase-studio-1748410223729.cluster-ancjwrkgr5dvux4qug5rbzyc2y.cloudworkstations.dev',
@@ -97,12 +100,11 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**', 
       },
-      ...pocketbaseRemotePatterns, // Add the dynamically generated PocketBase pattern(s) for type: "file" fields
+      ...pocketbaseRemotePatterns, 
     ],
   },
   experimental: {
     allowedDevOrigins: [
-      // Keep existing allowedDevOrigins if they are still relevant for your development environment
       'https://6000-firebase-studio-1748410223729.cluster-ancjwrkgr5dvux4qug5rbzyc2y.cloudworkstations.dev',
       'https://9000-firebase-studio-1748410223729.cluster-ancjwrkgr5dvux4qug5rbzyc2y.cloudworkstations.dev',
       'https://3000-firebase-studio-1748410223729.cluster-ancjwrkgr5dvux4qug5rbzyc2y.cloudworkstations.dev',
