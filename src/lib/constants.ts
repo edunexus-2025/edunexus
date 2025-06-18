@@ -58,7 +58,7 @@ export const Routes = {
   studentTeacherRanking: '/dashboard/teacher-ranking',
   myTeacherPortal: '/dashboard/my-teacher',
   testResult: (resultId: string) => `/dashboard/test-results/chapterwise/${resultId}`,
-  testResultCompete: (resultId: string) => `/dashboard/test-results/compete/${resultId}`,
+  testResultCompete: (resultId: string) => `/dashboard/test-results/compete/${resultId}`, // For challenge/compete results
   helpCenter: '/dashboard/help-center',
   termsOfService: '/terms-of-service',
   privacyPolicy: '/privacy-policy',
@@ -77,9 +77,14 @@ export const Routes = {
     return `/payment/status?${params.toString()}`;
   },
 
-  // Student Test Taking Routes (Only platform tests remain)
-  studentTestInstructions: (testId: string) => `/student/test/${testId}/instructions`,
-  studentTestChapterwise: (testId: string) => `/student/test/${testId}/chapterwise`,
+  // Student Test Taking Routes
+  studentTestInstructions: (testId: string) => `/student/test/${testId}/instructions`, // For platform tests
+  studentTestChapterwise: (testId: string) => `/student/test/${testId}/chapterwise`, // For platform tests
+
+  // Routes for student taking a teacher-created test
+  studentTakeTeacherTestLive: (testId: string) => `/student/teacher-test/${testId}/live`,
+  studentTestEnterPin: (testId: string) => `/student/teacher-test/${testId}/enter-pin`, // May become obsolete if PIN handled in /live
+  testResultTeacherTest: (attemptId: string) => `/student/teacher-test/results/${attemptId}`, // For teacher test results
 
 
   // Unified Question Bank view
