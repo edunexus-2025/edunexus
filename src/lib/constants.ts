@@ -63,7 +63,7 @@ export const Routes = {
   contactUs: '/contact-us',
   activatePlan: (token: string, planSlug: string) => `/activate-plan/${token}/${planSlug}`,
   collegeCutoffs: '/college-cutoffs',
-  ownerInfo: '/owner-info', 
+  ownerInfo: '/owner-info',
 
   // Student Test Taking Routes
   studentTestInstructions: (testId: string) => `/student/test/${testId}/instructions`,
@@ -88,7 +88,7 @@ export const Routes = {
   adminCreateAds: '/admin/create-ads',
   adminManageReferrals: '/admin/manage-referrals',
   adminManageCollegeCutoffs: '/admin/manage-college-cutoffs',
-  adminUploadCollegeCutoffs: '/admin/upload-college-cutoffs', 
+  adminUploadCollegeCutoffs: '/admin/upload-college-cutoffs',
 
   // Teacher Routes
   teacherLogin: '/teacher/login',
@@ -105,6 +105,7 @@ export const Routes = {
   teacherTestPanelViewQuestions: (testId: string) => `/teacher/dashboard/my-content/${testId}/view-questions`,
   teacherTestPanelSettings: (testId: string) => `/teacher/dashboard/my-content/${testId}/settings`,
   teacherTestPanelResults: (testId: string) => `/teacher/dashboard/my-content/${testId}/results`,
+  teacherTestPanelStatus: (testId: string) => `/teacher/dashboard/my-content/${testId}/status`, // New Route
   teacherRanking: '/teacher/dashboard/ranking',
   teacherPlan: '/teacher/dashboard/plan',
   teacherCreateAds: '/teacher/dashboard/create-ads',

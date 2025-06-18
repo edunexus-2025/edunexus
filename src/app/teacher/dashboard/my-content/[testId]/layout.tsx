@@ -11,7 +11,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  useSidebar, // Import useSidebar
+  useSidebar, 
   SidebarProvider,
   SidebarTrigger,
   SidebarInset,
@@ -36,7 +36,8 @@ import {
   LogOut,
   ChevronLeft,
   UserCircle,
-  Bell, 
+  Bell,
+  ClipboardCheck, 
 } from 'lucide-react';
 import { TeacherProtectedRoute } from '@/components/auth/TeacherProtectedRoute';
 import { ThemeToggleButton } from '@/components/layout/ThemeToggleButton';
@@ -67,19 +68,19 @@ interface TestManagementSidebarProps {
 function TestManagementSidebar({ testId, notifications, deleteNotification, clearAllNotifications }: TestManagementSidebarProps) {
   const pathname = usePathname();
   const { teacher, logout } = useAuth();
-  const { isMobile, setOpenMobile } = useSidebar(); // Get mobile state and setter
+  const { isMobile, setOpenMobile } = useSidebar(); 
 
   const navItems = [
     { href: Routes.teacherTestPanel(testId), label: 'Dashboard', icon: <LayoutDashboard /> },
     { href: Routes.teacherTestPanelAddQuestion(testId), label: 'Add Question', icon: <PlusCircle /> },
     { href: Routes.teacherTestPanelViewQuestions(testId), label: 'View Questions', icon: <Eye /> },
+    { href: Routes.teacherTestPanelStatus(testId), label: 'Test Status', icon: <ClipboardCheck /> }, // New Item
     { href: Routes.teacherTestPanelSettings(testId), label: 'Settings', icon: <SettingsIcon /> },
     { href: Routes.teacherTestPanelResults(testId), label: 'View Results', icon: <BarChart2 /> },
   ];
 
   const isActive = (href: string) => {
     if (!href) return false;
-    // For the main panel dashboard, match exactly. For others, use startsWith.
     if (href === Routes.teacherTestPanel(testId)) return pathname === href;
     return pathname.startsWith(href);
   };
