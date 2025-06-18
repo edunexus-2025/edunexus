@@ -252,5 +252,3 @@ export default function TeacherUpgradePlatformPlanPage() {
     </div>
   );
 }
-
-```
