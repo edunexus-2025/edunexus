@@ -3,7 +3,7 @@ import { NextResponse, NextRequest } from 'next/server';
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
 import PocketBase from 'pocketbase';
-import { AppConfig, Routes, teacherPlatformPlansData, slugify } from '@/lib/constants'; // Added slugify
+import { AppConfig, Routes, teacherPlatformPlansData, slugify } from '@/lib/constants';
 import type { UserSubscriptionTierStudent, UserSubscriptionTierTeacher } from '@/lib/types';
 
 const RAZORPAY_KEY_ID = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
@@ -11,7 +11,7 @@ const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 const POCKETBASE_URL_SERVER = process.env.NEXT_PUBLIC_POCKETBASE_URL;
 const POCKETBASE_ADMIN_EMAIL_SERVER = process.env.POCKETBASE_ADMIN_EMAIL;
 const POCKETBASE_ADMIN_PASSWORD_SERVER = process.env.POCKETBASE_ADMIN_PASSWORD;
-const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_BASE_URL || 'http://localhost:9002'; // Fallback for APP_BASE_URL
+const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_BASE_URL || 'http://localhost:9002';
 
 if (!RAZORPAY_KEY_SECRET) {
   console.error("[Razorpay Verify Payment CRITICAL ENV ERROR] RAZORPAY_KEY_SECRET is not configured.");
@@ -49,82 +49,105 @@ export async function POST(request: NextRequest) {
 
   let pbAdmin: PocketBase | null = null; 
   try {
-    pbAdmin = await getAdminPbInstance(); // Attempt to get admin client early
+    pbAdmin = await getAdminPbInstance();
 
     const body = await request.json();
     const {
       razorpay_payment_id,
       razorpay_order_id,
       razorpay_signature,
-      planId, // The plan ID the user intended to purchase
-      userId, // The user ID
-      userType, // 'student_platform_plan', 'teacher_platform_plan', 'student_teacher_plan'
-      // other notes like teacherIdForPlan, referralCodeUsed, productDescription might be here
+      planId: clientPlanId, 
+      userId: clientUserId, 
+      userType: clientUserType,
+      productDescription: clientProductDescription,
+      teacherIdForPlan: clientTeacherIdForPlan,
+      referralCodeUsed: clientReferralCodeUsed,
     } = body;
 
-    console.log("[Razorpay Verify Payment INFO] Received verification request. Body (excluding sensitive details):", { razorpay_order_id, planId, userId, userType });
+    console.log("[Razorpay Verify Payment INFO] Received verification request. Body (excluding sensitive details):", { razorpay_order_id, clientPlanId, clientUserId, clientUserType });
 
-    if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature || !planId || !userId || !userType) {
+    if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature || !clientPlanId || !clientUserId || !clientUserType) {
       return NextResponse.json({ error: "Missing required payment verification details." }, { status: 400 });
+    }
+    if (clientUserType === 'student_teacher_plan' && !clientTeacherIdForPlan) {
+      return NextResponse.json({ error: 'Missing teacherIdForPlan for student subscribing to a teacher plan.' }, { status: 400 });
     }
 
     const textToHash = `${razorpay_order_id}|${razorpay_payment_id}`;
     const generated_signature = crypto.createHmac('sha256', RAZORPAY_KEY_SECRET).update(textToHash).digest('hex');
 
     if (generated_signature !== razorpay_signature) {
-      console.warn(`[Razorpay Verify Payment WARN] Signature mismatch. Redirecting to failure status.`);
-      return NextResponse.redirect(Routes.paymentStatusPage(razorpay_order_id, 'failure', planId, "Payment verification failed (signature mismatch)."), 302);
+      console.warn(`[Razorpay Verify Payment WARN] Signature mismatch. Order ID: ${razorpay_order_id}. Redirecting to failure status.`);
+      const failureRedirectUrl = new URL(`${APP_BASE_URL}${Routes.paymentStatusPage(razorpay_order_id, 'failure', clientPlanId, "Payment verification failed (security check).")}`);
+      return NextResponse.redirect(failureRedirectUrl.toString(), 302);
     }
 
-    console.log(`[Razorpay Verify Payment INFO] Signature verified. Fetching order details from Razorpay for order_id: ${razorpay_order_id}`);
+    console.log(`[Razorpay Verify Payment INFO] Signature verified for order ${razorpay_order_id}. Fetching order details from Razorpay...`);
     const orderDetailsFromRazorpay = await instance.orders.fetch(razorpay_order_id);
     console.log("[Razorpay Verify Payment INFO] Order details from Razorpay:", orderDetailsFromRazorpay);
 
-    if (String(orderDetailsFromRazorpay.notes.userId) !== String(userId) ||
-        String(orderDetailsFromRazorpay.notes.planId) !== String(planId) ||
-        String(orderDetailsFromRazorpay.notes.userType) !== String(userType)) {
-      console.error("[Razorpay Verify Payment ERROR] Mismatch between client notes and Razorpay order notes.");
-       return NextResponse.redirect(Routes.paymentStatusPage(razorpay_order_id, 'error', planId, "Order details mismatch. Verification failed."), 302);
-    }
-    if (orderDetailsFromRazorpay.status !== 'paid') {
-      console.warn(`[Razorpay Verify Payment WARN] Razorpay order status is not 'paid'. Status: ${orderDetailsFromRazorpay.status}`);
-      return NextResponse.redirect(Routes.paymentStatusPage(razorpay_order_id, 'failure', planId, `Payment not completed successfully. Status: ${orderDetailsFromRazorpay.status}`), 302);
+    if (String(orderDetailsFromRazorpay.notes.userId) !== String(clientUserId) ||
+        String(orderDetailsFromRazorpay.notes.planId) !== String(clientPlanId) ||
+        String(orderDetailsFromRazorpay.notes.userType) !== String(clientUserType) ||
+        (clientUserType === 'student_teacher_plan' && String(orderDetailsFromRazorpay.notes.teacherIdForPlan) !== String(clientTeacherIdForPlan))
+    ) {
+      console.error("[Razorpay Verify Payment ERROR] Mismatch between client-sent notes and Razorpay order notes.", { clientNotes: { clientUserId, clientPlanId, clientUserType, clientTeacherIdForPlan }, razorpayNotes: orderDetailsFromRazorpay.notes });
+      const errorRedirectUrl = new URL(`${APP_BASE_URL}${Routes.paymentStatusPage(razorpay_order_id, 'error', clientPlanId, "Order details mismatch during verification. Please contact support.")}`);
+      return NextResponse.redirect(errorRedirectUrl.toString(), 302);
     }
 
-    // Payment is authentic and paid
+    if (orderDetailsFromRazorpay.status !== 'paid') {
+      console.warn(`[Razorpay Verify Payment WARN] Razorpay order status is not 'paid'. Status: ${orderDetailsFromRazorpay.status}. Order ID: ${razorpay_order_id}`);
+      const failureRedirectUrl = new URL(`${APP_BASE_URL}${Routes.paymentStatusPage(razorpay_order_id, 'failure', clientPlanId, `Payment not completed successfully. Status: ${orderDetailsFromRazorpay.status}`)}`);
+      return NextResponse.redirect(failureRedirectUrl.toString(), 302);
+    }
+    
     console.log(`[Razorpay Verify Payment INFO] Payment for order ${razorpay_order_id} is authentic and paid.`);
 
     if (!pbAdmin) {
-        console.error("[Razorpay Verify Payment ERROR] Database admin client not initialized. Cannot create activation token.");
-        return NextResponse.redirect(Routes.paymentStatusPage(razorpay_order_id, 'error', planId, "Server configuration error (DB_ADMIN_TOKEN_FAIL). Plan update pending. Contact support."), 302);
+        console.error("[Razorpay Verify Payment ERROR] Database admin client not initialized. Cannot create activation token. This is a server configuration issue (PB_ADMIN_INIT_FAIL).");
+        const errorRedirectUrl = new URL(`${APP_BASE_URL}${Routes.paymentStatusPage(razorpay_order_id, 'error', clientPlanId, "Server configuration error (PB_ADMIN_TOKEN_FAIL). Plan update pending. Contact support.")}`);
+        return NextResponse.redirect(errorRedirectUrl.toString(), 302);
     }
 
-    // Generate activation token
     const activationToken = crypto.randomBytes(32).toString('hex');
-    const expiryDate = new Date();
-    expiryDate.setHours(expiryDate.getHours() + 1); // Token valid for 1 hour
+    const expiryDateToken = new Date();
+    expiryDateToken.setHours(expiryDateToken.getHours() + 1); // Token valid for 1 hour
 
     try {
-      await pbAdmin.collection('plan_activation_tokens').create({
+      const tokenDataToCreate: Record<string, any> = {
         token: activationToken,
-        user_id: userId,
-        plan_id_to_activate: planId,
+        user_id: clientUserId,
+        plan_id_to_activate: clientPlanId,
         order_id: razorpay_order_id,
         used: false,
-        expires_at: expiryDate.toISOString(),
-      });
-      console.log(`[Razorpay Verify Payment INFO] Activation token created for order ${razorpay_order_id}, user ${userId}, plan ${planId}.`);
+        expires_at: expiryDateToken.toISOString(),
+      };
+      // Add context specific to userType for the activation API
+      if (clientUserType === 'student_teacher_plan' && clientTeacherIdForPlan) {
+        tokenDataToCreate.context_teacher_id = clientTeacherIdForPlan;
+      }
+      if (clientReferralCodeUsed) {
+        tokenDataToCreate.context_referral_code = clientReferralCodeUsed;
+      }
+      // Add userType to the token context for the activation API
+      tokenDataToCreate.context_user_type = clientUserType;
 
-      // Redirect to the new activation page with the token and planSlug
-      const planSlug = slugify(planId); // Assuming planId is like "Full_length" or "Combo"
-      const activationUrl = Routes.activatePlan(activationToken, planSlug);
+
+      await pbAdmin.collection('plan_activation_tokens').create(tokenDataToCreate);
+      console.log(`[Razorpay Verify Payment INFO] Activation token created for order ${razorpay_order_id}, user ${clientUserId}, plan ${clientPlanId}.`);
+
+      const planSlug = slugify(clientPlanId); 
+      const activationUrlPath = Routes.activatePlan(activationToken, planSlug);
+      const fullActivationUrl = new URL(`${APP_BASE_URL}${activationUrlPath}`);
       
-      console.log(`[Razorpay Verify Payment INFO] Redirecting to activation URL: ${APP_BASE_URL}${activationUrl}`);
-      return NextResponse.redirect(`${APP_BASE_URL}${activationUrl}`, 302);
+      console.log(`[Razorpay Verify Payment INFO] Redirecting to activation URL: ${fullActivationUrl.toString()}`);
+      return NextResponse.redirect(fullActivationUrl.toString(), 302);
 
     } catch (tokenError: any) {
       console.error("[Razorpay Verify Payment ERROR] Failed to create activation token in DB:", tokenError.data || tokenError.message, "Full Error:", tokenError);
-      return NextResponse.redirect(Routes.paymentStatusPage(razorpay_order_id, 'error', planId, "Failed to generate activation link. Please contact support. (TOKEN_DB_FAIL)"), 302);
+      const errorRedirectUrl = new URL(`${APP_BASE_URL}${Routes.paymentStatusPage(razorpay_order_id, 'error', clientPlanId, "Failed to generate activation link. Please contact support. (TOKEN_DB_FAIL)")}`);
+      return NextResponse.redirect(errorRedirectUrl.toString(), 302);
     }
 
   } catch (error: any) {
@@ -133,9 +156,10 @@ export async function POST(request: NextRequest) {
     if (error.response?.data?.error?.description) errorMessage = error.response.data.error.description;
     else if (error.data?.message) errorMessage = error.data.message;
     else if (error.message) errorMessage = error.message;
-    // Use a generic order_id if not available in error context
     const orderIdFromError = error.response?.data?.metadata?.order_id || 'N/A_VERIFY_ERROR';
-    return NextResponse.redirect(Routes.paymentStatusPage(orderIdFromError, 'error', 'UnknownPlan', errorMessage), 302);
+    const clientPlanIdFromError = error.response?.data?.metadata?.notes?.planId || 'UnknownPlan';
+    const errorRedirectUrl = new URL(`${APP_BASE_URL}${Routes.paymentStatusPage(orderIdFromError, 'error', clientPlanIdFromError, errorMessage)}`);
+    return NextResponse.redirect(errorRedirectUrl.toString(), 302);
   }
 }
 
@@ -148,4 +172,3 @@ export async function OPTIONS() {
     }
   });
 }
-    
