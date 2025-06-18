@@ -1,9 +1,10 @@
 
+      
 [
     {
         "id": "pbc_3669383003",
-        "listRule": "@request.auth.id != ''",
-        "viewRule": "@request.auth.id != ''",
+        "listRule": "@request.auth.id != \"\"",
+        "viewRule": "@request.auth.id != \"\"",
         "createRule": "@request.auth.id != \"\" && teacher = @request.auth.id",
         "updateRule": "@request.auth.id != \"\" && teacher = @request.auth.id",
         "deleteRule": "@request.auth.id != \"\" && teacher = @request.auth.id",
@@ -31,7 +32,7 @@
                 "hidden": false,
                 "id": "relation2968954581",
                 "maxSelect": 1,
-                "minSelect": 0,
+                "minSelect": 1,
                 "name": "teacher",
                 "presentable": false,
                 "required": true,
@@ -60,7 +61,7 @@
                 "min": null,
                 "name": "OptionAText",
                 "pattern": "",
-                "presentable": false,
+                "presentable": true,
                 "primaryKey": false,
                 "required": false,
                 "system": false,
@@ -74,7 +75,7 @@
                 "min": null,
                 "name": "OptionBText",
                 "pattern": "",
-                "presentable": false,
+                "presentable": true,
                 "primaryKey": false,
                 "required": false,
                 "system": false,
@@ -88,7 +89,7 @@
                 "min": null,
                 "name": "OptionCText",
                 "pattern": "",
-                "presentable": false,
+                "presentable": true,
                 "primaryKey": false,
                 "required": false,
                 "system": false,
@@ -102,7 +103,7 @@
                 "min": null,
                 "name": "OptionDText",
                 "pattern": "",
-                "presentable": false,
+                "presentable": true,
                 "primaryKey": false,
                 "required": false,
                 "system": false,
@@ -114,10 +115,10 @@
                 "maxSelect": 1,
                 "name": "CorrectOption",
                 "presentable": true,
-                "required": false,
+                "required": true,
                 "system": false,
                 "type": "select",
-                "options": {
+                "options": { 
                     "maxSelect": 1,
                     "values": [
                         "Option A",
@@ -128,18 +129,24 @@
                 }
             },
             {
-                "autogeneratePattern": "",
+                "cascadeDelete": false,
+                "collectionId": "pbc_2863365490",
                 "hidden": false,
-                "id": "text2387766769",
-                "max": null,
-                "min": null,
-                "name": "LessonName",
-                "pattern": "",
+                "id": "relation3239013921",
+                "maxSelect": 1,
+                "minSelect": 1,
+                "name": "lessonName", 
                 "presentable": true,
-                "primaryKey": false,
-                "required": true,
+                "required": true, 
                 "system": false,
-                "type": "text"
+                "type": "relation",
+                "options": {
+                    "collectionId": "pbc_2863365490",
+                    "cascadeDelete": false,
+                    "minSelect": 1,
+                    "maxSelect": 1,
+                    "displayFields": ["testName"] 
+                }
             },
             {
                 "autogeneratePattern": "",
@@ -163,7 +170,7 @@
                 "min": null,
                 "name": "explanationText",
                 "pattern": "",
-                "presentable": false,
+                "presentable": true,
                 "primaryKey": false,
                 "required": false,
                 "system": false,
@@ -186,7 +193,7 @@
                 "id": "url486157856",
                 "name": "OptionAImage",
                 "onlyDomains": null,
-                "presentable": false,
+                "presentable": true,
                 "required": false,
                 "system": false,
                 "type": "url"
@@ -197,7 +204,7 @@
                 "id": "url2590923918",
                 "name": "OptionBImage",
                 "onlyDomains": null,
-                "presentable": false,
+                "presentable": true,
                 "required": false,
                 "system": false,
                 "type": "url"
@@ -208,7 +215,7 @@
                 "id": "url1362267947",
                 "name": "OptionCImage",
                 "onlyDomains": null,
-                "presentable": false,
+                "presentable": true,
                 "required": false,
                 "system": false,
                 "type": "url"
@@ -219,7 +226,7 @@
                 "id": "url1278721939",
                 "name": "OptionDImage",
                 "onlyDomains": null,
-                "presentable": false,
+                "presentable": true,
                 "required": false,
                 "system": false,
                 "type": "url"
@@ -230,7 +237,7 @@
                 "id": "url2014677041",
                 "name": "explanationImage",
                 "onlyDomains": null,
-                "presentable": false,
+                "presentable": true,
                 "required": false,
                 "system": false,
                 "type": "url"
@@ -256,7 +263,12 @@
                 "type": "autodate"
             }
         ],
-        "indexes": [],
+        "indexes": [
+            "CREATE INDEX idx_teacher_q_data_teacher ON teacher_question_data (teacher)",
+            "CREATE INDEX idx_teacher_q_data_lesson_exam ON teacher_question_data (lessonName, QBExam)"
+        ],
         "system": false
     }
 ]
+
+    
