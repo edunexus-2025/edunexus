@@ -4,7 +4,7 @@
 import type { User, UserSubscriptionTierStudent, UserSubscriptionTierTeacher } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Routes, AppConfig, escapeForPbFilter } from '@/lib/constants'; 
+import { Routes, AppConfig, escapeForPbFilter, teacherPlatformPlansData } from '@/lib/constants';
 import pb from '@/lib/pocketbase';
 import type { RecordModel, ClientResponseError } from 'pocketbase';
 import type { SignupInput, EditProfileInput, TeacherSignupInput, TeacherLoginInput } from '@/lib/schemas';
@@ -33,7 +33,7 @@ const createInitialAppReferralStats = (pbStats?: Record<string, number | undefin
   const validPbStats = pbStats && typeof pbStats === 'object' ? pbStats : {};
 
   for (const tier of appReferralTierKeys) {
-    const pbKey = `referred_${tier.toLowerCase().replace(/\s+/g, '_')}`; 
+    const pbKey = `referred_${tier.toLowerCase().replace(/\s+/g, '_')}`;
     appStats[tier] = validPbStats[pbKey] !== undefined ? Number(validPbStats[pbKey]) : 0;
   }
   return appStats;
@@ -42,7 +42,7 @@ const createInitialAppReferralStats = (pbStats?: Record<string, number | undefin
 const createInitialPocketBaseReferralStats = (): Record<string, number> => {
   const pbStats: Record<string, number> = {};
   appReferralTierKeys.forEach(tier => {
-    
+
     const pbKey = `referred_${tier.toLowerCase().replace(/\s+/g, '_')}`;
     pbStats[pbKey] = 0;
   });
@@ -64,11 +64,19 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
   let adsSubscriptionTeacher: User['ads_subscription'] = 'Free';
   let phoneNumberMapped: string | undefined = undefined;
   let maxContentPlansAllowed: number | undefined = undefined;
+  let subscriptionByTeacherArray: string[] = [];
 
 
   if (record.collectionName === 'users') {
     studentSubTier = (record.model || 'Free') as UserSubscriptionTierStudent;
     phoneNumberMapped = record.phone as User['phoneNumber'];
+    if (record.subscription_by_teacher) {
+        if (Array.isArray(record.subscription_by_teacher)) {
+            subscriptionByTeacherArray = record.subscription_by_teacher.filter(id => typeof id === 'string' && id.trim() !== '');
+        } else if (typeof record.subscription_by_teacher === 'string' && record.subscription_by_teacher.trim() !== '') {
+            subscriptionByTeacherArray = [record.subscription_by_teacher.trim()];
+        }
+    }
   } else if (record.collectionName === 'teacher_data') {
     teacherSubTier = (record.teacherSubscriptionTier || 'Free') as UserSubscriptionTierTeacher;
     canCreateAdsTeacher = record.can_create_ads === true;
@@ -76,18 +84,18 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
     phoneNumberMapped = record.phone_number as User['phoneNumber'];
     maxContentPlansAllowed = typeof record.max_content_plans_allowed === 'number' ? record.max_content_plans_allowed : undefined;
   }
-  
+
   const name = record.name || record.meta?.name;
-  let avatarUrl = record.avatarUrl || record.meta?.avatarUrl; 
-  
-  if (!avatarUrl) { 
+  let avatarUrl = record.avatarUrl || record.meta?.avatarUrl;
+
+  if (!avatarUrl) {
     if (record.profile_picture && record.collectionId && record.collectionName) {
       avatarUrl = pb.files.getUrl(record, record.profile_picture as string);
     } else if (record.avatar && record.collectionId && record.collectionName) {
       avatarUrl = pb.files.getUrl(record, record.avatar as string);
     }
   }
-  if (!avatarUrl && name) { 
+  if (!avatarUrl && name) {
     avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name.charAt(0) || 'U')}&background=random&color=fff&size=128`;
   }
 
@@ -97,16 +105,16 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
     email: record.email || record.meta?.email || '',
     name: name || '',
     username: record.username,
-    verified: record.verified ?? record.meta?.emailVerification, 
+    verified: record.verified ?? record.meta?.emailVerification,
     emailVisibility: record.emailVisibility ?? true,
     grade: record.class as User['grade'],
-    phoneNumber: phoneNumberMapped, 
+    phoneNumber: phoneNumberMapped,
     studentSubscriptionTier: studentSubTier,
     teacherSubscriptionTier: teacherSubTier,
     role: record.role as User['role'],
     avatarUrl: avatarUrl,
-    avatar: record.avatar, 
-    profile_picture: record.profile_picture, 
+    avatar: record.avatar,
+    profile_picture: record.profile_picture,
     favExam: record.favExam as User['favExam'],
     totalPoints: record.totalPoints as User['totalPoints'],
     targetYear: record.targetYear as User['targetYear'],
@@ -130,9 +138,9 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
     updated: record.updated,
     collectionId: record.collectionId,
     collectionName: record.collectionName,
-    subscription_by_teacher: record.subscription_by_teacher,
+    subscription_by_teacher: subscriptionByTeacherArray,
   };
-  
+
   if (mappedUser.collectionName === 'users' && (record.token || record.meta?.token) ) {  // Check both record.token and meta.token
       // Check if critical profile fields are missing for a student
       if (!mappedUser.favExam || !mappedUser.grade || !mappedUser.targetYear || !record.password) { // Password check is for initial setup
@@ -155,7 +163,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (pb.authStore.isValid && currentModel) {
       try {
         if (currentModel.collectionName === 'users') setIsLoading(true); else setIsLoadingTeacher(true);
-        
+
         const tokenParts = pb.authStore.token.split('.');
         let tokenRefreshNeeded = true;
         if (tokenParts.length === 3) {
@@ -164,7 +172,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (payload.exp) {
               const expiryDate = new Date(payload.exp * 1000);
               const oneDayFromNow = new Date(Date.now() + 24 * 60 * 60 * 1000);
-              if (expiryDate > oneDayFromNow) { 
+              if (expiryDate > oneDayFromNow) {
                 tokenRefreshNeeded = false;
               }
             }
@@ -174,14 +182,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         let refreshedAuthModel = currentModel;
         if (tokenRefreshNeeded) {
            const refreshed = await pb.collection(currentModel.collectionName).authRefresh({ '$autoCancel': false });
-           refreshedAuthModel = refreshed.record || refreshed.meta?.user || currentModel; 
+           refreshedAuthModel = refreshed.record || refreshed.meta?.user || currentModel;
         }
-        
-        const mappedEntity = mapRecordToUser(refreshedAuthModel); 
-        
+
+        const mappedEntity = mapRecordToUser(refreshedAuthModel);
+
         if (currentModel.collectionName === 'users') {
           setUserState(mappedEntity);
-          setTeacherState(null); 
+          setTeacherState(null);
         } else if (currentModel.collectionName === 'teacher_data') {
           setTeacherState(mappedEntity);
           setUserState(null);
@@ -193,30 +201,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } else {
             console.warn('AuthContext (authRefresh): authRefresh failed for other reasons, clearing store:', error);
         }
-        pb.authStore.clear(); 
+        pb.authStore.clear();
       } finally {
         const finalModel = pb.authStore.model;
         if (pb.authStore.isValid && finalModel) {
             if (finalModel.collectionName === 'users') {
                 setIsLoading(false);
-                setIsLoadingTeacher(false); 
+                setIsLoadingTeacher(false);
             } else if (finalModel.collectionName === 'teacher_data') {
                 setIsLoadingTeacher(false);
-                setIsLoading(false); 
+                setIsLoading(false);
             } else {
                 setUserState(null);
                 setTeacherState(null);
                 setIsLoading(false);
                 setIsLoadingTeacher(false);
             }
-        } else { 
-            setUserState(null); 
+        } else {
+            setUserState(null);
             setTeacherState(null);
             setIsLoading(false);
             setIsLoadingTeacher(false);
         }
       }
-    } else { 
+    } else {
       setUserState(null);
       setTeacherState(null);
       setIsLoading(false);
@@ -226,7 +234,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 
   useEffect(() => {
-    let isMounted = true; 
+    let isMounted = true;
     const initializeAuth = async () => {
       if (!isMounted) return;
 
@@ -245,7 +253,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
            } else {
              console.warn('AuthContext (initializeAuth): Initial auth refresh failed, clearing store:', refreshError);
            }
-           pb.authStore.clear(); 
+           pb.authStore.clear();
         }
       } else if (
         process.env.NEXT_PUBLIC_POCKETBASE_EMAIL &&
@@ -279,34 +287,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const unsubscribe = pb.authStore.onChange(async (token, model) => {
-      if (!isMounted) return; 
+      if (!isMounted) return;
 
       const isStudentCollection = model?.collectionName === 'users';
       const isTeacherCollection = model?.collectionName === 'teacher_data';
 
-      if (isStudentCollection) { setIsLoading(true); setIsLoadingTeacher(false); } 
-      else if (isTeacherCollection) { setIsLoadingTeacher(true); setIsLoading(false); } 
+      if (isStudentCollection) { setIsLoading(true); setIsLoadingTeacher(false); }
+      else if (isTeacherCollection) { setIsLoadingTeacher(true); setIsLoading(false); }
       else { setIsLoading(true); setIsLoadingTeacher(true); }
 
       if (model && model.id) {
         try {
           if (!isMounted) return;
-          // Ensure to fetch all necessary fields including max_content_plans_allowed for teachers
           const fieldsToFetch = model.collectionName === 'teacher_data'
-            ? '*,max_content_plans_allowed,referralStats' // Add other teacher-specific fields if needed
-            : '*,referralStats'; // Student fields
+            ? '*,max_content_plans_allowed,referralStats,subscription_by_teacher'
+            : '*,referralStats,subscription_by_teacher';
 
           const refreshedRecord = await pb.collection(model.collectionName).getOne(model.id, { '$autoCancel': false, expand: 'referralStats', fields: fieldsToFetch });
-          if (!isMounted) return; 
+          if (!isMounted) return;
           const mappedEntity = mapRecordToUser(refreshedRecord);
-          
+
           if (isStudentCollection) {
             setUserState(mappedEntity);
             setTeacherState(null);
           } else if (isTeacherCollection) {
             setTeacherState(mappedEntity);
             setUserState(null);
-          } else { 
+          } else {
             setUserState(null);
             setTeacherState(null);
           }
@@ -320,17 +327,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
              errorMessage = `AuthContext (onChange): Unhandled error fetching full model for ${model.id}. Clearing authStore.`;
           }
           console.warn(errorMessage, clientError);
-          pb.authStore.clear(); 
+          pb.authStore.clear();
         } finally {
           if (isMounted) {
             const currentAuthModel = pb.authStore.model;
             if (pb.authStore.isValid && currentAuthModel && currentAuthModel.id === model?.id) {
                 if (currentAuthModel.collectionName === 'users') {
                     setIsLoading(false);
-                    setIsLoadingTeacher(false); 
+                    setIsLoadingTeacher(false);
                 } else if (currentAuthModel.collectionName === 'teacher_data') {
                     setIsLoadingTeacher(false);
-                    setIsLoading(false); 
+                    setIsLoading(false);
                 } else {
                     setIsLoading(false);
                     setIsLoadingTeacher(false);
@@ -343,13 +350,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
           }
         }
-      } else { 
+      } else {
         setUserState(null);
         setTeacherState(null);
         setIsLoading(false);
         setIsLoadingTeacher(false);
       }
-    }, true); 
+    }, true);
 
     initializeAuth();
 
@@ -362,7 +369,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
-    setIsLoadingTeacher(true); 
+    setIsLoadingTeacher(true);
     try {
       await pb.collection('users').authWithPassword(email, password);
       return true;
@@ -391,9 +398,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signup = async (details: SignupInput): Promise<boolean> => {
     setIsLoading(true);
     setIsLoadingTeacher(true);
-    
+
     const avatarPlaceholderUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(details.name.charAt(0).toUpperCase() || 'U')}&background=random&color=fff&size=128`;
-    const newReferralCode = generateUniqueReferralCode(); 
+    const newReferralCode = generateUniqueReferralCode();
 
     const dataForNewUser = {
       email: details.email,
@@ -401,24 +408,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       passwordConfirm: details.confirmPassword,
       name: details.name,
       phone: details.phoneNumber,
-      class: details.grade, 
-      model: 'Free' as UserSubscriptionTierStudent, 
-      role: 'User' as User['role'], 
-      avatarUrl: avatarPlaceholderUrl, 
+      class: details.grade,
+      model: 'Free' as UserSubscriptionTierStudent,
+      role: 'User' as User['role'],
+      avatarUrl: avatarPlaceholderUrl,
       favExam: details.favExam,
       targetYear: parseInt(details.targetYear, 10),
       totalPoints: 0,
-      referralCode: newReferralCode, 
+      referralCode: newReferralCode,
       referredByCode: details.referredByCode || null,
-      referralStats: createInitialPocketBaseReferralStats(), 
+      referralStats: createInitialPocketBaseReferralStats(),
       joineddate: new Date().toISOString(),
-      emailVisibility: true, 
+      emailVisibility: true,
       studyPlan: "No study plan created yet. Start by setting your goals!",
+      subscription_by_teacher: [], // Initialize as empty array
     };
 
     try {
       const createdUserRecord = await pb.collection('users').create(dataForNewUser);
-      
+
       if (details.referredByCode && details.referredByCode.trim() !== '') {
         if (details.referredByCode.trim().toUpperCase() === newReferralCode.toUpperCase()) {
           console.warn("AuthContext (Student Signup): User attempted to use their own generated referral code. Skipping referral update for referrer.");
@@ -427,15 +435,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           try {
             const referringUserRecords = await pb.collection('users').getFullList<RecordModel>({
               filter: `referralCode = "${escapeForPbFilter(details.referredByCode.trim())}"`,
-              fields: 'id, referralCode, referralStats', 
+              fields: 'id, referralCode, referralStats',
             });
 
             if (referringUserRecords.length > 0) {
               referringUser = referringUserRecords[0];
-              const currentStats = referringUser.referralStats && typeof referringUser.referralStats === 'object' 
-                                  ? { ...createInitialPocketBaseReferralStats(), ...referringUser.referralStats } 
+              const currentStats = referringUser.referralStats && typeof referringUser.referralStats === 'object'
+                                  ? { ...createInitialPocketBaseReferralStats(), ...referringUser.referralStats }
                                   : createInitialPocketBaseReferralStats();
-              
+
               const newStudentTierPbKey = `referred_free`;
               currentStats[newStudentTierPbKey] = (currentStats[newStudentTierPbKey] || 0) + 1;
 
@@ -456,40 +464,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
         }
       }
-      
+
       await pb.collection('users').authWithPassword(details.email, details.password);
       return true;
     } catch (error: any) {
       console.error('AuthContext (Student Signup): PocketBase signup error. Full error:', error, 'Error data:', error.data, 'Error message:', error.message);
-      setIsLoading(false); 
+      setIsLoading(false);
       setIsLoadingTeacher(false);
-      throw error; 
+      throw error;
     }
   };
 
   const teacherSignup = async (details: TeacherSignupInput): Promise<boolean> => {
     setIsLoadingTeacher(true);
     setIsLoading(true);
-    
+
     const dataForPocketBase: Record<string, any> = {
         email: details.email,
         password: details.password,
         passwordConfirm: details.confirmPassword,
         name: details.name,
         institute_name: details.institute_name || null,
-        phone_number: details.phone_number, 
+        phone_number: details.phone_number,
         total_students: details.total_students,
         level: details.level,
         EduNexus_Name: details.EduNexus_Name,
-        favExam: details.favExam && details.favExam.length > 0 ? details.favExam : null, 
+        favExam: details.favExam && details.favExam.length > 0 ? details.favExam : null,
         about: details.about || null,
         subjects_offered: details.subjects_offered && details.subjects_offered.length > 0 ? details.subjects_offered : null,
         teacherSubscriptionTier: "Free" as UserSubscriptionTierTeacher,
         used_free_trial: false,
         emailVisibility: true,
-        can_create_ads: false, 
-        ads_subscription: "Free", 
+        can_create_ads: false,
+        ads_subscription: "Free",
         max_content_plans_allowed: teacherPlatformPlansData.find(p => p.id === 'Free')?.maxContentPlans ?? 0,
+        subscription_takenby_student: [], // Initialize as empty array
     };
 
     if (!details.profile_picture) {
@@ -509,7 +518,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (details.profile_picture) {
         formData.append('profile_picture', details.profile_picture);
     }
-    
+
     try {
       await pb.collection('teacher_data').create(formData);
       await pb.collection('teacher_data').authWithPassword(details.email, details.password);
@@ -525,13 +534,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const teacherLogin = async (email: string, password: string): Promise<boolean> => {
     setIsLoadingTeacher(true);
-    setIsLoading(true); 
+    setIsLoading(true);
     try {
       await pb.collection('teacher_data').authWithPassword(email, password);
       return true;
     } catch (error: any) {
       setIsLoadingTeacher(false);
-      setIsLoading(false); 
+      setIsLoading(false);
       return false;
     }
   };
@@ -542,13 +551,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.warn("updateUserProfile: No active user or ID mismatch.");
         return false;
     }
-    
+
     const collectionName = activeAuthUser.collectionName === 'teacher_data' ? 'teacher_data' : 'users';
     const dataToUpdate: Record<string, any> = {};
 
     if ('favExam' in data && data.favExam) dataToUpdate.favExam = data.favExam;
     if ('targetYear' in data && data.targetYear) dataToUpdate.targetYear = parseInt(data.targetYear, 10);
-    if ('grade' in data && data.grade) dataToUpdate.class = data.grade; 
+    if ('grade' in data && data.grade) dataToUpdate.class = data.grade;
 
     if ('password' in data && data.password && 'confirmPassword' in data && data.confirmPassword) {
       dataToUpdate.password = data.password;
@@ -557,15 +566,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if ('referredByCode' in data && data.referredByCode && typeof data.referredByCode === 'string' && data.referredByCode.trim() !== '') {
         dataToUpdate.referredByCode = data.referredByCode.trim();
     }
+    // For teacher profile updates:
+    if (collectionName === 'teacher_data') {
+        if ('name' in data) dataToUpdate.name = data.name;
+        if ('institute_name' in data) dataToUpdate.institute_name = data.institute_name;
+        if ('phone_number' in data) dataToUpdate.phone_number = data.phone_number;
+        if ('total_students' in data) dataToUpdate.total_students = data.total_students;
+        if ('level' in data) dataToUpdate.level = data.level;
+        if ('EduNexus_Name' in data) dataToUpdate.EduNexus_Name = data.EduNexus_Name;
+        if ('teacherFavExams' in data) dataToUpdate.favExam = data.teacherFavExams; // Note: PB field is 'favExam' for teachers too
+        if ('about' in data) dataToUpdate.about = data.about;
+        if ('subjects_offered' in data) dataToUpdate.subjects_offered = data.subjects_offered;
+        if ('profile_picture' in data && data.profile_picture instanceof File) {
+            // If a File object is passed, it should be handled by FormData if updateUserProfile were to use it.
+            // For now, if direct data update is used, this would need pre-upload or be part of a FormData update.
+            // This simplified updateUserProfile assumes simple field updates, not file uploads.
+            // File uploads should be handled separately or this function adapted for FormData.
+            // For this use case, profile_picture update is handled in teacher settings more directly.
+        } else if ('profile_picture' in data && data.profile_picture === null) {
+            dataToUpdate.profile_picture = null; // To clear existing
+        }
+    }
+
 
     if (Object.keys(dataToUpdate).length === 0) {
       console.log("updateUserProfile: No actual data to update.");
-      return true; 
+      return true;
     }
-    
+
     try {
       await pb.collection(collectionName).update(userId, dataToUpdate);
-      await authRefresh(); 
+      await authRefresh();
       return true;
     } catch (error) {
       console.error(`AuthContext: PocketBase update ${collectionName} profile error:`, error);
@@ -584,14 +615,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ 
-        user, 
-        teacher, 
-        isLoading, 
-        isLoadingTeacher, 
-        login, 
-        signup, 
-        logout, 
+    <AuthContext.Provider value={{
+        user,
+        teacher,
+        isLoading,
+        isLoadingTeacher,
+        login,
+        signup,
+        logout,
         updateUserProfile,
         teacherSignup,
         teacherLogin,
@@ -609,5 +640,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-    

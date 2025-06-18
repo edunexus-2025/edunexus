@@ -17,7 +17,6 @@ export interface Plan {
   isRecommended?: boolean;
   commissionRate?: number; // For teacher platform plans
   maxContentPlans?: number; // For teacher platform plans
-  // maxStudentsPerContentPlan?: number | 'Unlimited'; // Removed this line
   qbAccess?: boolean; // For teacher platform plans
 }
 
@@ -60,14 +59,13 @@ export type User = {
   used_free_trial?: boolean;
   can_create_ads?: boolean;
   ads_subscription?: 'Free' | 'Ads Model';
-  max_content_plans_allowed?: number; 
-  // max_students_per_content_plan?: number | 'Unlimited'; // Removed this line
+  max_content_plans_allowed?: number;
 
   created?: string;
   updated?: string;
   collectionId?: string;
   collectionName?: string;
-  subscription_by_teacher?: string[];
+  subscription_by_teacher?: string[]; // Ensure this is always an array
   needsProfileCompletion?: boolean;
 };
 
@@ -152,13 +150,13 @@ export interface DiscussionGroup {
 }
 
 export interface ChallengeInviteRecord extends RecordModel {
-    student: string; 
-    created_challenged_data: string; 
-    Accepted_or_not?: boolean | null | undefined; 
+    student: string;
+    created_challenged_data: string;
+    Accepted_or_not?: boolean | null | undefined;
     expand?: {
-      created_challenged_data?: { 
+      created_challenged_data?: {
         id: string;
-        student: string; 
+        student: string;
         Subject: string;
         Lesson: string;
         number_of_question: number;
@@ -166,12 +164,12 @@ export interface ChallengeInviteRecord extends RecordModel {
         Exam_specific_questions?: string;
         duration?: number;
         challenge_name?: string;
-        status?: 'pending' | 'active' | 'completed' | 'expired' | 'cancelled'; 
+        status?: 'pending' | 'active' | 'completed' | 'expired' | 'cancelled';
         expires_at?: string;
-        created: string; 
-        expiry_time_min: number; 
+        created: string;
+        expiry_time_min: number;
         expand?: {
-          student?: { 
+          student?: {
             id: string;
             name: string;
             avatarUrl?: string;
@@ -202,7 +200,7 @@ export interface DiscussionMessage {
   repliedToMessageId?: string;
   repliedToMessageSnippet?: string;
   repliedToSenderName?: string;
-  repliedToIsCurrentUser?: boolean; 
+  repliedToIsCurrentUser?: boolean;
 
   any_image?: string;
   any_link?: string | undefined;
@@ -238,10 +236,28 @@ export interface TeacherPlan extends RecordModel {
   plan_point_3?: string;
   plan_point_4?: string;
   plan_point_5?: string;
-  total_student_intake?: number; 
-  enrolled_students?: string[]; 
-  // max_students?: number; // Removed this line
+  enrolled_students?: string[];
   created: string;
   updated: string;
   enrolledStudentCount?: number; // For client-side display
+}
+
+export interface StudentSubscribedPlan extends RecordModel {
+  id: string;
+  student: string;
+  teacher: string;
+  teachers_plan_id: string; // This is the relation to teachers_upgrade_plan
+  payment_status: 'pending' | 'successful' | 'failed' | 'refunded';
+  expiry_date?: string;
+  teachers_plan_name_cache?: string; // Cache of the plan name
+  created: string;
+  updated: string;
+  // Optional expand, if needed and permissions allow (currently not used due to permissions)
+  expand?: {
+    teachers_plan_id?: {
+      Plan_name: string;
+      plan_price: string;
+      plan: 'Monthly' | 'Weekly' | 'Yearly';
+    }
+  }
 }

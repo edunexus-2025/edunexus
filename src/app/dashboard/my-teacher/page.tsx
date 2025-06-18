@@ -10,13 +10,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import Link from 'next/link';
 import { ArrowLeft, BookOpenCheck, UserCircle, AlertCircle, ChevronRight, ListChecks, Clock, DollarSign, Info, ShieldCheck } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { User, TeacherPlan as TeacherPlanType } from '@/lib/types';
+import type { User, TeacherPlan as TeacherPlanType, StudentSubscribedPlan } from '@/lib/types';
 import pb from '@/lib/pocketbase';
 import type { RecordModel, ClientResponseError } from 'pocketbase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { format, isPast } from 'date-fns';
 
 interface TeacherDisplayedTest {
   id: string;
@@ -27,17 +28,6 @@ interface TeacherDisplayedTest {
   QBExam?: string;
   durationMinutes?: number;
   questionCount?: number;
-}
-
-interface StudentSubscribedPlan extends RecordModel {
-  id: string;
-  student: string;
-  teacher: string; 
-  teachers_plan_id: string;
-  payment_status: 'pending' | 'successful' | 'failed' | 'refunded';
-  expiry_date?: string; 
-  teachers_plan_name_cache?: string;
-  // expand is not used client-side for this type due to permission constraints
 }
 
 const mapPbTeacherTestToDisplay = (record: RecordModel): TeacherDisplayedTest => {
@@ -74,9 +64,11 @@ export default function MyTeacherPage() {
     }
     if (isMountedGetter()) { setIsLoadingPage(true); setError(null); }
 
+    const teacherIdArray = user.subscription_by_teacher;
     let teacherId: string | undefined = undefined;
-    if (Array.isArray(user.subscription_by_teacher) && user.subscription_by_teacher.length > 0 && user.subscription_by_teacher[0] && typeof user.subscription_by_teacher[0] === 'string' && user.subscription_by_teacher[0].trim() !== '') {
-        teacherId = user.subscription_by_teacher[0];
+
+    if (Array.isArray(teacherIdArray) && teacherIdArray.length > 0 && typeof teacherIdArray[0] === 'string' && teacherIdArray[0].trim() !== '') {
+      teacherId = teacherIdArray[0].trim();
     }
 
     if (!teacherId) {
@@ -91,7 +83,7 @@ export default function MyTeacherPage() {
 
     try {
       if (!isMountedGetter()) return;
-      
+
       let teacherRecordFetched: RecordModel | null = null;
       try {
         teacherRecordFetched = await pb.collection('teacher_data').getOne<RecordModel>(teacherId, {
@@ -107,11 +99,10 @@ export default function MyTeacherPage() {
             console.error("MyTeacherPage: Error fetching teacher_data:", teacherFetchError.data || teacherFetchError);
             setError(`Error fetching teacher details: ${teacherFetchError.data?.message || teacherFetchError.message}`);
           }
-          // setIsLoadingPage(false); // Moved to main finally block
         }
-        return; 
+        return;
       }
-      
+
       if (!isMountedGetter() || !teacherRecordFetched) return;
 
       let avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherRecordFetched.name?.charAt(0) || 'T')}&background=random&color=fff&size=128`;
@@ -133,14 +124,14 @@ export default function MyTeacherPage() {
       const contentPlansFilter = `teacher = "${escapeForPbFilter(teacherId)}"`;
       const contentPlanRecords = await pb.collection('teachers_upgrade_plan').getFullList<TeacherPlanType>({ filter: contentPlansFilter, sort: '-created', '$autoCancel': false });
       if (isMountedGetter()) setTeacherContentPlans(contentPlanRecords); else return;
-      
+
       if (user?.id && teacherId) {
         const studentSubscriptionFilter = `student = "${user.id}" && payment_status = "successful"`;
         console.log(`MyTeacherPage: Fetching current student's subscriptions with filter: ${studentSubscriptionFilter}`);
         try {
           const allStudentSubRecords = await pb.collection('students_teachers_upgrade_plan').getFullList<StudentSubscribedPlan>({
             filter: studentSubscriptionFilter,
-            sort: '-created',
+            sort: '-created', // Sort by creation to get the latest entry if multiple (though ideally should be latest expiry)
             fields: 'id,student,teacher,teachers_plan_id,payment_status,expiry_date,teachers_plan_name_cache,created',
             '$autoCancel': false,
           });
@@ -152,21 +143,22 @@ export default function MyTeacherPage() {
             if (relevantSubRecordsForThisTeacher.length > 0) {
               const now = new Date();
               const activeSubscriptions = relevantSubRecordsForThisTeacher.filter(sub => {
-                if (!sub.expiry_date) return true; 
+                if (!sub.expiry_date) return true; // No expiry means active (e.g., lifetime)
                 try {
-                  return new Date(sub.expiry_date) > now; 
+                  return !isPast(new Date(sub.expiry_date)); // Active if expiry is in the future
                 } catch (e) {
                   console.warn(`MyTeacherPage: Invalid expiry_date format for subscription ${sub.id}: ${sub.expiry_date}. Treating as expired.`);
-                  return false; 
+                  return false;
                 }
               });
 
               if (activeSubscriptions.length > 0) {
+                // If multiple active, pick the one that expires latest, or if no expiry, the most recently created
                 activeSubscriptions.sort((a, b) => {
                   const dateA = a.expiry_date ? new Date(a.expiry_date).getTime() : Infinity;
                   const dateB = b.expiry_date ? new Date(b.expiry_date).getTime() : Infinity;
-                  if (dateB !== dateA) return dateB - dateA; 
-                  return new Date(b.created).getTime() - new Date(a.created).getTime();
+                  if (dateB !== dateA) return dateB - dateA; // Latest expiry first
+                  return new Date(b.created).getTime() - new Date(a.created).getTime(); // Fallback to most recent creation
                 });
                 setCurrentStudentSubscription(activeSubscriptions[0]);
                 console.log("MyTeacherPage: Successfully set active student subscription for this teacher:", activeSubscriptions[0]);
@@ -184,7 +176,6 @@ export default function MyTeacherPage() {
             const clientError = subError as ClientResponseError;
             let specificErrorMessage = `Could not load your plan details with this teacher.`;
             if (clientError.status === 400) {
-              specificErrorMessage = `There appears to be an issue with your subscription data for this teacher. Please contact support. (Ref: STUP_INTEGRITY_400) This may be due to invalid teacher reference in your subscription record.`;
               console.error(
                 `MyTeacherPage: ClientResponseError 400 when fetching 'students_teachers_upgrade_plan'.
                 Filter used: "${studentSubscriptionFilter}".
@@ -192,18 +183,19 @@ export default function MyTeacherPage() {
                 Please verify data integrity in PocketBase for student "${user.id}" and teacher target "${teacherId}".
                 PocketBase error: ${JSON.stringify(clientError.data || {})} "Full Error:"`, clientError
               );
+              specificErrorMessage = `There appears to be an issue with your subscription data for this teacher. Please contact support. (Ref: STUP_INTEGRITY_400_MY_TEACHER) The 'teacher' field in the subscription record might be incorrect.`;
             } else if (clientError.status === 404) {
               setCurrentStudentSubscription(null);
-              console.log(`MyTeacherPage: No 'students_teachers_upgrade_plan' records found for student "${user.id}" with payment_status "successful".`);
-              specificErrorMessage = "No active subscription plan found with this teacher."; // More user-friendly for 404
+              console.log(`MyTeacherPage: No 'students_teachers_upgrade_plan' records found for student "${user.id}" with payment_status "successful". Filter was: ${studentSubscriptionFilter}`);
+              specificErrorMessage = "No active subscription plan found with this teacher.";
             } else if (clientError.isAbort || (clientError.name === 'ClientResponseError' && clientError.status === 0)) {
                 console.warn('MyTeacherPage: Fetch student subscriptions request was cancelled/network issue.');
                 specificErrorMessage = `Network issue loading your plan. Please refresh.`;
             } else {
               console.error(`MyTeacherPage: Other error fetching 'students_teachers_upgrade_plan' for student ${user.id}. Filter: ${studentSubscriptionFilter}. PB error:`, clientError.data || clientError.message, "Full Error:", clientError);
-              specificErrorMessage = `Could not load your plan status with this teacher due to a data access issue. (Ref: STUP_DATA_FAIL)`;
+              specificErrorMessage = `Could not load your plan status with this teacher due to a data access issue. (Ref: STUP_DATA_FAIL_MY_TEACHER)`;
             }
-            setError(prevError => prevError ? `${prevError}\n${specificErrorMessage}` : specificErrorMessage); 
+            setError(prevError => prevError ? `${prevError}\n${specificErrorMessage}` : specificErrorMessage);
             setCurrentStudentSubscription(null);
           }
         }
@@ -220,7 +212,7 @@ export default function MyTeacherPage() {
         else if (clientError.data && clientError.data.message) { errorMessage = `Error: ${clientError.data.message}`; }
         else if (clientError.message) { errorMessage = `Error: ${clientError.message}`; }
       }
-      console.error("MyTeacherPage: Error fetching overall data:", errorToLog); 
+      console.error("MyTeacherPage: Error fetching overall data:", errorToLog);
       if (isMountedGetter()) setError(errorMessage);
     } finally { if (isMountedGetter()) setIsLoadingPage(false); }
   }, [user, authLoading, escapeForPbFilter, toast]);
@@ -235,11 +227,11 @@ export default function MyTeacherPage() {
   if (isLoadingPage || authLoading) {
     return ( <div className="space-y-6 p-4 md:p-6"> <Card className="shadow-lg"><CardHeader><Skeleton className="h-20 w-20 rounded-full mb-2" /><Skeleton className="h-8 w-1/2 mb-2" /><Skeleton className="h-4 w-3/4" /></CardHeader></Card> <Card className="shadow-lg"><CardHeader><Skeleton className="h-6 w-1/3" /></CardHeader><CardContent className="space-y-3"><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></CardContent></Card> <Card className="shadow-lg"><CardHeader><Skeleton className="h-6 w-1/3" /></CardHeader><CardContent className="space-y-3"><Skeleton className="h-24 w-full" /></CardContent></Card> </div> );
   }
-  if (error && !subscribedTeacherInfo) { 
+  if (error && !subscribedTeacherInfo) { // If there's an error AND we couldn't even load basic teacher info
     return ( <div className="space-y-6 p-4 md:p-6 text-center"> <Card className="shadow-lg border-destructive bg-destructive/10 max-w-md mx-auto p-6"> <AlertCircle className="mx-auto h-12 w-12 text-destructive mb-3" /> <CardTitle className="text-xl text-destructive">Error Loading Content</CardTitle> <CardDescription className="text-destructive/80 whitespace-pre-wrap">{error}</CardDescription> </Card> </div> );
   }
-   if (!subscribedTeacherInfo) { 
-    return ( <div className="space-y-6 p-4 md:p-6"> <Card className="shadow-lg"><CardHeader><CardTitle className="text-2xl md:text-3xl font-bold text-foreground">My Teacher's Content</CardTitle></CardHeader><CardContent className="text-center py-10"><UserCircle className="mx-auto h-16 w-16 text-muted-foreground mb-4" /><p className="text-lg text-muted-foreground">You are not currently subscribed to any teacher's plan.</p><Button asChild className="mt-4"><Link href={Routes.studentTeacherRanking}>Discover Teachers</Link></Button></CardContent></Card> </div> );
+   if (!subscribedTeacherInfo) {
+    return ( <div className="space-y-6 p-4 md:p-6"> <Card className="shadow-lg"><CardHeader><CardTitle className="text-2xl md:text-3xl font-bold text-foreground">My Teacher's Content</CardTitle></CardHeader><CardContent className="text-center py-10"><UserCircle className="mx-auto h-16 w-16 text-muted-foreground mb-4" /><p className="text-lg text-muted-foreground">You are not currently subscribed to any teacher's plan, or the teacher link is invalid.</p><Button asChild className="mt-4"><Link href={Routes.studentTeacherRanking}>Discover Teachers</Link></Button></CardContent></Card> </div> );
   }
 
   return (
@@ -259,23 +251,24 @@ export default function MyTeacherPage() {
           </div>
           {currentStudentSubscription ? (
             <div className="mt-4 p-3 bg-black/20 rounded-lg text-center sm:text-left">
-              <p className="text-xs font-medium text-yellow-300 uppercase tracking-wider">Your Active Plan with this Teacher:</p>
+              <p className="text-xs font-medium text-yellow-300 uppercase tracking-wider">Your Active Plan with {subscribedTeacherInfo.name}:</p>
               <p className="text-lg font-semibold text-white">{currentStudentSubscription.teachers_plan_name_cache || 'Subscribed Plan'}</p>
-              {currentStudentSubscription.expiry_date && 
+              {currentStudentSubscription.expiry_date &&
                 <p className="text-xs text-yellow-200/80">
-                  Expires: {new Date(currentStudentSubscription.expiry_date).toLocaleDateString()}
+                  Expires: {format(new Date(currentStudentSubscription.expiry_date), "dd MMM yyyy")}
+                  {!isPast(new Date(currentStudentSubscription.expiry_date)) ? ` (Active)` : ` (Expired)`}
                 </p>
               }
             </div>
-          ) : error && !isLoadingPage && error.includes("STUP_INTEGRITY_400") ? ( 
+          ) : error && !isLoadingPage && error.includes("STUP_INTEGRITY_400_MY_TEACHER") ? ( // Check for specific error
              <div className="mt-4 p-3 bg-red-700/30 rounded-lg text-center sm:text-left">
                 <p className="text-xs font-medium text-red-100 uppercase tracking-wider">Subscription Info Error:</p>
                 <p className="text-sm text-red-50 line-clamp-2" title={error}>{error}</p>
              </div>
-          ) : !isLoadingPage && !error ? (
+          ) : !isLoadingPage && !error ? ( // If no specific error, but no active plan
             <div className="mt-4 p-3 bg-blue-700/30 rounded-lg text-center sm:text-left">
                <p className="text-xs font-medium text-blue-100 uppercase tracking-wider">No Active Plan</p>
-               <p className="text-sm text-blue-50">You are not currently subscribed to an active plan from this teacher, or previous plans may have expired.</p>
+               <p className="text-sm text-blue-50">You don't have an active subscription with {subscribedTeacherInfo.name}, or previous plans may have expired.</p>
             </div>
           ): null}
         </CardHeader>
@@ -296,7 +289,7 @@ export default function MyTeacherPage() {
           </Link>))}</div>
         )}
       </section>
-      
+
       <section className="mt-8 pt-6 border-t">
         <h2 className="text-xl font-semibold mb-4 text-foreground">More from {subscribedTeacherInfo.name} (Content Plans)</h2>
         {teacherContentPlans.length === 0 ? (<Card className="text-center p-10 border-dashed"><Info className="mx-auto h-12 w-12 text-muted-foreground mb-4" /><p className="text-muted-foreground">{subscribedTeacherInfo.name} has not created any specific content plans yet.</p></Card>)
@@ -321,7 +314,7 @@ export default function MyTeacherPage() {
                 </CardContent>
                 <CardFooter className="pt-3 mt-auto">
                   {isThisTheSubscribedPlan ? (<Button variant="outline" disabled className="w-full bg-green-100 text-green-700 border-green-400"><CheckCircle className="mr-2 h-4 w-4" />Currently Subscribed</Button>) :
-                   (<Button variant="outline" className="w-full" onClick={() => alert(`Subscription to "${plan.Plan_name}" from teacher coming soon!`)}>View & Subscribe <ChevronRight className="ml-2 h-4 w-4" /></Button>)}
+                   (<Button asChild variant="outline" className="w-full"><Link href={subscribedTeacherInfo.EduNexus_Name ? Routes.teacherPublicAdPage(subscribedTeacherInfo.EduNexus_Name) : '#'} scroll={false}>View & Subscribe <ChevronRight className="ml-2 h-4 w-4" /></Link></Button>)}
                 </CardFooter>
               </Card>
             );
@@ -331,4 +324,3 @@ export default function MyTeacherPage() {
     </div>
   );
 }
-

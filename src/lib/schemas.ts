@@ -138,14 +138,14 @@ export const QuestionBankSchema = z.object({
   optionCText: z.string().optional().nullable(),
   optionDText: z.string().optional().nullable(),
 
-  optionAImage: fileSchema.or(imageUrlSchema), 
-  optionBImage: fileSchema.or(imageUrlSchema), 
-  optionCImage: fileSchema.or(imageUrlSchema), 
-  optionDImage: fileSchema.or(imageUrlSchema), 
+  optionAImage: fileSchema.or(imageUrlSchema),
+  optionBImage: fileSchema.or(imageUrlSchema),
+  optionCImage: fileSchema.or(imageUrlSchema),
+  optionDImage: fileSchema.or(imageUrlSchema),
 
   correctOption: z.enum(['A', 'B', 'C', 'D'], { required_error: "Correct option is required." }),
   explanationText: z.string().optional().nullable(),
-  explanationImage: fileSchema.or(imageUrlSchema), 
+  explanationImage: fileSchema.or(imageUrlSchema),
 
 }).superRefine((data, ctx) => {
   if (data.pyq) {
@@ -179,7 +179,7 @@ export const QuestionBankSchema = z.object({
     if (!data.questionText?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Question text is required.", path: ["questionText"] });
     if (!data.questionImage) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Question diagram/image is required.", path: ["questionImage"] });
     if (!data.optionsFormatForDiagramQuestion) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Options format (text or image) must be selected for diagram questions.", path: ["optionsFormatForDiagramQuestion"] });
-    
+
     if (data.optionsFormatForDiagramQuestion === "text_options") {
         if (!data.optionAText?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Option A text is required.", path: ["optionAText"] });
         if (!data.optionBText?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Option B text is required.", path: ["optionBText"] });
@@ -247,7 +247,7 @@ export const CreateTestSchema = z.object({
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "At least one question must be selected for the chosen subject in a Chapterwise test.",
-        path: ["testSubject"], 
+        path: ["testSubject"],
       });
     }
   }
@@ -322,13 +322,13 @@ export const TeacherAddQuestionSchema = z.object({
       isCorrect: z.boolean().default(false),
     })
   ).min(1, 'At least one option is required.').max(5, 'Maximum 5 options allowed.'),
-  OptionAImage: imageUrlSchema, 
-  OptionBImage: imageUrlSchema, 
-  OptionCImage: imageUrlSchema, 
-  OptionDImage: imageUrlSchema, 
+  OptionAImage: imageUrlSchema,
+  OptionBImage: imageUrlSchema,
+  OptionCImage: imageUrlSchema,
+  OptionDImage: imageUrlSchema,
   CorrectOption: z.enum(["Option A", "Option B", "Option C", "Option D", "Option E"]).optional(),
   explanationText: z.string().nullable().optional(),
-  explanationImage: imageUrlSchema, 
+  explanationImage: imageUrlSchema,
 }).superRefine((data, ctx) => {
   if (data.questionType === 'multipleChoice') {
     const correctOptionsCount = data.options.filter(opt => opt.isCorrect).length;
@@ -339,20 +339,20 @@ export const TeacherAddQuestionSchema = z.object({
         path: ['options'],
       });
     }
-    
+
     if (!data.CorrectOption) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "A correct option (A, B, C, D, or E) must be explicitly selected for Multiple Choice questions.",
           path: ["CorrectOption"],
         });
-    } else { 
+    } else {
         const correctIndex = data.options.findIndex(opt => opt.isCorrect);
         const expectedCorrectOptionEnumValue = correctIndex !== -1 ? `Option ${String.fromCharCode(65 + correctIndex)}` as const : undefined;
         if (data.CorrectOption !== expectedCorrectOptionEnumValue) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: `CorrectOption field mismatch. Expected ${expectedCorrectOptionEnumValue} based on selected checkbox.`,
+            message: `CorrectOption field mismatch. Expected ${expectedCorrectOptionEnumValue} based on selected checkbox. Got ${data.CorrectOption}`,
             path: ["CorrectOption"],
           });
         }
@@ -362,7 +362,7 @@ export const TeacherAddQuestionSchema = z.object({
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: "Either Question Text or a Question Image (URL) must be provided.",
-      path: ["QuestionText"], 
+      path: ["QuestionText"],
     });
   }
 });
@@ -388,7 +388,7 @@ export const TeacherTestSettingsSchema = z.object({
                        .max(999999, "Admin password must be at most 999999."),
     duration: z.coerce.number().int().min(1, "Duration must be at least 1 minute."),
     totalScore: z.coerce.number().min(0, "Total score cannot be negative.").optional().nullable(),
-    PerNegativeScore: z.coerce.number().optional().nullable(), 
+    PerNegativeScore: z.coerce.number().optional().nullable(),
     status: TestStatusEnum.default("Draft"),
     Students_can_view_their_results_after_the_test: z.boolean().default(true),
     How_many_times_can_students_take_the_test: z.coerce.number().int()
@@ -412,7 +412,7 @@ export type StudentNotebookInput = z.infer<typeof StudentNotebookSchema>;
 
 export const TeacherPlanSchema = z.object({
   Plan_name: z.string().min(3, { message: 'Plan name must be at least 3 characters.' }),
-  plan_price: z.string().min(1, { message: 'Plan price is required (e.g., "0" or "299").' }),
+  plan_price: z.string().min(1, { message: 'Plan price is required (e.g., "0" or "299").' }).regex(/^\d+(\.\d{1,2})?$/, "Price must be a valid number (e.g., 0, 199, 299.50)."),
   plan_duration: z.enum(["Monthly", "Weekly", "Yearly"], { required_error: "Plan duration is required." }),
   plan_point_1: z.string().min(5, { message: 'Feature point 1 must be at least 5 characters.' }),
   plan_point_2: z.string().min(5, { message: 'Feature point 2 must be at least 5 characters.' }),
@@ -430,11 +430,11 @@ export const TeacherAdSchema = z.object({
   edunexus_profile: urlOrEmptySchema,
   youtube_channel: urlOrEmptySchema,
   x_page: urlOrEmptySchema,
-  telegram_channel_username: urlOrEmptySchema, 
+  telegram_channel_username: urlOrEmptySchema,
   teacher_app_link: urlOrEmptySchema,
   about: z.string().max(1000, "About section is too long (max 1000 characters).").optional().nullable(),
-  profile_pic_if_not_edunexus_pic: fileSchema, 
-  
+  profile_pic_if_not_edunexus_pic: fileSchema,
+
   total_student_trained: z.coerce.number().int().min(0).optional().nullable(),
   students_of_100_percentile_if_any: z.coerce.number().int().min(0).optional().nullable(),
   students_above_99_percentile_if_any: z.coerce.number().int().min(0).optional().nullable(),
@@ -442,7 +442,7 @@ export const TeacherAdSchema = z.object({
   students_above_90_percentile_if_any: z.coerce.number().int().min(0).optional().nullable(),
   followers: z.coerce.number().int().min(0).optional().nullable(),
   total_edunexus_subscription_offered: z.coerce.number().int().min(0).optional().nullable(),
-  
+
   featured_plan_ids: z.array(z.string().min(1, "Plan ID cannot be empty if provided."))
     .max(3, "You can select up to 3 featured plans.")
     .optional().default([]),
@@ -454,7 +454,7 @@ export const EduNexusPlanEnum = z.enum(["Free", "Dpp", "Chapterwise", "Full Leng
 export const DiscussionGroupManagementFormSchema = z.object({
   group_name: z.string().min(3, "Group name must be at least 3 characters.").max(100, "Group name cannot exceed 100 characters."),
   group_description: z.string().max(250, "Description cannot exceed 250 characters.").optional().nullable(),
-  students: z.array(z.string()).optional().default([]), 
+  students: z.array(z.string()).optional().default([]),
 });
 export type DiscussionGroupManagementInput = z.infer<typeof DiscussionGroupManagementFormSchema>;
 
@@ -513,4 +513,3 @@ export const StudentFeedbackSchema = z.object({
   want_any_more_additional_in_edunexus: z.string().max(1000, "Suggestions cannot exceed 1000 characters.").optional().nullable(),
 });
 export type StudentFeedbackInput = z.infer<typeof StudentFeedbackSchema>;
-    

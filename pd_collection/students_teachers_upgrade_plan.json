@@ -4,8 +4,8 @@
         "id": "pbc_783857703",
         "listRule": "@request.auth.id != \"\" && (teacher = @request.auth.id || student = @request.auth.id)",
         "viewRule": "@request.auth.id != \"\" && (teacher = @request.auth.id || student = @request.auth.id)",
-        "createRule": "@request.auth.id != \"\"", 
-        "updateRule": "@request.auth.id != \"\" && teacher = @request.auth.id", 
+        "createRule": "@request.auth.id != \"\"",
+        "updateRule": "@request.auth.id != \"\" && teacher = @request.auth.id",
         "deleteRule": "@request.auth.role = \"admin\"",
         "name": "students_teachers_upgrade_plan",
         "type": "base",
@@ -51,7 +51,7 @@
                 }
             },
             {
-                "id": "relation_stu_teacher_plan_id",
+                "id": "relation_stup_teachers_plan_id",
                 "name": "teachers_plan_id",
                 "type": "relation",
                 "system": false,
@@ -88,7 +88,7 @@
                 "name": "expiry_date",
                 "type": "date",
                 "system": false,
-                "required": true,
+                "required": false,
                 "presentable": true,
                 "options": { "min": "", "max": "" }
             },
@@ -111,8 +111,8 @@
                 "options": { "min": 0, "noDecimal": false }
             },
             {
-                "id": "text_payment_id_razorpay",
-                "name": "payment_id_razorpay",
+                "id": "text_payment_id_payu",
+                "name": "payment_id_payu",
                 "type": "text",
                 "system": false,
                 "required": false,
@@ -120,8 +120,8 @@
                 "options": { "min": null, "max": 100, "pattern": "" }
             },
             {
-                "id": "text_order_id_razorpay",
-                "name": "order_id_razorpay",
+                "id": "text_order_id_internal",
+                "name": "order_id_internal",
                 "type": "text",
                 "system": false,
                 "required": false,
@@ -139,6 +139,15 @@
                     "maxSelect": 1,
                     "values": ["pending", "successful", "failed", "refunded"]
                 }
+            },
+            {
+                "id": "text_referral_code_used",
+                "name": "referral_code_used",
+                "type": "text",
+                "system": false,
+                "required": false,
+                "presentable": true,
+                "options": { "min": null, "max": 50, "pattern": "" }
             },
             {
                 "id": "autodate2990389176",
@@ -162,7 +171,7 @@
         "indexes": [
             "CREATE INDEX idx_stup_teacher ON students_teachers_upgrade_plan (teacher)",
             "CREATE INDEX idx_stup_student ON students_teachers_upgrade_plan (student)",
-            "CREATE INDEX idx_stup_plan ON students_teachers_upgrade_plan (teachers_plan_id)"
+            "CREATE INDEX idx_stup_plan_id ON students_teachers_upgrade_plan (teachers_plan_id)"
         ],
         "options": {}
     }
