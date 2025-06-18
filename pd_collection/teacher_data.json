@@ -1,4 +1,3 @@
-
 [
     {
         "id": "pbc_2504364897",
@@ -64,6 +63,7 @@
                 "options": {"maxSelect": 4, "values": ["Physics", "Chemistry", "Maths", "Biology"]}
             },
             {
+                "id": "select106662304",
                 "name": "teacherSubscriptionTier",
                 "type": "select",
                 "system": false,
@@ -72,12 +72,8 @@
                 "options": {
                     "maxSelect": 1,
                     "values": ["Free", "Starter", "Pro"],
-                    "defaultValue": "Free"
+                    "defaultValue": "Free" 
                 }
-            },
-            {
-                "name": "subscription_tier", "type": "select", "system": false, "required": false, "presentable": true,
-                "options": {"maxSelect": 1, "values": ["Free", "Starter", "Pro"], "defaultValue": "Free"}
             },
             {
                 "name": "used_free_trial", "type": "bool", "system": false, "required": false, "presentable": false, "options": {}
@@ -87,7 +83,7 @@
             },
             {
                 "name": "ads_subscription", "type": "select", "system": false, "required": false, "presentable": true,
-                "options": {"maxSelect": 1, "values": ["Free", "Ads Model"]}
+                "options": {"maxSelect": 1, "values": ["Free", "Ads Model"], "defaultValue": "Free"}
             },
             {
                 "name": "subscription_takenby_student", "type": "relation", "system": false, "required": false, "presentable": false,

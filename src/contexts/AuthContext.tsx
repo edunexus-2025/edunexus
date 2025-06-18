@@ -67,23 +67,22 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
   if (record.collectionName === 'users') {
     studentSubTier = record.model as UserSubscriptionTierStudent;
   } else if (record.collectionName === 'teacher_data') {
-    teacherSubTier = record.subscription_tier as UserSubscriptionTierTeacher;
+    teacherSubTier = (record.teacherSubscriptionTier || 'Free') as UserSubscriptionTierTeacher; // Default to 'Free' if not set
     canCreateAdsTeacher = record.can_create_ads === true;
-    adsSubscriptionTeacher = record.ads_subscription as User['ads_subscription'] || 'Free';
+    adsSubscriptionTeacher = (record.ads_subscription || 'Free') as User['ads_subscription']; // Default to 'Free'
   }
   
-  // For OAuth, PocketBase might put name/avatar in meta if not directly mapped
   const name = record.name || record.meta?.name;
-  let avatarUrl = record.avatarUrl || record.meta?.avatarUrl; // Prioritize direct avatarUrl or meta.avatarUrl
+  let avatarUrl = record.avatarUrl || record.meta?.avatarUrl; 
   
-  if (!avatarUrl) { // If no direct URL, try to construct from PocketBase file fields
+  if (!avatarUrl) { 
     if (record.profile_picture && record.collectionId && record.collectionName) {
       avatarUrl = pb.files.getUrl(record, record.profile_picture as string);
     } else if (record.avatar && record.collectionId && record.collectionName) {
       avatarUrl = pb.files.getUrl(record, record.avatar as string);
     }
   }
-  if (!avatarUrl) { // Fallback to UI Avatars
+  if (!avatarUrl) { 
     avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name?.charAt(0) || 'U')}&background=random&color=fff&size=128`;
   }
 
@@ -93,7 +92,7 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
     email: record.email || record.meta?.email || '',
     name: name || '',
     username: record.username,
-    verified: record.verified ?? record.meta?.emailVerification, // PocketBase returns 'verified' from meta for OAuth
+    verified: record.verified ?? record.meta?.emailVerification, 
     emailVisibility: record.emailVisibility ?? true,
     grade: record.class as User['grade'],
     phoneNumber: record.phone as User['phoneNumber'],
@@ -101,8 +100,8 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
     teacherSubscriptionTier: teacherSubTier,
     role: record.role as User['role'],
     avatarUrl: avatarUrl,
-    avatar: record.avatar, // keep original file field name if needed
-    profile_picture: record.profile_picture, // keep original file field name if needed
+    avatar: record.avatar, 
+    profile_picture: record.profile_picture, 
     favExam: record.favExam as User['favExam'],
     totalPoints: record.totalPoints as User['totalPoints'],
     targetYear: record.targetYear as User['targetYear'],
@@ -128,8 +127,7 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
     subscription_by_teacher: record.subscription_by_teacher,
   };
   
-  // Check for profile completion needs (for students after OAuth)
-  if (mappedUser.collectionName === 'users' && record.token) { // record.token check indicates OAuth
+  if (mappedUser.collectionName === 'users' && record.token) { 
       if (!mappedUser.favExam || !mappedUser.grade || !mappedUser.targetYear) {
           mappedUser.needsProfileCompletion = true;
       }
@@ -394,7 +392,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       class: details.grade, 
       model: 'Free' as UserSubscriptionTierStudent, 
       role: 'User' as User['role'], 
-      avatarUrl: avatarPlaceholderUrl, // Store the URL
+      avatarUrl: avatarPlaceholderUrl, 
       favExam: details.favExam,
       targetYear: parseInt(details.targetYear, 10),
       totalPoints: 0,
@@ -474,7 +472,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         favExam: details.favExam && details.favExam.length > 0 ? details.favExam : null, 
         about: details.about || null,
         subjects_offered: details.subjects_offered && details.subjects_offered.length > 0 ? details.subjects_offered : null,
-        subscription_tier: "Free" as UserSubscriptionTierTeacher,
+        teacherSubscriptionTier: "Free" as UserSubscriptionTierTeacher, // Default to Free
         used_free_trial: false,
         emailVisibility: true,
         can_create_ads: false, 
@@ -535,24 +533,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const collectionName = activeAuthUser.collectionName === 'teacher_data' ? 'teacher_data' : 'users';
     const dataToUpdate: Record<string, any> = {};
 
-    // Common fields potentially updated by EditProfileInput or CompleteProfileInput
     if ('favExam' in data && data.favExam) dataToUpdate.favExam = data.favExam;
     if ('targetYear' in data && data.targetYear) dataToUpdate.targetYear = parseInt(data.targetYear, 10);
-    if ('grade' in data && data.grade) dataToUpdate.class = data.grade; // 'class' is the PB field for 'grade'
+    if ('grade' in data && data.grade) dataToUpdate.class = data.grade; 
 
-    // Fields specific to password setting during profile completion
     if ('password' in data && data.password && 'confirmPassword' in data && data.confirmPassword) {
       dataToUpdate.password = data.password;
       dataToUpdate.passwordConfirm = data.confirmPassword;
     }
-    // Field specific to referral code during profile completion
     if ('referredByCode' in data && data.referredByCode && typeof data.referredByCode === 'string' && data.referredByCode.trim() !== '') {
         dataToUpdate.referredByCode = data.referredByCode.trim();
     }
 
     if (Object.keys(dataToUpdate).length === 0) {
       console.log("updateUserProfile: No actual data to update.");
-      return true; // No changes, but not an error
+      return true; 
     }
     
     try {

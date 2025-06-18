@@ -8,7 +8,7 @@ import { ArrowRight, ShieldCheck, Zap, ListChecks, TrendingUp, Loader2, Search, 
 import { useAuth } from '@/contexts/AuthContext';
 import { Routes, AppConfig } from '@/lib/constants';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge'; // Added Badge import
+import { Badge } from '@/components/ui/badge'; // Corrected: Added Badge import
 
 interface QuickLink {
   href: string;
@@ -40,10 +40,22 @@ export default function TeacherDashboardPage() {
       icon: <Users className="h-7 w-7 text-primary" />,
     },
     {
+      href: Routes.teacherManageDiscussion,
+      title: 'Manage Discussion',
+      description: 'Oversee discussion groups and student interactions.',
+      icon: <MessageSquare className="h-7 w-7 text-primary" />
+    },
+    {
       href: Routes.teacherStudentPerformance,
       title: 'Student Performance',
       description: 'Analyze student results and identify areas for improvement.',
       icon: <BarChart3 className="h-7 w-7 text-primary" />,
+    },
+    {
+      href: Routes.teacherWallet,
+      title: 'My Wallet',
+      description: 'Track your earnings from student subscriptions.',
+      icon: <Wallet className="h-7 w-7 text-primary" />,
     },
     {
       href: Routes.teacherCreateAds,
@@ -52,10 +64,10 @@ export default function TeacherDashboardPage() {
       icon: <Megaphone className="h-7 w-7 text-primary" />,
     },
      {
-      href: Routes.teacherWallet,
-      title: 'My Wallet',
-      description: 'Track your earnings from student subscriptions.',
-      icon: <Wallet className="h-7 w-7 text-primary" />,
+      href: Routes.teacherUpgradePlatformPlan,
+      title: 'Upgrade Platform Plan',
+      description: 'Unlock more features and benefits for your teacher account.',
+      icon: <Zap className="h-7 w-7 text-primary" />,
     },
     {
       href: Routes.teacherSettings,
@@ -73,14 +85,12 @@ export default function TeacherDashboardPage() {
           <CardHeader>
             <Skeleton className="h-8 w-3/4" />
             <Skeleton className="h-6 w-1/2 mt-2" />
-            {/* Skeleton for badges */}
             <div className="mt-4 flex flex-col sm:flex-row gap-2">
               <Skeleton className="h-10 w-40 rounded-lg" />
               <Skeleton className="h-10 w-48 rounded-lg" />
               <Skeleton className="h-10 w-52 rounded-lg" />
             </div>
           </CardHeader>
-          {/* CardContent might not be needed for this welcome card if badges are in header */}
         </Card>
         <div className="grid md:grid-cols-2 gap-6">
           {[...Array(6)].map((_, i) => ( 
@@ -109,12 +119,10 @@ export default function TeacherDashboardPage() {
                 <ShieldCheck className="h-4 w-4 mr-1.5 text-green-300" />
                 Account Type: Teacher
               </Badge>
-              {teacher.teacherSubscriptionTier && (
-                <Badge variant="secondary" className="text-sm py-1.5 px-3 shadow-sm bg-primary-foreground/20 text-primary-foreground">
-                  <Crown className="h-4 w-4 mr-1.5 text-yellow-300" />
-                  Platform Tier: {teacher.teacherSubscriptionTier}
-                </Badge>
-              )}
+              <Badge variant="secondary" className="text-sm py-1.5 px-3 shadow-sm bg-primary-foreground/20 text-primary-foreground">
+                <Crown className="h-4 w-4 mr-1.5 text-yellow-300" />
+                Platform Tier: {teacher.teacherSubscriptionTier || 'Free'}
+              </Badge>
               {teacher.ads_subscription && (
                  <Badge variant="secondary" className="text-sm py-1.5 px-3 shadow-sm bg-primary-foreground/20 text-primary-foreground">
                   <Megaphone className="h-4 w-4 mr-1.5 text-blue-300" />
@@ -126,7 +134,7 @@ export default function TeacherDashboardPage() {
         </CardHeader>
       </Card>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {quickLinks
           .filter(link => typeof link.href === 'string' && link.href.trim() !== '') 
           .map((link) => (
