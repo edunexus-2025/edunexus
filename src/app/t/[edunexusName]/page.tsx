@@ -8,7 +8,7 @@ import Link from 'next/link';
 import pb from '@/lib/pocketbase';
 import type { RecordModel, ClientResponseError, UnsubscribeFunc } from 'pocketbase';
 import { useToast } from '@/hooks/use-toast';
-import { Navbar } from '@/components/layout/Navbar';
+// Navbar import removed
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -58,7 +58,7 @@ interface TeacherAdRecord extends RecordModel {
 interface TeacherAdPageData {
   teacherData: TeacherDataRecord;
   adData: TeacherAdRecord | null;
-  featuredPlans: TeacherPlanType[]; // Keep for displaying featured plans if any
+  featuredPlans: TeacherPlanType[];
   teacherAvatarUrl: string;
   adSpecificAvatarUrl?: string | null;
   hasAnyContentPlans?: boolean;
@@ -87,7 +87,7 @@ const getPbFileUrl = (record: RecordModel | null | undefined, fieldName: string)
 export default function TeacherPublicAdPage() {
   const params = useParams();
   const router = useRouter();
-  const { user: currentUser } = useAuth(); 
+  const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const edunexusNameParam = typeof params.edunexusName === 'string' ? params.edunexusName : '';
 
@@ -129,7 +129,6 @@ export default function TeacherPublicAdPage() {
         if (adRecords.length > 0) {
           adData = adRecords[0];
           adSpecificAvatarUrl = getPbFileUrl(adData, 'profile_pic_if_not_edunexus_pic');
-          // Fetch only featured plans if specified in adData.plan
           if (adData.plan && Array.isArray(adData.plan) && adData.plan.length > 0) {
             const planFilter = adData.plan.map(id => `id = "${escapeForPbFilter(id)}"`).join(' || ');
             if (planFilter) featuredPlans = await pb.collection('teachers_upgrade_plan').getFullList<TeacherPlanType>({ filter: planFilter, sort: '-created' });
@@ -138,7 +137,6 @@ export default function TeacherPublicAdPage() {
       } catch (adError: any) { if (isMountedGetter()) console.warn("Ad data not found or error fetching, proceeding with teacher data only:", adError.data || adError.message); }
 
       if (!isMountedGetter()) return;
-      // Check if the teacher has *any* content plans at all
       if (teacherData.id) {
         const allTeacherPlans = await pb.collection('teachers_upgrade_plan').getList(1, 1, { filter: `teacher = "${teacherData.id}"`, count: true });
         if (isMountedGetter()) hasAnyContentPlans = allTeacherPlans.totalItems > 0;
@@ -186,7 +184,6 @@ export default function TeacherPublicAdPage() {
         }
     };
     
-    // Call setupSubscriptions after the initial data fetch that sets pageData
     if (pageData?.teacherData?.id) {
         setupSubscriptions();
     }
@@ -199,9 +196,9 @@ export default function TeacherPublicAdPage() {
   }, [fetchData, edunexusName, pageData?.teacherData?.id]);
 
 
-  if (isLoading) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> <Navbar /> <main className="flex-1 container mx-auto px-2 sm:px-4 py-6 md:py-8 max-w-4xl"> <Skeleton className="h-12 w-3/4 mb-4" /> <Card className="shadow-xl"><CardHeader className="p-4 sm:p-6 text-center border-b"> <Skeleton className="h-24 w-24 rounded-full mx-auto mb-3" /> <Skeleton className="h-8 w-1/2 mx-auto" /> <Skeleton className="h-5 w-1/3 mx-auto mt-1" /> </CardHeader> <CardContent className="p-4 sm:p-6 space-y-6"> <Skeleton className="h-20 w-full" /> <Skeleton className="h-32 w-full" /> </CardContent> </Card> </main> </div> ); }
-  if (error) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> <Navbar /> <main className="flex-1 container mx-auto px-4 py-8 max-w-2xl"> <Card className="text-center shadow-lg border-destructive bg-destructive/10"><CardHeader><AlertCircle className="mx-auto h-12 w-12 text-destructive mb-3" /><CardTitle className="text-destructive">Error Loading Profile</CardTitle></CardHeader><CardContent><p className="text-destructive/90 whitespace-pre-wrap">{error}</p></CardContent><CardFooter><Button onClick={() => router.push(Routes.home)} variant="outline" className="mx-auto">Go to Homepage</Button></CardFooter></Card> </main> </div> ); }
-  if (!pageData || !pageData.teacherData) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> <Navbar /> <main className="flex-1 container mx-auto px-4 py-8 max-w-2xl"> <Card className="text-center shadow-lg"><CardHeader><AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-3" /><CardTitle>Profile Not Found</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">The teacher profile does not exist or is unavailable.</p></CardContent><CardFooter><Button onClick={() => router.push(Routes.home)} variant="outline" className="mx-auto">Go to Homepage</Button></CardFooter></Card> </main> </div> ); }
+  if (isLoading) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> {/* No Navbar */} <main className="flex-1 container mx-auto px-2 sm:px-4 py-6 md:py-8 max-w-4xl"> <Skeleton className="h-12 w-3/4 mb-4" /> <Card className="shadow-xl"><CardHeader className="p-4 sm:p-6 text-center border-b"> <Skeleton className="h-24 w-24 rounded-full mx-auto mb-3" /> <Skeleton className="h-8 w-1/2 mx-auto" /> <Skeleton className="h-5 w-1/3 mx-auto mt-1" /> </CardHeader> <CardContent className="p-4 sm:p-6 space-y-6"> <Skeleton className="h-20 w-full" /> <Skeleton className="h-32 w-full" /> </CardContent> </Card> </main> </div> ); }
+  if (error) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> {/* No Navbar */} <main className="flex-1 container mx-auto px-4 py-8 max-w-2xl"> <Card className="text-center shadow-lg border-destructive bg-destructive/10"><CardHeader><AlertCircle className="mx-auto h-12 w-12 text-destructive mb-3" /><CardTitle className="text-destructive">Error Loading Profile</CardTitle></CardHeader><CardContent><p className="text-destructive/90 whitespace-pre-wrap">{error}</p></CardContent><CardFooter><Button onClick={() => router.push(Routes.home)} variant="outline" className="mx-auto">Go to Homepage</Button></CardFooter></Card> </main> </div> ); }
+  if (!pageData || !pageData.teacherData) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> {/* No Navbar */} <main className="flex-1 container mx-auto px-4 py-8 max-w-2xl"> <Card className="text-center shadow-lg"><CardHeader><AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-3" /><CardTitle>Profile Not Found</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">The teacher profile does not exist or is unavailable.</p></CardContent><CardFooter><Button onClick={() => router.push(Routes.home)} variant="outline" className="mx-auto">Go to Homepage</Button></CardFooter></Card> </main> </div> ); }
 
   const { teacherData, adData, featuredPlans, teacherAvatarUrl, adSpecificAvatarUrl, hasAnyContentPlans } = pageData;
   const finalAbout = adData?.about || teacherData?.about || "No detailed information provided by the teacher yet.";
@@ -219,7 +216,7 @@ export default function TeacherPublicAdPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-muted/30 dark:bg-slate-950">
-      <Navbar />
+      {/* Navbar removed */}
       <main className="flex-1 container mx-auto px-2 sm:px-4 py-6 md:py-8 max-w-4xl">
         <Card className="shadow-xl border-t-4 border-primary rounded-xl overflow-hidden">
           <CardHeader className="p-4 sm:p-6 text-center bg-gradient-to-br from-primary/10 via-background to-background border-b"> <Avatar className="h-28 w-28 sm:h-32 sm:w-32 text-4xl border-4 border-card shadow-lg mx-auto mb-3 bg-muted"> {finalAvatar ? <AvatarImage src={finalAvatar} alt={teacherData.name} data-ai-hint="teacher profile picture"/> : null} <AvatarFallback className="bg-primary/20 text-primary">{teacherData.name?.charAt(0).toUpperCase() || 'T'}</AvatarFallback> </Avatar> <CardTitle className="text-2xl sm:text-3xl font-bold text-foreground">{teacherData.name}</CardTitle> {teacherData.institute_name && <p className="text-md text-muted-foreground">{teacherData.institute_name}</p>} {teacherData.EduNexus_Name && <p className="text-sm text-accent font-mono">@{teacherData.EduNexus_Name}</p>} <div className="mt-3 flex flex-wrap justify-center gap-2"> {teacherData.level && <Badge variant="secondary">{teacherData.level}</Badge>} {teacherData.subjects_offered && teacherData.subjects_offered.map(sub => <Badge key={sub} variant="outline">{sub}</Badge>)} {teacherData.favExam && teacherData.favExam.map(exam => <Badge key={exam} variant="outline" className="border-primary/50 text-primary/90 bg-primary/5">{exam}</Badge>)} </div> </CardHeader>
@@ -249,4 +246,3 @@ export default function TeacherPublicAdPage() {
     </div>
   );
 }
-

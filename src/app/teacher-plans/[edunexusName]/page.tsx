@@ -8,7 +8,7 @@ import Link from 'next/link';
 import pb from '@/lib/pocketbase';
 import type { RecordModel, ClientResponseError } from 'pocketbase';
 import { useToast } from '@/hooks/use-toast';
-import { Navbar } from '@/components/layout/Navbar';
+// Navbar import removed
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -124,7 +124,7 @@ export default function TeacherPublicPlansPage() {
         await pb.collection('users').update(currentUser.id, { "subscription_by_teacher+": pageData.teacherData.id });
         await pb.collection('teachers_upgrade_plan').update(plan.id, { "enrolled_students+": currentUser.id });
         toast({ title: "Enrollment Successful!", description: `You are now enrolled in "${plan.Plan_name}".` });
-        fetchData(); // Re-fetch to update subscription status
+        fetchData(); 
       } catch(err: any) {
         toast({ title: "Enrollment Failed", description: `Could not enroll you: ${err.data?.message || err.message}`, variant: "destructive" });
       } finally { setProcessingPaymentForPlanId(null); }
@@ -149,7 +149,7 @@ export default function TeacherPublicPlansPage() {
               body: JSON.stringify({ razorpay_order_id: response.razorpay_order_id, razorpay_payment_id: response.razorpay_payment_id, razorpay_signature: response.razorpay_signature, planId: plan.id, userId: currentUser.id, userType: 'student_teacher_plan', teacherIdForPlan: pageData.teacherData.id, referralCodeUsed: referralCodeInput.trim() || null, productDescription: `${pageData.teacherData.name}'s Plan - ${plan.Plan_name}` }),
             });
             const verificationData = await verificationResponse.json();
-            if (verificationResponse.ok && verificationData.verified) { toast({ title: "Payment Successful!", description: "Processing your subscription..." }); fetchData(); /* Refresh page data */ }
+            if (verificationResponse.ok && verificationData.verified) { toast({ title: "Payment Successful!", description: "Processing your subscription..." }); fetchData(); }
             else { toast({ title: "Payment Verification Failed", description: verificationData.error || "Contact support.", variant: "destructive" }); }
           } catch (verifyError: any) { toast({ title: "Verification Error", description: verifyError.message || "An error occurred.", variant: "destructive" }); }
           setProcessingPaymentForPlanId(null);
@@ -166,15 +166,15 @@ export default function TeacherPublicPlansPage() {
     return pageData?.studentSubscriptionsToThisTeacher?.some(sub => sub.teachers_plan_id === planId && sub.payment_status === 'successful' && (!sub.expiry_date || !isPast(new Date(sub.expiry_date))));
   };
 
-  if (isLoading) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> <Navbar /> <main className="flex-1 container mx-auto px-2 sm:px-4 py-6 md:py-8 max-w-4xl"> <Skeleton className="h-12 w-3/4 mb-4" /> <Card className="shadow-xl"><CardHeader className="p-4 sm:p-6 text-center border-b"> <Skeleton className="h-24 w-24 rounded-full mx-auto mb-3" /> <Skeleton className="h-8 w-1/2 mx-auto" /> </CardHeader> <CardContent className="p-4 sm:p-6 space-y-6"> <Skeleton className="h-20 w-full" /> <Skeleton className="h-32 w-full" /> </CardContent> </Card> </main> </div> ); }
-  if (error) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> <Navbar /> <main className="flex-1 container mx-auto px-4 py-8 max-w-2xl"> <Card className="text-center shadow-lg border-destructive bg-destructive/10"><CardHeader><AlertCircle className="mx-auto h-12 w-12 text-destructive mb-3" /><CardTitle className="text-destructive">Error Loading Page</CardTitle></CardHeader><CardContent><p className="text-destructive/90 whitespace-pre-wrap">{error}</p></CardContent><CardFooter><Button onClick={() => router.push(Routes.home)} variant="outline" className="mx-auto">Go to Homepage</Button></CardFooter></Card> </main> </div> ); }
-  if (!pageData || !pageData.teacherData) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> <Navbar /> <main className="flex-1 container mx-auto px-4 py-8 max-w-2xl"> <Card className="text-center shadow-lg"><CardHeader><AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-3" /><CardTitle>Profile Not Found</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">The teacher profile does not exist or is unavailable.</p></CardContent><CardFooter><Button onClick={() => router.push(Routes.home)} variant="outline" className="mx-auto">Go to Homepage</Button></CardFooter></Card> </main> </div> ); }
+  if (isLoading) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> {/* No Navbar */} <main className="flex-1 container mx-auto px-2 sm:px-4 py-6 md:py-8 max-w-4xl"> <Skeleton className="h-12 w-3/4 mb-4" /> <Card className="shadow-xl"><CardHeader className="p-4 sm:p-6 text-center border-b"> <Skeleton className="h-24 w-24 rounded-full mx-auto mb-3" /> <Skeleton className="h-8 w-1/2 mx-auto" /> </CardHeader> <CardContent className="p-4 sm:p-6 space-y-6"> <Skeleton className="h-20 w-full" /> <Skeleton className="h-32 w-full" /> </CardContent> </Card> </main> </div> ); }
+  if (error) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> {/* No Navbar */} <main className="flex-1 container mx-auto px-4 py-8 max-w-2xl"> <Card className="text-center shadow-lg border-destructive bg-destructive/10"><CardHeader><AlertCircle className="mx-auto h-12 w-12 text-destructive mb-3" /><CardTitle className="text-destructive">Error Loading Page</CardTitle></CardHeader><CardContent><p className="text-destructive/90 whitespace-pre-wrap">{error}</p></CardContent><CardFooter><Button onClick={() => router.push(Routes.home)} variant="outline" className="mx-auto">Go to Homepage</Button></CardFooter></Card> </main> </div> ); }
+  if (!pageData || !pageData.teacherData) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> {/* No Navbar */} <main className="flex-1 container mx-auto px-4 py-8 max-w-2xl"> <Card className="text-center shadow-lg"><CardHeader><AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-3" /><CardTitle>Profile Not Found</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">The teacher profile does not exist or is unavailable.</p></CardContent><CardFooter><Button onClick={() => router.push(Routes.home)} variant="outline" className="mx-auto">Go to Homepage</Button></CardFooter></Card> </main> </div> ); }
 
   const { teacherData, contentPlans, teacherAvatarUrl } = pageData;
 
   return (
     <div className="flex flex-col min-h-screen bg-muted/30 dark:bg-slate-950">
-      <Navbar />
+      {/* Navbar removed */}
       <main className="flex-1 container mx-auto px-2 sm:px-4 py-6 md:py-8 max-w-4xl">
         <Card className="shadow-xl border-t-4 border-primary rounded-xl overflow-hidden mb-8">
           <CardHeader className="p-4 sm:p-6 text-center bg-gradient-to-br from-primary/10 via-background to-background border-b">
@@ -195,7 +195,7 @@ export default function TeacherPublicPlansPage() {
             <div className="flex flex-col sm:flex-row gap-2 items-start">
               <Input 
                 type="text" 
-                placeholder="Enter referral code" 
+                placeholder="Enter referral code from teacher" 
                 value={referralCodeInput}
                 onChange={(e) => setReferralCodeInput(e.target.value.toUpperCase())}
                 className="flex-grow"
@@ -264,4 +264,3 @@ export default function TeacherPublicPlansPage() {
     </div>
   );
 }
-
