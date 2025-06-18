@@ -209,7 +209,7 @@ export default function UpgradePage() {
           currency: 'INR', 
           planId: plan.id, 
           userId: user.id,
-          userType: 'student_platform_plan', // Added userType
+          userType: 'student_platform_plan', 
           productDescription: `${AppConfig.appName} Plan - ${plan.name}`
         }),
       });
@@ -259,7 +259,6 @@ export default function UpgradePage() {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
-                // Pass original notes to verification API
                 planId: plan.id,
                 userId: user.id,
                 userType: 'student_platform_plan',
@@ -272,14 +271,14 @@ export default function UpgradePage() {
 
 
             if (verificationResponse.ok && verificationData.verified) {
-              toast({ title: "Payment Successful & Verified!", description: "Processing your upgrade..." });
-              await updatePlanInPocketBase(user, plan.id as UserSubscriptionTierStudent);
+              await authRefresh(); // Refresh auth state first
+              router.push(Routes.paymentStatusPage(response.razorpay_order_id, 'success', plan.name));
             } else {
-              toast({ title: "Payment Verification Failed", description: verificationData.error || "Your payment could not be verified. Please contact support.", variant: "destructive" });
+              router.push(Routes.paymentStatusPage(response.razorpay_order_id, 'failure', plan.name, verificationData.error || "Verification failed."));
             }
           } catch (verifyError: any) {
             console.error("[UpgradePage] ERROR: Error during payment verification fetch:", verifyError);
-            toast({ title: "Payment Verification Error", description: verifyError.message || "An error occurred during payment verification.", variant: "destructive" });
+            router.push(Routes.paymentStatusPage(response.razorpay_order_id, 'error', plan.name, verifyError.message || "Verification communication error."));
           }
           setProcessingPaymentForPlan(null);
         },
@@ -308,7 +307,7 @@ export default function UpgradePage() {
       const rzp = new window.Razorpay(options);
       rzp.on('payment.failed', (response: any) => {
         console.error("[UpgradePage] ERROR: Razorpay payment.failed event. Response:", response);
-        toast({ title: "Payment Failed", description: `Error: ${response.error.description} (Code: ${response.error.code})`, variant: "destructive" });
+        router.push(Routes.paymentStatusPage(response.error.metadata.order_id || 'N/A_FAIL', 'failure', plan.name, response.error.description || "Payment failed at gateway."));
         setProcessingPaymentForPlan(null);
       });
       rzp.open();
@@ -336,11 +335,13 @@ export default function UpgradePage() {
         model: newPlanId,
       });
       await authRefresh();
-      toast({ title: "Plan Upgraded!", description: `You are now on the ${newPlanId} plan.` });
-      router.push(Routes.dashboard);
+      // Redirect to success status page
+      router.push(Routes.paymentStatusPage('N/A_FREE', 'success', newPlanId, `Successfully activated ${newPlanId} plan.`));
+
     } catch (error) {
-      console.error("Error updating plan in PocketBase:", error);
-      toast({ title: "Upgrade Failed", description: "Could not update your plan after payment. Please contact support.", variant: "destructive" });
+      console.error("Error updating plan in PocketBase for free plan:", error);
+      // Redirect to error status page
+      router.push(Routes.paymentStatusPage('N/A_FREE_FAIL', 'error', newPlanId, "Could not activate free plan. Contact support."));
     }
   };
 
@@ -531,3 +532,4 @@ export default function UpgradePage() {
     </div>
   );
 }
+

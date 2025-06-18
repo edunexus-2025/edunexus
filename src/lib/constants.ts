@@ -68,6 +68,15 @@ export const Routes = {
   activatePlan: (token: string, planSlug: string) => `/activate-plan/${token}/${planSlug}`,
   collegeCutoffs: '/college-cutoffs',
   ownerInfo: '/owner-info',
+  paymentStatusPage: (orderId: string, status: 'success' | 'failure' | 'error' | 'info', planName?: string, message?: string) => {
+    const params = new URLSearchParams();
+    params.set('order_id', orderId);
+    params.set('status', status);
+    if (planName) params.set('planName', planName);
+    if (message) params.set('message', message);
+    return `/payment/status?${params.toString()}`;
+  },
+
 
   // Student Test Taking Routes
   studentTestInstructions: (testId: string) => `/student/test/${testId}/instructions`,
