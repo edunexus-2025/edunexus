@@ -495,7 +495,6 @@ export const ReferralCodeSchema = z.object({
   plan_by: z.array(StudentReferralPlanEnum).optional().default([]),
   expiry_date: z.string().optional().nullable().refine(val => !val || !isNaN(Date.parse(val)), { message: "Invalid date format for expiry date." }),
 });
-
 export type ReferralCodeInput = z.infer<typeof ReferralCodeSchema>;
 
 // Help Center Ticket Schema
@@ -513,3 +512,19 @@ export const StudentFeedbackSchema = z.object({
   want_any_more_additional_in_edunexus: z.string().max(1000, "Suggestions cannot exceed 1000 characters.").optional().nullable(),
 });
 export type StudentFeedbackInput = z.infer<typeof StudentFeedbackSchema>;
+
+// Teacher-specific referral code schema
+export const TeacherReferralCodeSchema = z.object({
+  referral_code_string: z.string()
+    .min(5, "Referral code must be 5-20 characters.")
+    .max(20, "Referral code must be 5-20 characters.")
+    .regex(/^[A-Z0-9]+$/, "Referral code can only contain uppercase letters and numbers."),
+  discount_percentage: z.coerce.number()
+    .min(0, "Discount cannot be negative.")
+    .max(100, "Discount cannot exceed 100%.")
+    .refine(val => /^\d+(\.\d{1,2})?$/.test(String(val)), { message: "Discount can have up to 2 decimal places."}),
+  applicable_plan_ids: z.array(z.string().min(1, "Plan ID cannot be empty.")).min(1, "At least one content plan must be selected."),
+  expiry_date: z.string().optional().nullable().refine(val => !val || !isNaN(Date.parse(val)), { message: "Invalid date format for expiry date." }),
+});
+export type TeacherReferralCodeInput = z.infer<typeof TeacherReferralCodeSchema>;
+

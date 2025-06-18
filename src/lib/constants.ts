@@ -115,9 +115,7 @@ export const Routes = {
   teacherPublicAdPage: (edunexusName: string): string => `/t/${edunexusName}`,
   teacherManageDiscussion: '/teacher/dashboard/manage-discussion',
   teacherWallet: '/teacher/dashboard/wallet',
-
-  // Payment Routes (Razorpay doesn't use explicit status pages like PayU)
-  // teacherPaymentStatus: '/teacher/payment-status', // Removed for Razorpay
+  teacherManageReferrals: '/teacher/dashboard/manage-referrals', // New Route
 };
 
 // Helper to convert display names to URL-friendly slugs
@@ -318,3 +316,4 @@ export const teacherPlatformPlansData: Plan[] = [
     qbAccess: true,
   },
 ];
+

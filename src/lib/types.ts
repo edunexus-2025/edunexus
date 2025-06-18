@@ -256,7 +256,8 @@ export interface StudentSubscribedPlan extends RecordModel {
   amount_paid_to_edunexus: number; // Commission amount to EduNexus
   amount_recieved_to_teacher: number; // Net amount for the teacher
   payment_id_razorpay?: string; 
-  order_id_razorpay?: string; 
+  order_id_razorpay?: string;
+  referral_code_used?: string; // Added
   expand?: {
     student?: { // Student details who subscribed
       id: string;
@@ -264,8 +265,7 @@ export interface StudentSubscribedPlan extends RecordModel {
     };
     teachers_plan_id?: { // Details of the teacher's plan subscribed to
       Plan_name: string;
-      plan_price: string;
-      plan: 'Monthly' | 'Weekly' | 'Yearly';
+      id: string;
     }
   }
 }
@@ -299,4 +299,15 @@ export interface TeacherWalletTransaction extends RecordModel {
       id: string;
     }
   }
+}
+
+export interface TeacherReferralCode extends RecordModel {
+  id: string;
+  teacher: string;
+  referral_code_string: string;
+  discount_percentage: number;
+  applicable_plan_ids: string[]; // Array of teachers_upgrade_plan IDs
+  expiry_date?: string;
+  created: string;
+  updated: string;
 }

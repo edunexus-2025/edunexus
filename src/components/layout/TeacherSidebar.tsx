@@ -53,7 +53,8 @@ import {
   MessagesSquare, 
   Trophy, 
   Zap,
-  Wallet // Added Wallet icon
+  Wallet,
+  TicketPercent // Added TicketPercent for referrals
 } from 'lucide-react';
 import { ThemeToggleButton } from './ThemeToggleButton';
 import { NotificationPopover } from './NotificationPopover';
@@ -84,10 +85,11 @@ const teacherNavItems = [
   { href: Routes.teacherDashboard, label: 'Dashboard', icon: <LayoutDashboard /> },
   { href: Routes.teacherMyContent, label: 'My Content', icon: <BookOpenCheck /> },
   { href: Routes.teacherManagePlans, label: 'Manage Plans', icon: <DollarSign /> },
+  { href: Routes.teacherManageReferrals, label: 'Manage Referrals', icon: <TicketPercent /> }, // New Item
   { href: Routes.teacherMyStudents, label: 'My Students', icon: <Users /> },
   { href: Routes.teacherManageDiscussion, label: 'Manage Discussion', icon: <MessagesSquare /> }, 
   { href: Routes.teacherStudentPerformance, label: 'Student Performance', icon: <BarChart3 /> },
-  { href: Routes.teacherWallet, label: 'My Wallet', icon: <Wallet /> }, // New Wallet Link
+  { href: Routes.teacherWallet, label: 'My Wallet', icon: <Wallet /> },
   { href: Routes.teacherCreateAds, label: 'Create Ads', icon: <Megaphone /> },
   { href: Routes.teacherUpgradePlatformPlan, label: 'Upgrade Plan', icon: <Zap /> }, 
   { href: Routes.teacherSettings, label: 'Settings', icon: <Settings /> },
