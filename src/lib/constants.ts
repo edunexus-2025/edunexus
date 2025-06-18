@@ -113,6 +113,7 @@ export const Routes = {
   teacherCreateAds: '/teacher/dashboard/create-ads',
   teacherUpgradeAds: '/teacher/dashboard/upgrade-ads',
   teacherPublicAdPage: (edunexusName: string): string => `/t/${edunexusName}`,
+  teacherPublicPlansPage: (edunexusName: string): string => `/teacher-plans/${edunexusName}`, // New Route
   teacherManageDiscussion: '/teacher/dashboard/manage-discussion',
   teacherWallet: '/teacher/dashboard/wallet',
   teacherManageReferrals: '/teacher/dashboard/manage-referrals',
