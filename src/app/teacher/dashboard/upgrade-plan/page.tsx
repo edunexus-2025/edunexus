@@ -51,8 +51,9 @@ export default function TeacherUpgradePlatformPlanPage() {
     const payUPaymentUrlFromServer = process.env.PAYU_PAYMENT_URL || 'https://secure.payu.in/_payment'; 
     const appBaseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL || window.location.origin;
 
-    if (!process.env.NEXT_PUBLIC_PAYU_KEY || !appBaseUrl) { // Check if the public key is available
-      toast({ title: "Configuration Error", description: "Payment gateway client key is missing. Contact support.", variant: "destructive" });
+    if (!process.env.NEXT_PUBLIC_PAYU_CLIENT_ID || !appBaseUrl) { 
+      console.error("[UpgradePage Teacher] CRITICAL ERROR: PayU Client ID (NEXT_PUBLIC_PAYU_CLIENT_ID) or App Base URL (NEXT_PUBLIC_APP_BASE_URL) is not configured in client-side environment variables.");
+      toast({ title: "Configuration Error", description: "Payment gateway client key or application URL is missing. Contact support.", variant: "destructive" });
       setIsProcessingUpgrade(null);
       return;
     }
@@ -63,7 +64,6 @@ export default function TeacherUpgradePlatformPlanPage() {
     const email = teacher.email;
     const phone = teacher.phoneNumber.replace(/\D/g, ''); 
     const txnid = generateTransactionId();
-    // surl and furl will be handled by the API route using APP_BASE_URL from its env
     
     const paymentDataForBackend = {
       txnid,
@@ -71,47 +71,59 @@ export default function TeacherUpgradePlatformPlanPage() {
       productinfo,
       firstname,
       email,
-      phone, // Phone is sent here for PayU form, not necessarily for hash
+      phone, 
       planId: plan.id, 
       teacherId: teacher.id,
-      // Pass these explicitly as the API route expects them by these names
       teacherEmail: teacher.email,
       teacherName: teacher.name,
       teacherPhone: teacher.phoneNumber,
     };
 
     try {
+      console.log(`[UpgradePage Teacher] INFO: Sending request to /api/payu/initiate-teacher-plan-payment. Payload:`, paymentDataForBackend);
       const response = await fetch('/api/payu/initiate-teacher-plan-payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(paymentDataForBackend),
       });
 
+      const responseText = await response.text();
+      console.log(`[UpgradePage Teacher] INFO: Raw response from /api/payu/initiate-teacher-plan-payment (${response.status}):`, responseText);
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Failed to parse error response from server." }));
+        let errorData = { error: `Server error (${response.status}): ${responseText || 'Failed to create PayU order.'}` };
+        try { errorData = JSON.parse(responseText); } catch (e) { /* Keep errorData as is */ }
+        console.error(`[UpgradePage Teacher] ERROR: API response not OK (${response.status}). Error data/text:`, errorData);
         throw new Error(errorData.error || `Failed to initiate payment (status: ${response.status})`);
       }
 
-      const payuFormData = await response.json(); 
+      const payuFormData = JSON.parse(responseText); 
+      console.log('[UpgradePage Teacher] INFO: Successfully parsed PayU form data from API:', payuFormData);
 
-      // Create a form and submit it to PayU
       const form = document.createElement('form');
       form.method = 'POST';
       form.action = payUPaymentUrlFromServer; 
 
       for (const key in payuFormData) {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = key;
-        input.value = payuFormData[key];
-        form.appendChild(input);
+        if (payuFormData.hasOwnProperty(key)) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = payuFormData[key];
+            form.appendChild(input);
+        }
       }
       document.body.appendChild(form);
       form.submit();
       // User will be redirected to PayU. setIsProcessingUpgrade(null) will be handled by ondismiss or if the page reloads.
     } catch (error: any) {
-      console.error("Failed to initiate PayU payment:", error);
-      toast({ title: "Payment Initiation Failed", description: error.message || "Could not start the payment process.", variant: "destructive" });
+      console.error("[UpgradePage Teacher] CRITICAL: Error in payment process (client-side fetch or form submission):", error);
+      if (error.name === 'TypeError' && error.message.toLowerCase().includes('failed to fetch')) {
+            console.error("[UpgradePage Teacher] ERROR: 'Failed to fetch'. This usually means the API endpoint (/api/payu/initiate-teacher-plan-payment) is unreachable or crashing. CHECK SERVER LOGS.");
+            toast({ title: "Network Error or Server Issue", description: "Could not connect to the payment server. Ensure API endpoint is live.", variant: "destructive", duration: 10000 });
+        } else {
+            toast({ title: "Payment Setup Error", description: error.message || "Could not initiate payment.", variant: "destructive", duration: 7000 });
+        }
       setIsProcessingUpgrade(null);
     }
   };
@@ -215,3 +227,5 @@ export default function TeacherUpgradePlatformPlanPage() {
     </div>
   );
 }
+
+    

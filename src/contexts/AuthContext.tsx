@@ -63,6 +63,7 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
   let canCreateAdsTeacher: boolean | undefined = false;
   let adsSubscriptionTeacher: User['ads_subscription'] = 'Free';
   let phoneNumberMapped: string | undefined = undefined;
+  let maxContentPlansAllowed: number | undefined = undefined;
 
 
   if (record.collectionName === 'users') {
@@ -73,6 +74,7 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
     canCreateAdsTeacher = record.can_create_ads === true;
     adsSubscriptionTeacher = (record.ads_subscription || 'Free') as User['ads_subscription'];
     phoneNumberMapped = record.phone_number as User['phoneNumber'];
+    maxContentPlansAllowed = typeof record.max_content_plans_allowed === 'number' ? record.max_content_plans_allowed : undefined;
   }
   
   const name = record.name || record.meta?.name;
@@ -98,7 +100,7 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
     verified: record.verified ?? record.meta?.emailVerification, 
     emailVisibility: record.emailVisibility ?? true,
     grade: record.class as User['grade'],
-    phoneNumber: phoneNumberMapped, // Use the mapped phone number
+    phoneNumber: phoneNumberMapped, 
     studentSubscriptionTier: studentSubTier,
     teacherSubscriptionTier: teacherSubTier,
     role: record.role as User['role'],
@@ -123,6 +125,7 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
     used_free_trial: record.used_free_trial,
     can_create_ads: canCreateAdsTeacher,
     ads_subscription: adsSubscriptionTeacher,
+    max_content_plans_allowed: maxContentPlansAllowed,
     created: record.created,
     updated: record.updated,
     collectionId: record.collectionId,
@@ -288,7 +291,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (model && model.id) {
         try {
           if (!isMounted) return;
-          const refreshedRecord = await pb.collection(model.collectionName).getOne(model.id, { '$autoCancel': false, expand: 'referralStats' });
+          // Ensure to fetch all necessary fields including max_content_plans_allowed for teachers
+          const fieldsToFetch = model.collectionName === 'teacher_data'
+            ? '*,max_content_plans_allowed,referralStats' // Add other teacher-specific fields if needed
+            : '*,referralStats'; // Student fields
+
+          const refreshedRecord = await pb.collection(model.collectionName).getOne(model.id, { '$autoCancel': false, expand: 'referralStats', fields: fieldsToFetch });
           if (!isMounted) return; 
           const mappedEntity = mapRecordToUser(refreshedRecord);
           
@@ -469,7 +477,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         passwordConfirm: details.confirmPassword,
         name: details.name,
         institute_name: details.institute_name || null,
-        phone_number: details.phone_number, // Use phone_number as per schema
+        phone_number: details.phone_number, 
         total_students: details.total_students,
         level: details.level,
         EduNexus_Name: details.EduNexus_Name,
@@ -481,6 +489,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         emailVisibility: true,
         can_create_ads: false, 
         ads_subscription: "Free", 
+        max_content_plans_allowed: teacherPlatformPlansData.find(p => p.id === 'Free')?.maxContentPlans ?? 0,
     };
 
     if (!details.profile_picture) {
@@ -600,3 +609,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+    
