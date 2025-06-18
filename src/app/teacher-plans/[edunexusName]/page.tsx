@@ -17,7 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AppConfig, Routes, escapeForPbFilter } from '@/lib/constants';
 import { Input } from '@/components/ui/input';
 import {
-  AlertCircle, GraduationCap, ShoppingCart, DollarSign, Loader2, Tag, CheckCircle, Star, Info, BookOpenCheck
+  AlertCircle, GraduationCap, ShoppingCart, DollarSign, Loader2, Tag, CheckCircle, Star, Info, BookOpenCheck, ArrowLeft
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { User, Plan as AppPlanType, TeacherPlan as TeacherPlanType, UserSubscriptionTierStudent } from '@/lib/types';
@@ -33,7 +33,7 @@ interface TeacherDataRecord extends RecordModel {
 interface StudentSubscribedPlanRecord extends RecordModel {
   student: string;
   teacher: string;
-  teachers_plan_id: string;
+  teachers_plan_id: string; // This is the relation to teachers_upgrade_plan
   payment_status: 'successful' | 'pending' | 'failed';
   expiry_date?: string;
 }
@@ -57,7 +57,7 @@ const getPbFileUrl = (record: RecordModel | null | undefined, fieldName: string)
 export default function TeacherPublicPlansPage() {
   const params = useParams();
   const router = useRouter();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, teacher: currentTeacher } = useAuth(); // Get both student and teacher from auth
   const { toast } = useToast();
   const edunexusNameParam = typeof params.edunexusName === 'string' ? params.edunexusName : '';
 
@@ -166,16 +166,20 @@ export default function TeacherPublicPlansPage() {
     return pageData?.studentSubscriptionsToThisTeacher?.some(sub => sub.teachers_plan_id === planId && sub.payment_status === 'successful' && (!sub.expiry_date || !isPast(new Date(sub.expiry_date))));
   };
 
-  if (isLoading) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> {/* No Navbar */} <main className="flex-1 container mx-auto px-2 sm:px-4 py-6 md:py-8 max-w-4xl"> <Skeleton className="h-12 w-3/4 mb-4" /> <Card className="shadow-xl"><CardHeader className="p-4 sm:p-6 text-center border-b"> <Skeleton className="h-24 w-24 rounded-full mx-auto mb-3" /> <Skeleton className="h-8 w-1/2 mx-auto" /> </CardHeader> <CardContent className="p-4 sm:p-6 space-y-6"> <Skeleton className="h-20 w-full" /> <Skeleton className="h-32 w-full" /> </CardContent> </Card> </main> </div> ); }
-  if (error) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> {/* No Navbar */} <main className="flex-1 container mx-auto px-4 py-8 max-w-2xl"> <Card className="text-center shadow-lg border-destructive bg-destructive/10"><CardHeader><AlertCircle className="mx-auto h-12 w-12 text-destructive mb-3" /><CardTitle className="text-destructive">Error Loading Page</CardTitle></CardHeader><CardContent><p className="text-destructive/90 whitespace-pre-wrap">{error}</p></CardContent><CardFooter><Button onClick={() => router.push(Routes.home)} variant="outline" className="mx-auto">Go to Homepage</Button></CardFooter></Card> </main> </div> ); }
-  if (!pageData || !pageData.teacherData) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> {/* No Navbar */} <main className="flex-1 container mx-auto px-4 py-8 max-w-2xl"> <Card className="text-center shadow-lg"><CardHeader><AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-3" /><CardTitle>Profile Not Found</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">The teacher profile does not exist or is unavailable.</p></CardContent><CardFooter><Button onClick={() => router.push(Routes.home)} variant="outline" className="mx-auto">Go to Homepage</Button></CardFooter></Card> </main> </div> ); }
+  if (isLoading) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> <main className="flex-1 container mx-auto px-2 sm:px-4 py-6 md:py-8 max-w-4xl"> <Skeleton className="h-12 w-3/4 mb-4" /> <Card className="shadow-xl"><CardHeader className="p-4 sm:p-6 text-center border-b"> <Skeleton className="h-24 w-24 rounded-full mx-auto mb-3" /> <Skeleton className="h-8 w-1/2 mx-auto" /> </CardHeader> <CardContent className="p-4 sm:p-6 space-y-6"> <Skeleton className="h-20 w-full" /> <Skeleton className="h-32 w-full" /> </CardContent> </Card> </main> </div> ); }
+  if (error) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> <main className="flex-1 container mx-auto px-4 py-8 max-w-2xl"> <Card className="text-center shadow-lg border-destructive bg-destructive/10"><CardHeader><AlertCircle className="mx-auto h-12 w-12 text-destructive mb-3" /><CardTitle className="text-destructive">Error Loading Page</CardTitle></CardHeader><CardContent><p className="text-destructive/90 whitespace-pre-wrap">{error}</p></CardContent><CardFooter><Button onClick={() => router.push(Routes.home)} variant="outline" className="mx-auto">Go to Homepage</Button></CardFooter></Card> </main> </div> ); }
+  if (!pageData || !pageData.teacherData) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> <main className="flex-1 container mx-auto px-4 py-8 max-w-2xl"> <Card className="text-center shadow-lg"><CardHeader><AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-3" /><CardTitle>Profile Not Found</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">The teacher profile does not exist or is unavailable.</p></CardContent><CardFooter><Button onClick={() => router.push(Routes.home)} variant="outline" className="mx-auto">Go to Homepage</Button></CardFooter></Card> </main> </div> ); }
 
   const { teacherData, contentPlans, teacherAvatarUrl } = pageData;
 
   return (
     <div className="flex flex-col min-h-screen bg-muted/30 dark:bg-slate-950">
-      {/* Navbar removed */}
       <main className="flex-1 container mx-auto px-2 sm:px-4 py-6 md:py-8 max-w-4xl">
+        {(currentUser || currentTeacher) && (
+             <Button variant="outline" size="sm" onClick={() => router.push(currentUser ? Routes.dashboard : Routes.teacherDashboard)} className="mb-4">
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
+            </Button>
+        )}
         <Card className="shadow-xl border-t-4 border-primary rounded-xl overflow-hidden mb-8">
           <CardHeader className="p-4 sm:p-6 text-center bg-gradient-to-br from-primary/10 via-background to-background border-b">
             <Avatar className="h-24 w-24 sm:h-28 sm:w-28 text-4xl border-4 border-card shadow-lg mx-auto mb-3 bg-muted">
@@ -212,6 +216,8 @@ export default function TeacherPublicPlansPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {contentPlans.map(plan => {
               const isSubscribed = isStudentSubscribedToPlan(plan.id);
+              const isOwnPlan = currentTeacher?.id === teacherData.id; // Check if viewer is the teacher themself
+
               return (
                 <Card key={plan.id} className="shadow-md hover:shadow-lg transition-shadow bg-card border flex flex-col">
                   <CardHeader className="pb-3">
@@ -228,7 +234,11 @@ export default function TeacherPublicPlansPage() {
                     </ul>
                   </CardContent>
                   <CardFooter className="pt-3 mt-auto">
-                    {isSubscribed ? (
+                    {isOwnPlan ? (
+                        <Button variant="outline" className="w-full" asChild>
+                            <Link href={Routes.teacherViewPlan(plan.id)}>Manage This Plan</Link>
+                        </Button>
+                    ) : isSubscribed ? (
                       <Button variant="outline" className="w-full" disabled>
                         <CheckCircle className="mr-2 h-4 w-4 text-green-500"/> Subscribed
                       </Button>
@@ -244,7 +254,7 @@ export default function TeacherPublicPlansPage() {
                       </Button>
                     ) : (
                       <Button size="sm" className="w-full" asChild>
-                        <Link href={Routes.login + `?redirect=${encodeURIComponent(router.asPath)}`}>Login to Subscribe</Link>
+                        <Link href={Routes.login + `?redirect=${encodeURIComponent(window.location.pathname)}`}>Login to Subscribe</Link>
                       </Button>
                     )}
                   </CardFooter>
@@ -264,3 +274,4 @@ export default function TeacherPublicPlansPage() {
     </div>
   );
 }
+
