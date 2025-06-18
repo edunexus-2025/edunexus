@@ -3,6 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname, useParams } from 'next/navigation';
+import * as React from "react"; // Import React for useState and useEffect
 import {
   Sidebar,
   SidebarContent,
@@ -74,7 +75,7 @@ function TestManagementSidebar({ testId, notifications, deleteNotification, clea
     { href: Routes.teacherTestPanel(testId), label: 'Dashboard', icon: <LayoutDashboard /> },
     { href: Routes.teacherTestPanelAddQuestion(testId), label: 'Add Question', icon: <PlusCircle /> },
     { href: Routes.teacherTestPanelViewQuestions(testId), label: 'View Questions', icon: <Eye /> },
-    { href: Routes.teacherTestPanelStatus(testId), label: 'Test Status', icon: <ClipboardCheck /> }, // New Item
+    { href: Routes.teacherTestPanelStatus(testId), label: 'Test Status', icon: <ClipboardCheck /> }, 
     { href: Routes.teacherTestPanelSettings(testId), label: 'Settings', icon: <SettingsIcon /> },
     { href: Routes.teacherTestPanelResults(testId), label: 'View Results', icon: <BarChart2 /> },
   ];
@@ -169,7 +170,7 @@ function TestManagementSidebar({ testId, notifications, deleteNotification, clea
                   <span>Profile & Settings</span>
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
+               <DropdownMenuItem asChild>
                 <Link href={Routes.teacherDashboard} className="flex items-center gap-2 cursor-pointer hover:!bg-sidebar-accent hover:!text-sidebar-accent-foreground" onClick={handleMobileNavClick}>
                    <LayoutDashboard className="h-4 w-4" />
                    <span>Main Dashboard</span>
@@ -206,8 +207,13 @@ export default function TeacherTestPanelLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const params = useParams();
-  const testId = typeof params.testId === 'string' ? params.testId : '';
+  // Scoped extraction of testId
+  const testId = (() => {
+    const params = useParams(); // Hook is fine inside a client component
+    const idFromParams = params?.testId;
+    return typeof idFromParams === 'string' ? idFromParams : Array.isArray(idFromParams) ? idFromParams[0] : '';
+  })();
+  
   const [notifications, setNotifications] = useState<NotificationMessage[]>(initialTestPanelNotifications);
 
   const deleteNotification = (id: string) => {
