@@ -35,8 +35,9 @@ interface StudentSubscribedPlan extends RecordModel {
   teacher: string; 
   teachers_plan_id: string;
   payment_status: 'pending' | 'successful' | 'failed' | 'refunded';
-  expiry_date?: string; // Optional, as it might not be set for all plans
+  expiry_date?: string; 
   teachers_plan_name_cache?: string;
+  // expand is not used client-side for this type due to permission constraints
 }
 
 const mapPbTeacherTestToDisplay = (record: RecordModel): TeacherDisplayedTest => {
@@ -73,18 +74,14 @@ export default function MyTeacherPage() {
     }
     if (isMountedGetter()) { setIsLoadingPage(true); setError(null); }
 
-    if (!user.subscription_by_teacher || user.subscription_by_teacher.length === 0) {
-      if (isMountedGetter()) {
-        setSubscribedTeacherInfo(null); setTeacherTests([]); setTeacherContentPlans([]); setCurrentStudentSubscription(null);
-        setIsLoadingPage(false);
-      }
-      return;
+    let teacherId: string | undefined = undefined;
+    if (Array.isArray(user.subscription_by_teacher) && user.subscription_by_teacher.length > 0 && user.subscription_by_teacher[0] && typeof user.subscription_by_teacher[0] === 'string' && user.subscription_by_teacher[0].trim() !== '') {
+        teacherId = user.subscription_by_teacher[0];
     }
 
-    const teacherId = user.subscription_by_teacher[0];
-    if (!teacherId || typeof teacherId !== 'string' || teacherId.trim() === '') {
+    if (!teacherId) {
       if (isMountedGetter()) {
-        setError("Invalid teacher ID linked to your account. Please contact support or your teacher to re-link.");
+        setSubscribedTeacherInfo(null); setTeacherTests([]); setTeacherContentPlans([]); setCurrentStudentSubscription(null);
         setIsLoadingPage(false);
       }
       return;
@@ -110,7 +107,7 @@ export default function MyTeacherPage() {
             console.error("MyTeacherPage: Error fetching teacher_data:", teacherFetchError.data || teacherFetchError);
             setError(`Error fetching teacher details: ${teacherFetchError.data?.message || teacherFetchError.message}`);
           }
-          setIsLoadingPage(false);
+          // setIsLoadingPage(false); // Moved to main finally block
         }
         return; 
       }
@@ -137,78 +134,87 @@ export default function MyTeacherPage() {
       const contentPlanRecords = await pb.collection('teachers_upgrade_plan').getFullList<TeacherPlanType>({ filter: contentPlansFilter, sort: '-created', '$autoCancel': false });
       if (isMountedGetter()) setTeacherContentPlans(contentPlanRecords); else return;
       
-      const studentAllSuccessfulSubscriptionsFilter = `student = "${user.id}" && payment_status = "successful"`;
-      console.log(`MyTeacherPage: Fetching ALL student subscriptions with filter: ${studentAllSuccessfulSubscriptionsFilter}`);
-      try {
-        const allStudentSubRecords = await pb.collection('students_teachers_upgrade_plan').getFullList<StudentSubscribedPlan>({
-          filter: studentAllSuccessfulSubscriptionsFilter,
-          sort: '-created', // Sort by creation, then filter by expiry
-          fields: 'id,student,teacher,teachers_plan_id,payment_status,expiry_date,teachers_plan_name_cache,created',
-          '$autoCancel': false,
-        });
+      if (user?.id && teacherId) {
+        const studentSubscriptionFilter = `student = "${user.id}" && payment_status = "successful"`;
+        console.log(`MyTeacherPage: Fetching current student's subscriptions with filter: ${studentSubscriptionFilter}`);
+        try {
+          const allStudentSubRecords = await pb.collection('students_teachers_upgrade_plan').getFullList<StudentSubscribedPlan>({
+            filter: studentSubscriptionFilter,
+            sort: '-created',
+            fields: 'id,student,teacher,teachers_plan_id,payment_status,expiry_date,teachers_plan_name_cache,created',
+            '$autoCancel': false,
+          });
 
-        if (isMountedGetter()) {
-          const relevantSubRecordsForThisTeacher = allStudentSubRecords.filter(sub => sub.teacher === teacherId);
+          if (isMountedGetter()) {
+            const relevantSubRecordsForThisTeacher = allStudentSubRecords.filter(sub => sub.teacher === teacherId);
+            console.log(`MyTeacherPage: Found ${allStudentSubRecords.length} total successful subs for student, ${relevantSubRecordsForThisTeacher.length} for this teacher (${teacherId}).`);
 
-          if (relevantSubRecordsForThisTeacher.length > 0) {
-            const now = new Date();
-            const activeSubscriptions = relevantSubRecordsForThisTeacher.filter(sub => {
-              if (!sub.expiry_date) return true; // Active if no expiry date
-              try {
-                return new Date(sub.expiry_date) > now; // Active if expiry date is in the future
-              } catch (e) {
-                console.warn(`MyTeacherPage: Invalid expiry_date format for subscription ${sub.id}: ${sub.expiry_date}. Treating as expired.`);
-                return false; 
-              }
-            });
-
-            if (activeSubscriptions.length > 0) {
-              activeSubscriptions.sort((a, b) => {
-                const dateA = a.expiry_date ? new Date(a.expiry_date).getTime() : Infinity;
-                const dateB = b.expiry_date ? new Date(b.expiry_date).getTime() : Infinity;
-                if (dateB !== dateA) return dateB - dateA; // Latest expiry first
-                return new Date(b.created).getTime() - new Date(a.created).getTime(); // Newest created if expiry same/null
+            if (relevantSubRecordsForThisTeacher.length > 0) {
+              const now = new Date();
+              const activeSubscriptions = relevantSubRecordsForThisTeacher.filter(sub => {
+                if (!sub.expiry_date) return true; 
+                try {
+                  return new Date(sub.expiry_date) > now; 
+                } catch (e) {
+                  console.warn(`MyTeacherPage: Invalid expiry_date format for subscription ${sub.id}: ${sub.expiry_date}. Treating as expired.`);
+                  return false; 
+                }
               });
-              setCurrentStudentSubscription(activeSubscriptions[0]);
-              console.log("MyTeacherPage: Successfully set active student subscription for this teacher:", activeSubscriptions[0]);
+
+              if (activeSubscriptions.length > 0) {
+                activeSubscriptions.sort((a, b) => {
+                  const dateA = a.expiry_date ? new Date(a.expiry_date).getTime() : Infinity;
+                  const dateB = b.expiry_date ? new Date(b.expiry_date).getTime() : Infinity;
+                  if (dateB !== dateA) return dateB - dateA; 
+                  return new Date(b.created).getTime() - new Date(a.created).getTime();
+                });
+                setCurrentStudentSubscription(activeSubscriptions[0]);
+                console.log("MyTeacherPage: Successfully set active student subscription for this teacher:", activeSubscriptions[0]);
+              } else {
+                setCurrentStudentSubscription(null);
+                console.log(`MyTeacherPage: No *active* successful subscription found for student "${user.id}" with teacher "${teacherId}". All successful plans may have expired.`);
+              }
             } else {
               setCurrentStudentSubscription(null);
-              console.log(`MyTeacherPage: No *active* successful subscription found for student "${user.id}" with teacher "${teacherId}". All successful plans may have expired.`);
+              console.log(`MyTeacherPage: No successful subscription records found for student "${user.id}" with teacher "${teacherId}" after client-side filtering.`);
             }
-          } else {
-            setCurrentStudentSubscription(null);
-            console.log(`MyTeacherPage: No successful subscription records found for student "${user.id}" with teacher "${teacherId}" after client-side filtering.`);
           }
-        }
-      } catch (subError: any) {
-        if (isMountedGetter()) {
-          // Specific handling for 400 error as per console log
-          if (subError.status === 400) {
-             console.error(
-              `MyTeacherPage: ClientResponseError 400 when fetching 'students_teachers_upgrade_plan'.
-              Filter used: "${studentAllSuccessfulSubscriptionsFilter}".
-              This error often indicates that the 'teacher' field in your PocketBase 'students_teachers_upgrade_plan' collection (for records matching the student and payment_status) contains an ID that is NOT a valid ID from the 'teacher_data' collection.
-              Please verify data integrity in PocketBase for student "${user.id}" and teacher target "${teacherId}".
-              PocketBase error:`, subError.data || subError.message, "Full Error:", subError
-            );
-            setError(`There's an issue with your subscription data for this teacher. Please contact support. (Ref: STUP_INTEGRITY)`);
-          } else if (subError.status === 404) {
+        } catch (subError: any) {
+          if (isMountedGetter()) {
+            const clientError = subError as ClientResponseError;
+            let specificErrorMessage = `Could not load your plan details with this teacher.`;
+            if (clientError.status === 400) {
+              specificErrorMessage = `There appears to be an issue with your subscription data for this teacher. Please contact support. (Ref: STUP_INTEGRITY_400) This may be due to invalid teacher reference in your subscription record.`;
+              console.error(
+                `MyTeacherPage: ClientResponseError 400 when fetching 'students_teachers_upgrade_plan'.
+                Filter used: "${studentSubscriptionFilter}".
+                This error often indicates that the 'teacher' field in your PocketBase 'students_teachers_upgrade_plan' collection (for records matching the student and payment_status) contains an ID that is NOT a valid ID from the 'teacher_data' collection.
+                Please verify data integrity in PocketBase for student "${user.id}" and teacher target "${teacherId}".
+                PocketBase error: ${JSON.stringify(clientError.data || {})} "Full Error:"`, clientError
+              );
+            } else if (clientError.status === 404) {
+              setCurrentStudentSubscription(null);
+              console.log(`MyTeacherPage: No 'students_teachers_upgrade_plan' records found for student "${user.id}" with payment_status "successful".`);
+              specificErrorMessage = "No active subscription plan found with this teacher."; // More user-friendly for 404
+            } else if (clientError.isAbort || (clientError.name === 'ClientResponseError' && clientError.status === 0)) {
+                console.warn('MyTeacherPage: Fetch student subscriptions request was cancelled/network issue.');
+                specificErrorMessage = `Network issue loading your plan. Please refresh.`;
+            } else {
+              console.error(`MyTeacherPage: Other error fetching 'students_teachers_upgrade_plan' for student ${user.id}. Filter: ${studentSubscriptionFilter}. PB error:`, clientError.data || clientError.message, "Full Error:", clientError);
+              specificErrorMessage = `Could not load your plan status with this teacher due to a data access issue. (Ref: STUP_DATA_FAIL)`;
+            }
+            setError(prevError => prevError ? `${prevError}\n${specificErrorMessage}` : specificErrorMessage); 
             setCurrentStudentSubscription(null);
-            console.log(`MyTeacherPage: No 'students_teachers_upgrade_plan' records found for student "${user.id}" at all.`);
-          } else {
-             console.error(`MyTeacherPage: Other ClientResponseError when fetching 'students_teachers_upgrade_plan' for student ${user.id}. Filter: ${studentAllSuccessfulSubscriptionsFilter}. PocketBase error:`, subError.data || subError.message, "Full Error:", subError);
-            setError(`Could not load your plan details with this teacher due to a data access issue. (Ref: STUP_DATA_FAIL)`);
           }
-          setCurrentStudentSubscription(null); // Ensure it's null on error
         }
       }
 
-    } catch (err: any) {
+    } catch (mainErr: any) {
       if (!isMountedGetter()) return;
-      let errorToLog: any = err; let errorMessage = "An unexpected error occurred while loading teacher content.";
-      if (err instanceof Error && 'isAbort' in err && (err as any).isAbort) { errorMessage = "Request was cancelled."; }
-      else if (err && typeof err === 'object') {
-        const clientError = err as ClientResponseError; errorToLog = clientError.data || clientError;
+      let errorToLog: any = mainErr; let errorMessage = "An unexpected error occurred while loading teacher content.";
+      if (mainErr instanceof Error && 'isAbort' in mainErr && (mainErr as any).isAbort) { errorMessage = "Request was cancelled."; }
+      else if (mainErr && typeof mainErr === 'object') {
+        const clientError = mainErr as ClientResponseError; errorToLog = clientError.data || clientError;
         if (clientError.name === 'ClientResponseError' && clientError.status === 0) { errorMessage = "Network error while loading teacher content."; }
         else if (clientError.status === 404) { errorMessage = "The teacher's profile or content could not be found."; }
         else if (clientError.data && clientError.data.message) { errorMessage = `Error: ${clientError.data.message}`; }
@@ -261,12 +267,12 @@ export default function MyTeacherPage() {
                 </p>
               }
             </div>
-          ) : error && !isLoadingPage ? ( // Display data-related error if it exists, but not general loading errors
+          ) : error && !isLoadingPage && error.includes("STUP_INTEGRITY_400") ? ( 
              <div className="mt-4 p-3 bg-red-700/30 rounded-lg text-center sm:text-left">
                 <p className="text-xs font-medium text-red-100 uppercase tracking-wider">Subscription Info Error:</p>
                 <p className="text-sm text-red-50 line-clamp-2" title={error}>{error}</p>
              </div>
-          ) : !isLoadingPage ? (
+          ) : !isLoadingPage && !error ? (
             <div className="mt-4 p-3 bg-blue-700/30 rounded-lg text-center sm:text-left">
                <p className="text-xs font-medium text-blue-100 uppercase tracking-wider">No Active Plan</p>
                <p className="text-sm text-blue-50">You are not currently subscribed to an active plan from this teacher, or previous plans may have expired.</p>
