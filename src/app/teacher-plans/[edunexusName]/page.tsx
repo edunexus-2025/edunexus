@@ -8,7 +8,6 @@ import Link from 'next/link';
 import pb from '@/lib/pocketbase';
 import type { RecordModel, ClientResponseError } from 'pocketbase';
 import { useToast } from '@/hooks/use-toast';
-// Navbar import removed
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -57,7 +56,7 @@ const getPbFileUrl = (record: RecordModel | null | undefined, fieldName: string)
 export default function TeacherPublicPlansPage() {
   const params = useParams();
   const router = useRouter();
-  const { user: currentUser, teacher: currentTeacher } = useAuth(); // Get both student and teacher from auth
+  const { user: currentUser, teacher: currentTeacher } = useAuth(); 
   const { toast } = useToast();
   const edunexusNameParam = typeof params.edunexusName === 'string' ? params.edunexusName : '';
 
@@ -73,35 +72,65 @@ export default function TeacherPublicPlansPage() {
   const fetchData = useCallback(async (isMountedGetter: () => boolean = () => true) => {
     if (!edunexusName) { if (isMountedGetter()) { setError("Teacher identifier missing in URL."); setIsLoading(false); } return; }
     if (isMountedGetter()) { setIsLoading(true); setError(null); }
+    
+    console.log(`[TeacherPlansPage] fetchData called. Current viewer: Student ID: ${currentUser?.id || 'N/A'}, Teacher ID: ${currentTeacher?.id || 'N/A'}. Target teacher EduNexus_Name: ${edunexusName}`);
 
     try {
       const teacherDataRecords = await pb.collection('teacher_data').getFullList<TeacherDataRecord>({ filter: `EduNexus_Name = "${edunexusName}"` });
       if (!isMountedGetter()) return;
-      if (teacherDataRecords.length === 0) { if (isMountedGetter()) { setError("Teacher profile not found."); setIsLoading(false); } return; }
+      if (teacherDataRecords.length === 0) { 
+        if (isMountedGetter()) { setError("Teacher profile not found."); setIsLoading(false); }
+        console.error(`[TeacherPlansPage] Teacher profile not found for EduNexus_Name: ${edunexusName}`);
+        return;
+      }
       const teacherData = teacherDataRecords[0];
+      console.log(`[TeacherPlansPage] Successfully fetched teacherData. ID: ${teacherData.id}, Name: ${teacherData.name}`);
       const teacherAvatarUrl = getPbFileUrl(teacherData, 'profile_picture') || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherData.name?.charAt(0) || 'T')}&background=random&color=fff&size=128`;
 
-      const contentPlans = await pb.collection('teachers_upgrade_plan').getFullList<TeacherPlanType>({ filter: `teacher = "${teacherData.id}"`, sort: '-created' });
-      console.log(`Fetched ${contentPlans.length} content plans for teacher ${teacherData.id}`);
+      const plansFilter = `teacher = "${teacherData.id}"`;
+      console.log(`[TeacherPlansPage] Attempting to fetch contentPlans with filter: '${plansFilter}'`);
+      const contentPlans = await pb.collection('teachers_upgrade_plan').getFullList<TeacherPlanType>({ filter: plansFilter, sort: '-created' });
+      console.log(`[TeacherPlansPage] Fetched ${contentPlans.length} content plans for teacher ${teacherData.id}. Raw plans:`, JSON.parse(JSON.stringify(contentPlans)));
       
       let studentSubscriptions: StudentSubscribedPlanRecord[] = [];
       if (currentUser?.id && teacherData.id) {
+        const studentSubFilter = `student = "${currentUser.id}" && teacher = "${teacherData.id}" && payment_status = "successful"`;
+        console.log(`[TeacherPlansPage] Fetching student subscriptions for student ${currentUser.id} and teacher ${teacherData.id} with filter: '${studentSubFilter}'`);
         try {
           studentSubscriptions = await pb.collection('students_teachers_upgrade_plan').getFullList<StudentSubscribedPlanRecord>({
-            filter: `student = "${currentUser.id}" && teacher = "${teacherData.id}" && payment_status = "successful"`,
+            filter: studentSubFilter,
           });
+           console.log(`[TeacherPlansPage] Fetched ${studentSubscriptions.length} subscriptions for current student with this teacher.`);
         } catch (subError) {
-          console.warn("Could not fetch student's current subscriptions for this teacher:", subError);
+          console.warn("[TeacherPlansPage] Could not fetch student's current subscriptions for this teacher:", subError);
         }
       }
       
       if (!isMountedGetter()) return;
       setPageData({ teacherData, contentPlans, teacherAvatarUrl, studentSubscriptionsToThisTeacher: studentSubscriptions });
-    } catch (err: any) { if (isMountedGetter()) { const clientError = err as ClientResponseError; if (clientError?.isAbort || (clientError?.name === 'ClientResponseError' && clientError?.status === 0)) { console.warn('Fetch data request was cancelled.'); } else { console.error("Failed to fetch page data:", clientError.data || clientError); setError(`Could not load teacher plans. Error: ${clientError.data?.message || clientError.message}`); }}}
-    finally { if (isMountedGetter()) setIsLoading(false); }
-  }, [edunexusName, currentUser?.id]);
+      if (contentPlans.length === 0) {
+        console.warn(`[TeacherPlansPage] No content plans were found for teacher ${teacherData.id} using filter "${plansFilter}". Check PocketBase data and 'teachers_upgrade_plan' API rules if they are not fully public or if the teacher has no plans linked.`);
+      }
 
-  useEffect(() => { let isMounted = true; fetchData(() => isMounted); return () => { isMounted = false; }; }, [fetchData]);
+    } catch (err: any) { 
+      if (isMountedGetter()) { 
+        const clientError = err as ClientResponseError; 
+        if (clientError?.isAbort || (clientError?.name === 'ClientResponseError' && clientError?.status === 0)) { 
+          console.warn('[TeacherPlansPage] Fetch data request was cancelled.'); 
+        } else { 
+          console.error("[TeacherPlansPage] Failed to fetch page data:", clientError.data || clientError); 
+          setError(`Could not load teacher plans. Error: ${clientError.data?.message || clientError.message}`); 
+        }
+      }
+    }
+    finally { if (isMountedGetter()) setIsLoading(false); }
+  }, [edunexusName, currentUser?.id, currentTeacher?.id]); // Added currentTeacher?.id
+
+  useEffect(() => { 
+    let isMounted = true; 
+    fetchData(() => isMounted); 
+    return () => { isMounted = false; }; 
+  }, [fetchData]);
 
   const handleSubscribeToTeacherPlan = async (plan: TeacherPlanType) => {
     if (!currentUser || !currentUser.id) { toast({ title: "Login Required", description: "Please login as a student to subscribe.", variant: "destructive" }); router.push(Routes.login + `?redirect=${encodeURIComponent(window.location.pathname)}`); return; }
@@ -276,4 +305,3 @@ export default function TeacherPublicPlansPage() {
     </div>
   );
 }
-
