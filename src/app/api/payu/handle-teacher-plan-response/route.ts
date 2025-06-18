@@ -6,16 +6,16 @@ import { Routes, teacherPlatformPlansData } from '@/lib/constants';
 import type { UserSubscriptionTierTeacher } from '@/lib/types';
 
 // These are read from .env.local (or your deployment environment variables)
-const SERVER_SIDE_PAYU_SALT = process.env.PAYU_SALT; 
-const SERVER_SIDE_PAYU_MERCHANT_KEY = process.env.PAYU_MERCHANT_KEY_SERVER; 
+const SERVER_SIDE_PAYU_CLIENT_SECRET = process.env.PAYU_CLIENT_SECRET; 
+const SERVER_SIDE_PAYU_CLIENT_ID = process.env.PAYU_CLIENT_ID_SERVER; 
 const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_BASE_URL;
 
 export async function POST(request: NextRequest) {
-  if (!SERVER_SIDE_PAYU_SALT || !SERVER_SIDE_PAYU_MERCHANT_KEY) {
-    console.error("[PayU Handle Response ERROR] CRITICAL: PayU Merchant Key (Server-Side) or Salt is NOT configured on the server. Check .env.local and deployment variables.");
+  if (!SERVER_SIDE_PAYU_CLIENT_SECRET || !SERVER_SIDE_PAYU_CLIENT_ID) {
+    console.error("[PayU Handle Response ERROR] CRITICAL: PayU Client ID (Server-Side) or Client Secret is NOT configured on the server. Check .env.local and deployment variables.");
     const errorRedirectUrl = new URL(`${APP_BASE_URL || 'http://localhost:9002'}${Routes.teacherPaymentStatus}`);
     errorRedirectUrl.searchParams.set('status', 'error');
-    errorRedirectUrl.searchParams.set('message', 'Payment gateway server configuration error (Key/Salt missing for verification).');
+    errorRedirectUrl.searchParams.set('message', 'Payment gateway server configuration error (Client ID/Secret missing for verification).');
     return NextResponse.redirect(errorRedirectUrl.toString(), 302);
   }
    if (!APP_BASE_URL) {
@@ -49,14 +49,18 @@ export async function POST(request: NextRequest) {
     const teacherId = payuResponse.udf2;
     const errorMessageFromPayu = payuResponse.error_Message || payuResponse.error;
 
+    // For response hash verification, the order is:
+    // SALT|status||||||udf5|udf4|udf3|udf2|udf1|email|firstname|productinfo|amount|txnid|KEY
+    // Note: The empty strings are for UDF10 down to UDF6, then UDF5 down to UDF1.
+    // Then email, firstname, productinfo, amount, txnid, KEY.
     const hashParamsArray = [
       status || '',
-      ...(Array(5).fill('')), 
+      ...(Array(5).fill('')), // Placeholder for udf10 to udf6 if they were used
       payuResponse.udf5 || '',
       payuResponse.udf4 || '',
       payuResponse.udf3 || '',
-      teacherId || '',        
-      planId || '',          
+      teacherId || '', // udf2       
+      planId || '',   // udf1        
       email || '',
       firstname || '',
       productinfo || '',
@@ -64,15 +68,16 @@ export async function POST(request: NextRequest) {
       txnid || '',
     ];
 
-    const reverseHashString = `${SERVER_SIDE_PAYU_SALT}|${hashParamsArray.join('|')}|${SERVER_SIDE_PAYU_MERCHANT_KEY}`;
+    // The hash string for response verification starts with SALT and ends with KEY.
+    const reverseHashString = `${SERVER_SIDE_PAYU_CLIENT_SECRET}|${hashParamsArray.join('|')}|${SERVER_SIDE_PAYU_CLIENT_ID}`;
     const calculatedHash = crypto.createHash('sha512').update(reverseHashString).digest('hex');
 
-    console.log("[PayU Handle Response DEBUG] String for Reverse Hash Calculation:", reverseHashString);
+    console.log("[PayU Handle Response DEBUG] String for Reverse Hash Calculation:", reverseHashString.replace(SERVER_SIDE_PAYU_CLIENT_SECRET!, "******").replace(SERVER_SIDE_PAYU_CLIENT_ID!, `${SERVER_SIDE_PAYU_CLIENT_ID!.substring(0,3)}...`)); // Mask sensitive
     console.log("[PayU Handle Response DEBUG] Calculated Reverse Hash:", calculatedHash);
     console.log("[PayU Handle Response DEBUG] Received Hash from PayU:", receivedHash);
 
     if (calculatedHash !== receivedHash) {
-      console.error("[PayU Handle Response ERROR] Hash Mismatch. Security check failed.", { calculatedHash, receivedHash, reverseHashString });
+      console.error("[PayU Handle Response ERROR] Hash Mismatch. Security check failed.", { calculatedHash, receivedHash });
       const redirectUrl = new URL(`${APP_BASE_URL}${Routes.teacherPaymentStatus}`);
       redirectUrl.searchParams.set('status', 'failure');
       redirectUrl.searchParams.set('message', 'Payment verification failed due to security check error.');
