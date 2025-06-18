@@ -45,7 +45,7 @@ interface ParentTestData {
   id: string;
   testName: string;
   QBExam: string;
-  model: "Chapterwise" | "Full Length"; // Added model field
+  model: "Chapterwise" | "Full Length"; 
 }
 
 
@@ -90,7 +90,7 @@ export default function TeacherAddQuestionToTestPage() {
     let isMounted = true;
     if (testId && !isLoadingTeacher && teacher?.id) {
       setIsLoadingParentTest(true);
-      pb.collection('teacher_tests').getOne<RecordModel>(testId, {fields: 'id,testName,QBExam,model'}) // Fetch specific fields
+      pb.collection('teacher_tests').getOne<RecordModel>(testId, {fields: 'id,testName,QBExam,model'}) 
         .then(record => {
           if (isMounted) {
             if (!record.testName || !record.QBExam || !record.model) {
@@ -174,6 +174,14 @@ export default function TeacherAddQuestionToTestPage() {
 
     try {
       const createdQuestionRecord = await pb.collection('teacher_question_data').create(dataForTeacherQuestionData);
+      
+      // Link question to parent test
+      if (parentTestData && createdQuestionRecord.id) {
+        await pb.collection('teacher_tests').update(parentTestData.id, {
+          "questions+": createdQuestionRecord.id,
+        });
+      }
+
       toast({
         title: 'Question Added!',
         description: `Question (ID: ${createdQuestionRecord.id.substring(0,8)}...) added to ${parentTestData.testName}.`,
@@ -563,4 +571,5 @@ export default function TeacherAddQuestionToTestPage() {
     </div>
   );
 }
+
 
