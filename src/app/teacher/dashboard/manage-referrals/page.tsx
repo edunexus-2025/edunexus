@@ -104,7 +104,7 @@ export default function TeacherManageReferralsPage() {
         const planIdToNameMap = new Map(plansRecords.map(p => [p.id, p.Plan_name]));
         const mappedCodes = codesRecords.map(code => ({
             ...code,
-            applicable_plan_names: code.applicable_plan_ids.map(id => planIdToNameMap.get(id) || `Plan ID: ${id.substring(0,5)}...`).filter(Boolean),
+            applicable_plan_names: (Array.isArray(code.applicable_plan_ids) ? code.applicable_plan_ids : []).map(id => planIdToNameMap.get(id) || `Plan ID: ${id.substring(0,5)}...`).filter(Boolean),
         }));
         setReferralCodes(mappedCodes);
       }
