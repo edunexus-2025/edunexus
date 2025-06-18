@@ -18,10 +18,10 @@ if (pocketbaseUrlString) {
   try {
     const url = new URL(pocketbaseUrlString);
     pocketbaseRemotePatterns.push({
-      protocol: url.protocol.slice(0, -1) as 'http' | 'https',
+      protocol: url.protocol.slice(0, -1) as 'http' | 'https';
       hostname: url.hostname,
       port: url.port || '',
-      pathname: '/api/files/**',
+      pathname: '/api/files/**', // Standard PocketBase file path
     });
     console.log(`[next.config.js] Successfully added PocketBase remote pattern: ${url.protocol}//${url.hostname}${url.port ? ':' + url.port : ''}/api/files/**`);
   } catch (e) {
@@ -82,7 +82,13 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
-      // Removed the f360... hostname as it's obsolete and not working
+      // Add the problematic Replit hostname that is causing the error
+      {
+        protocol: 'https',
+        hostname: 'f3605bbf-1d05-4292-9f0b-d3cd0ac21935-00-2eeov1wweb7qq.sisko.replit.dev',
+        port: '',
+        pathname: '/api/files/**', // Assuming it follows a similar path structure
+      },
       {
         protocol: 'https',
         hostname: '9000-firebase-studio-1748410223729.cluster-ancjwrkgr5dvux4qug5rbzyc2y.cloudworkstations.dev',
