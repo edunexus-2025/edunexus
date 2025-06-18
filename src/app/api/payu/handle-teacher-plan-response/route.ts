@@ -6,13 +6,13 @@ import { Routes, teacherPlatformPlansData } from '@/lib/constants';
 import type { UserSubscriptionTierTeacher } from '@/lib/types';
 
 // These are read from .env.local (or your deployment environment variables)
-const PAYU_SERVER_CLIENT_ID = process.env.NEXT_PUBLIC_PAYU_CLIENT_ID; // Use the same Client ID for KEY in response hash
-const PAYU_SERVER_CLIENT_SECRET = process.env.PAYU_CLIENT_SECRET;   // This is your Salt
+const PAYU_SERVER_VERIFICATION_KEY = process.env.NEXT_PUBLIC_PAYU_CLIENT_ID; // Your Client ID / Merchant Key used for hash verification
+const PAYU_SERVER_VERIFICATION_SALT = process.env.PAYU_CLIENT_SECRET;   // Your Client Secret / Salt used for hash verification
 const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_BASE_URL;
 
 export async function POST(request: NextRequest) {
-  if (!PAYU_SERVER_CLIENT_SECRET || !PAYU_SERVER_CLIENT_ID) {
-    console.error("[PayU Handle Response ERROR] CRITICAL: PayU Client ID or Client Secret (Salt) is NOT configured on the server for verification. Check .env.local and deployment variables.");
+  if (!PAYU_SERVER_VERIFICATION_KEY || !PAYU_SERVER_VERIFICATION_SALT) {
+    console.error("[PayU Handle Response ERROR] CRITICAL: PayU Client ID or Client Secret (Salt) is NOT configured on the server for verification. Check .env.local and deployment variables (NEXT_PUBLIC_PAYU_CLIENT_ID, PAYU_CLIENT_SECRET).");
     const errorRedirectUrl = new URL(`${APP_BASE_URL || 'http://localhost:9002'}${Routes.teacherPaymentStatus}`);
     errorRedirectUrl.searchParams.set('status', 'error');
     errorRedirectUrl.searchParams.set('message', 'Payment gateway server configuration error (Client ID/Secret missing for verification).');
@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
   }
    if (!APP_BASE_URL) {
     console.error("[PayU Handle Response ERROR] CRITICAL: NEXT_PUBLIC_APP_BASE_URL is not configured. Cannot construct redirect URLs properly.");
+    // Fallback to a localhost default if APP_BASE_URL is missing, but this is not ideal for production.
     const errorRedirectUrl = new URL(`http://localhost:9002${Routes.teacherPaymentStatus}`);
     errorRedirectUrl.searchParams.set('status', 'error');
     errorRedirectUrl.searchParams.set('message', 'Application base URL configuration error.');
@@ -43,21 +44,33 @@ export async function POST(request: NextRequest) {
     const productinfo = payuResponse.productinfo;
     const firstname = payuResponse.firstname;
     const email = payuResponse.email;
-    const planId = payuResponse.udf1 as UserSubscriptionTierTeacher | undefined;
-    const teacherId = payuResponse.udf2;
+    // UDFs from PayU response
+    const udf1 = payuResponse.udf1; // Expected: planId
+    const udf2 = payuResponse.udf2; // Expected: teacherId
+    const udf3 = payuResponse.udf3;
+    const udf4 = payuResponse.udf4;
+    const udf5 = payuResponse.udf5;
+    // ... PayU can send back up to 10 UDFs, though we only set 5 in initiation
     const errorMessageFromPayu = payuResponse.error_Message || payuResponse.error;
 
     // For response hash verification, the order is:
     // SALT|status||||||udf5|udf4|udf3|udf2|udf1|email|firstname|productinfo|amount|txnid|KEY
-    // (Assuming 5 empty UDFs: udf10, udf9, udf8, udf7, udf6)
+    // PayU response might include more empty placeholders if fewer UDFs were used in request OR if they fill them all.
+    // We should construct the string based on what PayU sends back or expect 5 empty strings if we sent 5 udfs.
+    // The standard order usually involves 10 UDF placeholders if not used.
+    // Let's assume PayU might send back all 10 UDFs, even if some are empty.
     const hashParamsArray = [
       status || '',
-      ...(Array(5).fill('')), // Placeholder for udf10 to udf6
-      payuResponse.udf5 || '',
-      payuResponse.udf4 || '',
-      payuResponse.udf3 || '',
-      teacherId || '', // udf2
-      planId || '',   // udf1
+      payuResponse.udf10 || '', // These are often empty but must be in order
+      payuResponse.udf9 || '',
+      payuResponse.udf8 || '',
+      payuResponse.udf7 || '',
+      payuResponse.udf6 || '',
+      udf5 || '',
+      udf4 || '',
+      udf3 || '',
+      udf2 || '', // teacherId
+      udf1 || '', // planId
       email || '',
       firstname || '',
       productinfo || '',
@@ -66,10 +79,10 @@ export async function POST(request: NextRequest) {
     ];
 
     // The hash string for response verification starts with SALT and ends with KEY.
-    const reverseHashString = `${PAYU_SERVER_CLIENT_SECRET}|${hashParamsArray.join('|')}|${PAYU_SERVER_CLIENT_ID}`;
+    const reverseHashString = `${PAYU_SERVER_VERIFICATION_SALT}|${hashParamsArray.join('|')}|${PAYU_SERVER_VERIFICATION_KEY}`;
     const calculatedHash = crypto.createHash('sha512').update(reverseHashString).digest('hex');
 
-    console.log("[PayU Handle Response DEBUG] String for Reverse Hash Calculation:", reverseHashString.replace(PAYU_SERVER_CLIENT_SECRET!, "******CLIENT_SECRET******").replace(PAYU_SERVER_CLIENT_ID!, `${PAYU_SERVER_CLIENT_ID!.substring(0,3)}...CLIENT_ID`));
+    console.log("[PayU Handle Response DEBUG] String for Reverse Hash Calculation (credentials masked):", reverseHashString.replace(PAYU_SERVER_VERIFICATION_SALT!, "******CLIENT_SECRET******").replace(PAYU_SERVER_VERIFICATION_KEY!, `${PAYU_SERVER_VERIFICATION_KEY!.substring(0,3)}...CLIENT_ID`));
     console.log("[PayU Handle Response DEBUG] Calculated Reverse Hash:", calculatedHash);
     console.log("[PayU Handle Response DEBUG] Received Hash from PayU:", receivedHash);
 
@@ -91,7 +104,10 @@ export async function POST(request: NextRequest) {
     if (status === 'success') {
       console.log(`[PayU Handle Response INFO] PayU payment success for txnid: ${txnid}, PayU ID: ${mihpayid}`);
       
-      if (!teacherId || !planId) {
+      const planIdFromUdf = udf1 as UserSubscriptionTierTeacher | undefined;
+      const teacherIdFromUdf = udf2;
+
+      if (!teacherIdFromUdf || !planIdFromUdf) {
           console.error("[PayU Handle Response ERROR] Missing teacherId or planId from UDFs after successful payment verification.");
           finalRedirectUrl.searchParams.set('status', 'error');
           finalRedirectUrl.searchParams.set('message', 'Critical error: Teacher or Plan ID missing post-payment. Contact support.');
@@ -99,21 +115,23 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        const targetPlanDetails = teacherPlatformPlansData.find(p => p.id === planId);
+        const targetPlanDetails = teacherPlatformPlansData.find(p => p.id === planIdFromUdf);
         if (!targetPlanDetails) {
-            console.error(`[PayU Handle Response ERROR] Plan details for ID ${planId} not found in application constants.`);
-            throw new Error(`Invalid plan ID ${planId} received from payment gateway.`);
+            console.error(`[PayU Handle Response ERROR] Plan details for ID ${planIdFromUdf} not found in application constants.`);
+            throw new Error(`Invalid plan ID ${planIdFromUdf} received from payment gateway.`);
         }
 
-        await pb.collection('teacher_data').update(teacherId, {
-          teacherSubscriptionTier: planId,
+        // Update teacher's record in PocketBase
+        await pb.collection('teacher_data').update(teacherIdFromUdf, {
+          teacherSubscriptionTier: planIdFromUdf,
           max_content_plans_allowed: targetPlanDetails.maxContentPlans,
+          // Optionally, update other fields like used_free_trial if applicable
         });
-        console.log(`[PayU Handle Response INFO] Teacher ${teacherId} successfully upgraded to plan ${planId}. Max plans: ${targetPlanDetails.maxContentPlans}`);
+        console.log(`[PayU Handle Response INFO] Teacher ${teacherIdFromUdf} successfully upgraded to plan ${planIdFromUdf}. Max plans: ${targetPlanDetails.maxContentPlans}`);
         
         finalRedirectUrl.searchParams.set('status', 'success');
-        finalRedirectUrl.searchParams.set('planName', planId);
-        finalRedirectUrl.searchParams.set('message', `Successfully upgraded to ${planId} plan!`);
+        finalRedirectUrl.searchParams.set('planName', planIdFromUdf);
+        finalRedirectUrl.searchParams.set('message', `Successfully upgraded to ${planIdFromUdf} plan!`);
         return NextResponse.redirect(finalRedirectUrl.toString(), 302);
 
       } catch (dbError: any) {
@@ -132,13 +150,14 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error("[PayU Handle Response CRITICAL ERROR] (Outer Try-Catch):", error);
-    const errorRedirectUrl = new URL(`${APP_BASE_URL}${Routes.teacherPaymentStatus}`);
+    const errorRedirectUrl = new URL(`${APP_BASE_URL || 'http://localhost:9002'}${Routes.teacherPaymentStatus}`);
     errorRedirectUrl.searchParams.set('status', 'error');
     errorRedirectUrl.searchParams.set('message', `Server error processing payment response: ${error.message || 'Unknown internal server error'}`);
     return NextResponse.redirect(errorRedirectUrl.toString(), 302);
   }
 }
 
+// GET handler for cases where PayU might redirect with GET (e.g., user cancellation before payment)
 export async function GET(request: NextRequest) {
   console.warn("[PayU Handle Response WARN] Received GET request. This is usually for user-cancelled or simple failure redirects not involving hash verification. Params:", request.nextUrl.searchParams.toString());
   
@@ -149,6 +168,7 @@ export async function GET(request: NextRequest) {
   const txnid = request.nextUrl.searchParams.get('txnid') || 'N/A_GET';
 
   const infoRedirectUrl = new URL(`${APP_BASE_URL || 'http://localhost:9002'}${Routes.teacherPaymentStatus}`);
+  // If PayU sends status=success via GET, it's usually a cancel, so treat as failure/info.
   infoRedirectUrl.searchParams.set('status', status === 'success' ? 'failure' : status); 
   infoRedirectUrl.searchParams.set('message', message);
   infoRedirectUrl.searchParams.set('txnid', txnid);

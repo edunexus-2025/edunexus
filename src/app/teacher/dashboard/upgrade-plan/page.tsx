@@ -7,13 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import pb from '@/lib/pocketbase';
+// pb import is not directly used here for plan updates, it's handled by API
 import { Routes, AppConfig, teacherPlatformPlansData } from '@/lib/constants';
 import { Loader2, Star, CheckCircle, ArrowLeft, Zap, ShieldCheck, Crown } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Plan } from '@/lib/types'; 
 import { cn } from '@/lib/utils';
-// crypto-js is not needed on the client for standard PayU hash generation (done backend)
 
 // PayU requires a unique transaction ID for each attempt
 const generateTransactionId = () => `EDUNEXUS_TEACHER_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -27,6 +26,7 @@ export default function TeacherUpgradePlatformPlanPage() {
   const currentTeacherTier = teacher?.teacherSubscriptionTier || 'Free';
 
   const handleUpgrade = async (plan: Plan) => {
+    // Robust check for required teacher details
     if (!teacher?.id || 
         !teacher.email || teacher.email.trim() === '' ||
         !teacher.name || teacher.name.trim() === '' ||
@@ -37,7 +37,7 @@ export default function TeacherUpgradePlatformPlanPage() {
         variant: "destructive",
         duration: 7000 
       });
-      setIsProcessingUpgrade(null); // Reset processing state if validation fails
+      setIsProcessingUpgrade(null);
       return;
     }
 
@@ -48,12 +48,11 @@ export default function TeacherUpgradePlatformPlanPage() {
 
     setIsProcessingUpgrade(plan.id);
 
-    const payUKey = process.env.NEXT_PUBLIC_PAYU_KEY;
     const payUPaymentUrlFromServer = process.env.PAYU_PAYMENT_URL || 'https://secure.payu.in/_payment'; 
     const appBaseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL || window.location.origin;
 
-    if (!payUKey || !appBaseUrl) {
-      toast({ title: "Configuration Error", description: "PayU settings are missing. Contact support.", variant: "destructive" });
+    if (!process.env.NEXT_PUBLIC_PAYU_KEY || !appBaseUrl) { // Check if the public key is available
+      toast({ title: "Configuration Error", description: "Payment gateway client key is missing. Contact support.", variant: "destructive" });
       setIsProcessingUpgrade(null);
       return;
     }
@@ -64,8 +63,7 @@ export default function TeacherUpgradePlatformPlanPage() {
     const email = teacher.email;
     const phone = teacher.phoneNumber.replace(/\D/g, ''); 
     const txnid = generateTransactionId();
-    const surl = `${appBaseUrl}/api/payu/handle-teacher-plan-response`;
-    const furl = `${appBaseUrl}/api/payu/handle-teacher-plan-response`;
+    // surl and furl will be handled by the API route using APP_BASE_URL from its env
     
     const paymentDataForBackend = {
       txnid,
@@ -73,11 +71,9 @@ export default function TeacherUpgradePlatformPlanPage() {
       productinfo,
       firstname,
       email,
-      phone,
-      surl,
-      furl,
+      phone, // Phone is sent here for PayU form, not necessarily for hash
       planId: plan.id, 
-      teacherId: teacher.id, 
+      teacherId: teacher.id,
       // Pass these explicitly as the API route expects them by these names
       teacherEmail: teacher.email,
       teacherName: teacher.name,
@@ -98,6 +94,7 @@ export default function TeacherUpgradePlatformPlanPage() {
 
       const payuFormData = await response.json(); 
 
+      // Create a form and submit it to PayU
       const form = document.createElement('form');
       form.method = 'POST';
       form.action = payUPaymentUrlFromServer; 
@@ -111,6 +108,7 @@ export default function TeacherUpgradePlatformPlanPage() {
       }
       document.body.appendChild(form);
       form.submit();
+      // User will be redirected to PayU. setIsProcessingUpgrade(null) will be handled by ondismiss or if the page reloads.
     } catch (error: any) {
       console.error("Failed to initiate PayU payment:", error);
       toast({ title: "Payment Initiation Failed", description: error.message || "Could not start the payment process.", variant: "destructive" });
@@ -190,8 +188,7 @@ export default function TeacherUpgradePlatformPlanPage() {
                     </li>
                   ))}
                   {plan.maxContentPlans !== undefined && <li><ShieldCheck className="inline h-5 w-5 mr-1.5 text-primary/70" /> Max {plan.maxContentPlans} Content Plans</li>}
-                  <li><Zap className="inline h-5 w-5 mr-1.5 text-primary/70" /> QB Access: {plan.qbAccess ? 'Full EduNexus QB' : 'Limited/Own QB'}</li>
-
+                  {plan.qbAccess !== undefined && <li><Zap className="inline h-5 w-5 mr-1.5 text-primary/70" /> QB Access: {plan.qbAccess ? 'Full EduNexus QB' : 'Limited/Own QB'}</li>}
                 </ul>
               </CardContent>
               <CardFooter className="p-6 mt-auto border-t">
@@ -218,5 +215,3 @@ export default function TeacherUpgradePlatformPlanPage() {
     </div>
   );
 }
-
-    

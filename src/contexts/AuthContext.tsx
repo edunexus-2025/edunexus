@@ -66,13 +66,13 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
 
 
   if (record.collectionName === 'users') {
-    studentSubTier = record.model as UserSubscriptionTierStudent;
+    studentSubTier = (record.model || 'Free') as UserSubscriptionTierStudent;
     phoneNumberMapped = record.phone as User['phoneNumber'];
   } else if (record.collectionName === 'teacher_data') {
     teacherSubTier = (record.teacherSubscriptionTier || 'Free') as UserSubscriptionTierTeacher;
     canCreateAdsTeacher = record.can_create_ads === true;
     adsSubscriptionTeacher = (record.ads_subscription || 'Free') as User['ads_subscription'];
-    phoneNumberMapped = record.phone_number as User['phoneNumber']; // Corrected mapping
+    phoneNumberMapped = record.phone_number as User['phoneNumber'];
   }
   
   const name = record.name || record.meta?.name;
@@ -131,7 +131,8 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
   };
   
   if (mappedUser.collectionName === 'users' && (record.token || record.meta?.token) ) {  // Check both record.token and meta.token
-      if (!mappedUser.favExam || !mappedUser.grade || !mappedUser.targetYear || !mappedUser.password) { // Added check for password
+      // Check if critical profile fields are missing for a student
+      if (!mappedUser.favExam || !mappedUser.grade || !mappedUser.targetYear || !record.password) { // Password check is for initial setup
           mappedUser.needsProfileCompletion = true;
       }
   }

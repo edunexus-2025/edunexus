@@ -44,12 +44,7 @@ export default function RootLayout({
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9210790199921207"
           crossOrigin="anonymous"
-        ></script>{/*
-        Razorpay Checkout Script */}
-        <script
-          id="razorpay-checkout-js"
-          src="https://checkout.razorpay.com/v1/checkout.js"
-        ></script>{/* Ensure no trailing whitespace */}
+        ></script>{/* Razorpay script removed */}
       </head>
       <body className={`${geist.variable} font-sans antialiased`}>
         <ThemeProvider
