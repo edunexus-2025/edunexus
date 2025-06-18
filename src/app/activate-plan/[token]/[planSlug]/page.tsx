@@ -12,8 +12,9 @@ import { Loader2, CheckCircle, AlertTriangle, ShieldCheck } from 'lucide-react';
 
 // This unslugify is a simple placeholder, adjust if your slugification is more complex
 const unslugifyPlan = (slug: string): string => {
-    if (slug === 'full-length') return 'Full_length';
-    return slug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    if (!slug) return "Selected Plan";
+    if (slug === 'full-length') return 'Full_length'; // Handle specific case
+    return slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 };
 
 
@@ -24,7 +25,7 @@ export default function ActivatePlanPage() {
   const { toast } = useToast();
 
   const token = typeof params.token === 'string' ? params.token : '';
-  const planSlug = typeof params.planSlug === 'string' ? params.planSlug.toLowerCase() : '';
+  const planSlug = typeof params.planSlug === 'string' ? params.planSlug : ''; // Keep original slug for display
 
   const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'redirecting' | 'info'>('loading');
   const [message, setMessage] = useState<string>('Verifying your activation link...');
@@ -32,11 +33,6 @@ export default function ActivatePlanPage() {
   const activatePlanWithToken = useCallback(async () => {
     if (!token) {
         setMessage('Activation token is missing. This link might be invalid or expired.');
-        setStatus('error');
-        return;
-    }
-    if (!planSlug) {
-        setMessage('Plan information is missing from the activation link.');
         setStatus('error');
         return;
     }
@@ -64,6 +60,7 @@ export default function ActivatePlanPage() {
           description: 'Server returned an unreadable response. Please contact support.',
           variant: 'destructive',
         });
+        // No automatic redirect on critical parse error, user needs to see message.
         return;
       }
       
@@ -71,10 +68,10 @@ export default function ActivatePlanPage() {
       if (response.ok && data.success) {
         setMessage(data.message || `Successfully activated the ${unslugifyPlan(planSlug)} plan! Redirecting to your dashboard...`);
         setStatus('success');
-        await authRefresh(); 
+        await authRefresh(); // Refresh auth state immediately
         toast({
           title: 'Plan Activated!',
-          description: `Your subscription has been updated to ${unslugifyPlan(planSlug)}.`,
+          description: data.message || `Your subscription to ${unslugifyPlan(planSlug)} is now active.`,
           className: 'bg-green-500 dark:bg-green-700 text-white',
         });
         // Redirect to payment status page for consistency, which will then redirect to dashboard
@@ -92,7 +89,7 @@ export default function ActivatePlanPage() {
       }
     } catch (error: any) {
       console.error('Failed to activate plan via token:', error);
-      const errorMessage = error.message || 'Please try again.';
+      const errorMessage = error.message || 'An unexpected network error occurred. Please try again.';
       setMessage(`An unexpected error occurred: ${errorMessage}`);
       setStatus('error');
       toast({
@@ -102,9 +99,12 @@ export default function ActivatePlanPage() {
       });
       router.replace(Routes.paymentStatusPage(token, 'error', planSlug, `Activation error: ${errorMessage}`));
     }
-  }, [token, planSlug, router, toast, authRefresh]);
+  }, [token, planSlug, router, toast, authRefresh]); // Added planSlug
 
   useEffect(() => {
+    // No user check here, token activation can happen for logged-out users if desired,
+    // but the API performing the update will require its own auth (admin).
+    // The authRefresh() after success will update the current user's state if they are logged in.
     activatePlanWithToken();
   }, [activatePlanWithToken]); 
 
@@ -134,11 +134,7 @@ export default function ActivatePlanPage() {
               {user ? 'Go to Dashboard' : 'Go to Homepage'}
             </Button>
           )}
-          {status === 'success' && ( // The redirect now happens from the use-effect, so this button might not be seen often.
-            <Button onClick={() => router.push(Routes.dashboard)} className="w-full mt-6">
-              Go to Dashboard
-            </Button>
-          )}
+          {/* Success state now auto-redirects via useEffect, button might not be seen much */}
         </CardContent>
       </Card>
       <p className="mt-6 text-xs text-muted-foreground">
@@ -147,4 +143,5 @@ export default function ActivatePlanPage() {
     </div>
   );
 }
+    
     
