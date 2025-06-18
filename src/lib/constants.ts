@@ -109,7 +109,7 @@ export const Routes = {
   teacherTestPanelResults: (testId: string) => `/teacher/dashboard/my-content/${testId}/results`,
   teacherTestPanelStatus: (testId: string) => `/teacher/dashboard/my-content/${testId}/status`, 
   teacherRanking: '/teacher/dashboard/ranking',
-  teacherPlan: '/teacher/dashboard/plan', // This seems to be the old route, keep for now or deprecate? -> Let's assume new upgrade page replaces this for 'viewing their own plan'
+  teacherPlan: '/teacher/dashboard/plan', 
   teacherCreateAds: '/teacher/dashboard/create-ads',
   teacherUpgradeAds: '/teacher/dashboard/upgrade-ads',
   teacherPublicAdPage: (edunexusName: string): string => `/t/${edunexusName}`,
@@ -268,15 +268,14 @@ export const teacherPlatformPlansData: Plan[] = [
     priceSuffix: 'Always',
     priceValue: 0,
     features: [
-      "Manage up to 10 students per content plan",
-      "Create up to 2 content plans (tests/DPP series)", // Example limit for free teachers
+      "Create up to 2 content plans (tests/DPP series)", 
       "Basic analytics for your students",
       "Limited access to EduNexus Question Bank features",
     ],
     ctaText: 'Current Plan',
     commissionRate: 10,
     maxContentPlans: 2, 
-    maxStudentsPerContentPlan: 10,
+    // maxStudentsPerContentPlan: 10, // Removed
     qbAccess: false,
   },
   {
@@ -287,7 +286,6 @@ export const teacherPlatformPlansData: Plan[] = [
     priceSuffix: '/year',
     priceValue: 399,
     features: [
-      "Manage up to 30 students per content plan",
       "Create up to 5 content plans",
       "Enhanced student analytics",
       "Standard access to EduNexus Question Bank features",
@@ -295,8 +293,8 @@ export const teacherPlatformPlansData: Plan[] = [
     ctaText: 'Upgrade to Starter',
     commissionRate: 3,
     maxContentPlans: 5,
-    maxStudentsPerContentPlan: 30,
-    qbAccess: false, // Example: Limited QB access
+    // maxStudentsPerContentPlan: 30, // Removed
+    qbAccess: false, 
   },
   {
     id: 'Pro',
@@ -306,8 +304,7 @@ export const teacherPlatformPlansData: Plan[] = [
     priceSuffix: '/year',
     priceValue: 599,
     features: [
-      "Manage unlimited students per content plan",
-      "Create up to 5 content plans", // Example: can be higher or 'Unlimited'
+      "Create up to 5 content plans", // Can be higher or 'Unlimited'
       "Full access to EduNexus Question Bank (if applicable)",
       "Advanced analytics and reporting tools",
       "Priority support",
@@ -316,7 +313,7 @@ export const teacherPlatformPlansData: Plan[] = [
     ctaText: 'Upgrade to Pro',
     commissionRate: 1.5,
     maxContentPlans: 5,
-    maxStudentsPerContentPlan: 'Unlimited',
+    // maxStudentsPerContentPlan: 'Unlimited', // Removed
     qbAccess: true,
   },
 ];

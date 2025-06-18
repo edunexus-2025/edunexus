@@ -169,15 +169,6 @@
                 }
             },
             {
-                "id": "t_plan_max_students",
-                "name": "max_students",
-                "type": "number",
-                "system": false,
-                "required": false,
-                "presentable": true,
-                "options": { "min": 0, "noDecimal": true }
-            },
-            {
                 "hidden": false,
                 "id": "number2684873866",
                 "max": null,

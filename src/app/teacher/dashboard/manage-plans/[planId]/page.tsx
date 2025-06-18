@@ -120,33 +120,13 @@ export default function TeacherViewPlanPage() {
     setIsSavingStudents(true);
 
     const currentTeacherPlatformPlan = teacherPlatformPlansData.find(p => p.id === teacher.teacherSubscriptionTier);
-    const maxAllowedStudentsPerPlan = currentTeacherPlatformPlan?.maxStudentsPerContentPlan;
+    // Max student per plan limit check removed
 
     const selectedStudentIds = allTeacherStudents
       .filter(s => s.isEnrolledInThisPlan)
       .map(s => s.id);
 
-    if (maxAllowedStudentsPerPlan !== 'Unlimited' && maxAllowedStudentsPerPlan !== undefined && selectedStudentIds.length > maxAllowedStudentsPerPlan) {
-        toast({
-            title: "Student Limit Exceeded",
-            description: `Your current platform plan (${teacher.teacherSubscriptionTier}) allows a maximum of ${maxAllowedStudentsPerPlan} students per content plan. You have selected ${selectedStudentIds.length}.`,
-            variant: "destructive",
-            duration: 7000,
-        });
-        setIsSavingStudents(false);
-        return;
-    }
-    if (planDetails.max_students !== undefined && planDetails.max_students !== null && selectedStudentIds.length > planDetails.max_students) {
-        toast({
-            title: "Plan's Student Limit Exceeded",
-            description: `This specific plan allows a maximum of ${planDetails.max_students} students. You have selected ${selectedStudentIds.length}.`,
-            variant: "destructive",
-            duration: 7000,
-        });
-        setIsSavingStudents(false);
-        return;
-    }
-
+    // Plan's own student limit check removed
 
     try {
       await pb.collection('teachers_upgrade_plan').update(planDetails.id, {
@@ -227,7 +207,7 @@ export default function TeacherViewPlanPage() {
           <CardDescription>Manage details and enrolled students for this plan.</CardDescription>
           <div className="flex flex-wrap gap-2 pt-2">
             <Badge variant="secondary">Price: ₹{planDetails.plan_price} / {planDetails.plan}</Badge>
-            <Badge variant="outline">Max Students for this Plan: {planDetails.max_students ?? 'Not Set'}</Badge>
+            {/* Max Students display removed */}
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -243,7 +223,8 @@ export default function TeacherViewPlanPage() {
         <CardHeader>
           <CardTitle className="text-xl flex items-center gap-2"><Users className="h-6 w-6 text-primary" /> Manage Enrolled Students</CardTitle>
           <CardDescription>Select students from your roster to enroll them in this plan.
-          Your platform tier (<span className="font-semibold">{teacher?.teacherSubscriptionTier || 'N/A'}</span>) allows up to {teacherPlatformPlansData.find(p=>p.id === teacher?.teacherSubscriptionTier)?.maxStudentsPerContentPlan || 'N/A'} students per plan you create. This specific plan has a limit of {planDetails.max_students || 'unlimited'} students.
+          Your platform tier (<span className="font-semibold">{teacher?.teacherSubscriptionTier || 'N/A'}</span>) allows up to {teacherPlatformPlansData.find(p=>p.id === teacher?.teacherSubscriptionTier)?.maxContentPlans || 'N/A'} content plans.
+          {/* This specific plan student limit display removed */}
           </CardDescription>
         </CardHeader>
         <CardContent>

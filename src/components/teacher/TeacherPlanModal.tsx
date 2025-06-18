@@ -69,12 +69,12 @@ export function TeacherPlanModal({
       plan_point_3: '',
       plan_point_4: '',
       plan_point_5: '',
-      max_students: undefined, // Default to undefined
+      // max_students: undefined, // Removed this field
     },
   });
 
   useEffect(() => {
-    if (isOpen) { // Only reset form when modal opens
+    if (isOpen) { 
       if (editingPlan) {
         form.reset({
           Plan_name: editingPlan.Plan_name,
@@ -85,7 +85,7 @@ export function TeacherPlanModal({
           plan_point_3: editingPlan.plan_point_3 || '',
           plan_point_4: editingPlan.plan_point_4 || '',
           plan_point_5: editingPlan.plan_point_5 || '',
-          max_students: editingPlan.max_students === null ? undefined : editingPlan.max_students, // Handle null from DB
+          // max_students: editingPlan.max_students === null ? undefined : editingPlan.max_students, // Removed
         });
       } else {
         form.reset({
@@ -97,7 +97,7 @@ export function TeacherPlanModal({
           plan_point_3: '',
           plan_point_4: '',
           plan_point_5: '',
-          max_students: undefined,
+          // max_students: undefined, // Removed
         });
       }
     }
@@ -115,8 +115,7 @@ export function TeacherPlanModal({
       plan_point_3: values.plan_point_3 || null,
       plan_point_4: values.plan_point_4 || null,
       plan_point_5: values.plan_point_5 || null,
-      max_students: values.max_students === undefined || values.max_students === null ? null : Number(values.max_students),
-      // enrolled_students will be managed on the [planId] page
+      // max_students: values.max_students === undefined || values.max_students === null ? null : Number(values.max_students), // Removed
     };
 
     try {
@@ -204,25 +203,7 @@ export function TeacherPlanModal({
                   )}
                 />
               </div>
-              <FormField
-                control={form.control}
-                name="max_students"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Max Students for this Plan (Optional)</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        placeholder="e.g., 50 (leave blank for unlimited)" 
-                        {...field} 
-                        value={field.value === undefined || field.value === null ? '' : field.value}
-                        onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Max Students field removed */}
               
               <FormLabel className="text-sm font-medium pt-2 block">Plan Features (Key Points)</FormLabel>
               {[1, 2, 3, 4, 5].map((num) => (

@@ -46,14 +46,13 @@ export default function TeacherUpgradePlatformPlanPage() {
       // Simulate payment or direct upgrade for now
       // In a real app, this would involve a payment gateway integration
       await pb.collection('teacher_data').update(teacher.id, {
-        teacherSubscriptionTier: planId, // Ensure this field name matches PocketBase
+        teacherSubscriptionTier: planId, 
         max_content_plans_allowed: targetPlan.maxContentPlans,
-        max_students_per_content_plan: targetPlan.maxStudentsPerContentPlan === 'Unlimited' ? 999999 : targetPlan.maxStudentsPerContentPlan,
+        // max_students_per_content_plan: targetPlan.maxStudentsPerContentPlan === 'Unlimited' ? 999999 : targetPlan.maxStudentsPerContentPlan, // Removed
       });
       
       toast({ title: "Plan Upgraded!", description: `You are now on the ${targetPlan.name} plan.` });
-      await authRefresh(); // Refresh auth context to get updated teacher data
-      // router.push(Routes.teacherDashboard); // Or stay on page
+      await authRefresh(); 
     } catch (error: any) {
       console.error("Failed to upgrade teacher plan:", error);
       toast({ title: "Upgrade Failed", description: error.data?.message || error.message, variant: "destructive" });
@@ -134,7 +133,7 @@ export default function TeacherUpgradePlatformPlanPage() {
                     </li>
                   ))}
                   {plan.maxContentPlans !== undefined && <li><ShieldCheck className="inline h-5 w-5 mr-1.5 text-primary/70" /> Max {plan.maxContentPlans} Content Plans</li>}
-                  {plan.maxStudentsPerContentPlan !== undefined && <li><Users className="inline h-5 w-5 mr-1.5 text-primary/70" /> {plan.maxStudentsPerContentPlan === 'Unlimited' ? 'Unlimited' : `Max ${plan.maxStudentsPerContentPlan}`} Students per Plan</li>}
+                  {/* Max students per content plan display removed */}
                   <li><Zap className="inline h-5 w-5 mr-1.5 text-primary/70" /> QB Access: {plan.qbAccess ? 'Full EduNexus QB' : 'Limited/Own QB'}</li>
 
                 </ul>

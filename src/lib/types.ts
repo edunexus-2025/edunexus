@@ -17,7 +17,7 @@ export interface Plan {
   isRecommended?: boolean;
   commissionRate?: number; // For teacher platform plans
   maxContentPlans?: number; // For teacher platform plans
-  maxStudentsPerContentPlan?: number | 'Unlimited'; // For teacher platform plans
+  // maxStudentsPerContentPlan?: number | 'Unlimited'; // Removed this line
   qbAccess?: boolean; // For teacher platform plans
 }
 
@@ -60,8 +60,8 @@ export type User = {
   used_free_trial?: boolean;
   can_create_ads?: boolean;
   ads_subscription?: 'Free' | 'Ads Model';
-  max_content_plans_allowed?: number; // New field for teacher's own plan
-  max_students_per_content_plan?: number | 'Unlimited'; // New field
+  max_content_plans_allowed?: number; 
+  // max_students_per_content_plan?: number | 'Unlimited'; // Removed this line
 
   created?: string;
   updated?: string;
@@ -238,9 +238,9 @@ export interface TeacherPlan extends RecordModel {
   plan_point_3?: string;
   plan_point_4?: string;
   plan_point_5?: string;
-  total_student_intake?: number; // Added this field, matches schema for teachers_upgrade_plan
-  enrolled_students?: string[]; // Added this relation
-  max_students?: number; // Added this
+  total_student_intake?: number; 
+  enrolled_students?: string[]; 
+  // max_students?: number; // Removed this line
   created: string;
   updated: string;
   enrolledStudentCount?: number; // For client-side display

@@ -103,15 +103,6 @@
                 "options": { "min": 0, "noDecimal": true }
             },
             {
-                "id": "teacher_max_students_per_plan",
-                "name": "max_students_per_content_plan",
-                "type": "number",
-                "system": false,
-                "required": false,
-                "presentable": false,
-                "options": { "min": 0, "noDecimal": true }
-            },
-            {
                 "name": "created", "type": "date", "system": true, "required": false, "presentable": false, 
                 "options": {"min": "", "max": ""}
             },
