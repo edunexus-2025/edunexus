@@ -51,18 +51,34 @@ export default function ActivatePlanPage() {
         body: JSON.stringify({ token }),
       });
 
-      const data = await response.json();
+      let data;
+      const responseText = await response.text();
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("Failed to parse JSON response from /api/activate-plan-from-token:", responseText, parseError);
+        setMessage(`Activation processing error: Could not understand server response. Please contact support. (RAW: ${responseText.substring(0,100)})`);
+        setStatus('error');
+        toast({
+          title: 'Activation Error',
+          description: 'Server returned an unreadable response. Please contact support.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
 
       if (response.ok && data.success) {
         setMessage(data.message || `Successfully activated the ${unslugifyPlan(planSlug)} plan! Redirecting to your dashboard...`);
         setStatus('success');
-        await authRefresh(); // Refresh user context to get updated plan
+        await authRefresh(); 
         toast({
           title: 'Plan Activated!',
           description: `Your subscription has been updated to ${unslugifyPlan(planSlug)}.`,
           className: 'bg-green-500 dark:bg-green-700 text-white',
         });
-        router.replace(Routes.dashboard);
+        // Redirect to payment status page for consistency, which will then redirect to dashboard
+        router.replace(Routes.paymentStatusPage(token, 'success', planSlug, data.message || `Plan ${unslugifyPlan(planSlug)} activated!`));
       } else {
         setMessage(data.message || 'Could not activate the plan using this link. It may be invalid, expired, or already used.');
         setStatus('error');
@@ -71,25 +87,26 @@ export default function ActivatePlanPage() {
           description: data.message || 'Please try again or contact support if the issue persists.',
           variant: 'destructive',
         });
+         // Redirect to payment status page for consistency on error too
+        router.replace(Routes.paymentStatusPage(token, 'error', planSlug, data.message || 'Plan activation failed.'));
       }
     } catch (error: any) {
       console.error('Failed to activate plan via token:', error);
-      setMessage(`An unexpected error occurred: ${error.message || 'Please try again.'}`);
+      const errorMessage = error.message || 'Please try again.';
+      setMessage(`An unexpected error occurred: ${errorMessage}`);
       setStatus('error');
       toast({
         title: 'Activation Error',
-        description: 'An unexpected error occurred during activation.',
+        description: `An unexpected error occurred during activation: ${errorMessage}`,
         variant: 'destructive',
       });
+      router.replace(Routes.paymentStatusPage(token, 'error', planSlug, `Activation error: ${errorMessage}`));
     }
   }, [token, planSlug, router, toast, authRefresh]);
 
   useEffect(() => {
-    // No need to check authLoading here explicitly, 
-    // the activation API will handle token validation regardless of current client auth state.
-    // The authRefresh on success will sync the client.
     activatePlanWithToken();
-  }, [activatePlanWithToken]); // activatePlanWithToken is memoized with its dependencies
+  }, [activatePlanWithToken]); 
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
@@ -112,12 +129,12 @@ export default function ActivatePlanPage() {
         </CardHeader>
         <CardContent>
           <p className="text-center text-muted-foreground">{message}</p>
-          {(status === 'error' || status === 'info') && ( // Show button also for 'info' state if user needs to go back
+          {(status === 'error' || status === 'info') && ( 
             <Button onClick={() => router.push(user ? Routes.dashboard : Routes.home)} variant="outline" className="w-full mt-6">
               {user ? 'Go to Dashboard' : 'Go to Homepage'}
             </Button>
           )}
-          {status === 'success' && (
+          {status === 'success' && ( // The redirect now happens from the use-effect, so this button might not be seen often.
             <Button onClick={() => router.push(Routes.dashboard)} className="w-full mt-6">
               Go to Dashboard
             </Button>
