@@ -192,7 +192,7 @@ export default function UpgradePage() {
       return;
     }
 
-    const amountForApi = parseFloat(finalPrice.toFixed(2)); // Ensure it's a clean number
+    const amountForApi = parseFloat(finalPrice.toFixed(2)); 
     if (isNaN(amountForApi) || amountForApi <= 0) {
         toast({ title: "Payment Error", description: `Invalid amount calculated for payment: ${finalPrice}. Please check plan pricing or promo codes.`, variant: "destructive" });
         setProcessingPaymentForPlan(null);
@@ -200,22 +200,29 @@ export default function UpgradePage() {
     }
 
     try {
-      console.log(`[UpgradePage] INFO: Sending request to /api/razorpay/create-order. Payload:`, { amount: amountForApi, currency: 'INR', planId: plan.id, userId: user.id });
+      console.log(`[UpgradePage] INFO: Sending request to /api/razorpay/create-order. Payload:`, { amount: amountForApi, currency: 'INR', planId: plan.id, userId: user.id, userType: 'student_platform_plan' });
       const orderResponse = await fetch('/api/razorpay/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: amountForApi, currency: 'INR', planId: plan.id, userId: user.id }),
+        body: JSON.stringify({ 
+          amount: amountForApi, 
+          currency: 'INR', 
+          planId: plan.id, 
+          userId: user.id,
+          userType: 'student_platform_plan', // Added userType
+          productDescription: `${AppConfig.appName} Plan - ${plan.name}`
+        }),
       });
 
       console.log(`[UpgradePage] INFO: Raw response status from /api/razorpay/create-order: ${orderResponse.status}`);
-      const responseText = await orderResponse.text(); // Get raw response text first
+      const responseText = await orderResponse.text(); 
       console.log(`[UpgradePage] INFO: Raw response text from /api/razorpay/create-order:`, responseText);
 
 
       if (!orderResponse.ok) {
         let errorData = { error: `Server error (${orderResponse.status}): ${responseText || 'Failed to create Razorpay order.'}` };
         try {
-          errorData = JSON.parse(responseText); // Try to parse as JSON
+          errorData = JSON.parse(responseText); 
         } catch (e) {
           // Keep errorData as is if JSON parsing fails
         }
@@ -223,7 +230,7 @@ export default function UpgradePage() {
         throw new Error(errorData.error || `Failed to create Razorpay order (status: ${orderResponse.status})`);
       }
 
-      const order = JSON.parse(responseText); // Parse the text response to JSON
+      const order = JSON.parse(responseText); 
       console.log('[UpgradePage] INFO: Successfully parsed order from API:', order);
 
 
@@ -234,7 +241,7 @@ export default function UpgradePage() {
         name: AppConfig.appName,
         description: `Upgrade to ${plan.name} Plan`,
         order_id: order.id,
-        method: { // ✅ This object explicitly enables payment methods
+        method: { 
           upi: true,
           card: true,
           netbanking: true,
@@ -252,6 +259,11 @@ export default function UpgradePage() {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
+                // Pass original notes to verification API
+                planId: plan.id,
+                userId: user.id,
+                userType: 'student_platform_plan',
+                productDescription: `${AppConfig.appName} Plan - ${plan.name}`
               }),
             });
 
@@ -279,6 +291,7 @@ export default function UpgradePage() {
         notes: {
           plan_id: plan.id,
           user_id: user.id,
+          user_type: 'student_platform_plan',
           app_name: AppConfig.appName,
         },
         theme: {
