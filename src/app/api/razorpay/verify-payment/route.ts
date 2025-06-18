@@ -45,7 +45,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ verified: false, error: "Payment gateway server secret not configured." }, { status: 500 });
   }
 
+  let pbAdmin: PocketBase | null = null;
   try {
+    pbAdmin = await getAdminPbInstance();
+    if (!pbAdmin) {
+      console.error("[Razorpay Verify Payment ERROR] Failed to initialize PocketBase admin client. Cannot proceed with DB updates.");
+      return NextResponse.json({ verified: false, error: "Database admin client could not be initialized. Cannot update records." }, { status: 500 });
+    }
+
     const body = await request.json();
     const {
       razorpay_payment_id,
@@ -90,76 +97,100 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ verified: false, error: `Payment not completed successfully. Status: ${orderDetailsFromRazorpay.status}` }, { status: 400 });
     }
 
-    const pbAdmin = await getAdminPbInstance();
-    if (!pbAdmin) {
-      return NextResponse.json({ verified: false, error: "Database admin client could not be initialized. Cannot update records." }, { status: 500 });
-    }
-
     const today = new Date();
     const expiryDateISO = new Date(today.setFullYear(today.getFullYear() + 1)).toISOString(); 
 
     if (userType === 'student_platform_plan') {
-      console.log(`[Razorpay Verify Payment INFO] Attempting to update student ${userId} platform plan to ${planId}.`);
-      await pbAdmin.collection('users').update(userId, { model: planId as UserSubscriptionTierStudent, expiry_date: expiryDateISO });
-      console.log(`[Razorpay Verify Payment SUCCESS] Student ${userId} platform plan updated to ${planId}.`);
+      const studentIdToUpdate = String(userId);
+      const newPlanIdForStudent = planId as UserSubscriptionTierStudent;
+      console.log(`[Razorpay Verify Payment INFO] Attempting to update student ${studentIdToUpdate} platform plan to ${newPlanIdForStudent}. Expiry: ${expiryDateISO}.`);
+      try {
+        await pbAdmin.collection('users').update(studentIdToUpdate, { 
+          model: newPlanIdForStudent, 
+          expiry_date: expiryDateISO 
+        });
+        console.log(`[Razorpay Verify Payment SUCCESS] Student ${studentIdToUpdate} platform plan updated to ${newPlanIdForStudent}.`);
+      } catch (dbUpdateError: any) {
+        console.error(`[Razorpay Verify Payment CRITICAL ERROR] Failed to update student ${studentIdToUpdate} plan to ${newPlanIdForStudent} in 'users' collection. Error:`, dbUpdateError.data || dbUpdateError.message, "Full Error:", dbUpdateError);
+        return NextResponse.json({ 
+          verified: true,
+          error: `Payment successful, but failed to update your plan. Contact support with Order ID ${razorpay_order_id}. DB Error: ${dbUpdateError.data?.message || dbUpdateError.message}`,
+          message: `Payment successful, but failed to update your plan. Contact support with Order ID ${razorpay_order_id}. DB Error: ${dbUpdateError.data?.message || dbUpdateError.message}`
+        }, { status: 200 }); // Respond 200 to Razorpay, client gets error message
+      }
     } else if (userType === 'teacher_platform_plan') {
-      const planDetails = teacherPlatformPlansData.find(p => p.id === planId);
-      console.log(`[Razorpay Verify Payment INFO] Attempting to update teacher ${userId} platform plan to ${planId}. Details:`, planDetails);
-      await pbAdmin.collection('teacher_data').update(userId, { 
-        teacherSubscriptionTier: planId as UserSubscriptionTierTeacher,
-        max_content_plans_allowed: planDetails?.maxContentPlans ?? 0,
-      });
-      console.log(`[Razorpay Verify Payment SUCCESS] Teacher ${userId} platform plan updated to ${planId}.`);
+      const teacherIdToUpdate = String(userId);
+      const newPlanIdForTeacher = planId as UserSubscriptionTierTeacher;
+      const planDetails = teacherPlatformPlansData.find(p => p.id === newPlanIdForTeacher);
+      console.log(`[Razorpay Verify Payment INFO] Attempting to update teacher ${teacherIdToUpdate} platform plan to ${newPlanIdForTeacher}. Max plans: ${planDetails?.maxContentPlans ?? 0}.`);
+      try {
+        await pbAdmin.collection('teacher_data').update(teacherIdToUpdate, { 
+          teacherSubscriptionTier: newPlanIdForTeacher,
+          max_content_plans_allowed: planDetails?.maxContentPlans ?? 0,
+          // expiry_date can be added if teacher platform plans have expiry
+        });
+        console.log(`[Razorpay Verify Payment SUCCESS] Teacher ${teacherIdToUpdate} platform plan updated to ${newPlanIdForTeacher}.`);
+      } catch (dbUpdateError: any) {
+        console.error(`[Razorpay Verify Payment CRITICAL ERROR] Failed to update teacher ${teacherIdToUpdate} plan to ${newPlanIdForTeacher}. Error:`, dbUpdateError.data || dbUpdateError.message, "Full Error:", dbUpdateError);
+        return NextResponse.json({ 
+          verified: true,
+          error: `Payment successful, but failed to update teacher platform plan. Contact support with Order ID ${razorpay_order_id}. DB Error: ${dbUpdateError.data?.message || dbUpdateError.message}`,
+          message: `Payment successful, but failed to update teacher platform plan. Contact support with Order ID ${razorpay_order_id}. DB Error: ${dbUpdateError.data?.message || dbUpdateError.message}`
+        }, { status: 200 });
+      }
     } else if (userType === 'student_teacher_plan') {
       if (!teacherIdForPlan) { 
+        console.error("[Razorpay Verify Payment ERROR] teacherIdForPlan missing for student_teacher_plan type.");
         return NextResponse.json({ verified: false, error: "teacherIdForPlan missing for student_teacher_plan type." }, { status: 400 });
       }
-      console.log(`[Razorpay Verify Payment INFO] Processing 'student_teacher_plan' for student ${userId}, teacher ${teacherIdForPlan}, plan ${planId}.`);
+      const studentIdForTeacherPlan = String(userId);
+      const teacherPlanId = String(planId);
+      const targetTeacherId = String(teacherIdForPlan);
+      console.log(`[Razorpay Verify Payment INFO] Processing 'student_teacher_plan' for student ${studentIdForTeacherPlan}, teacher ${targetTeacherId}, plan ${teacherPlanId}.`);
       
-      const teacherRecord = await pbAdmin.collection('teacher_data').getOne(teacherIdForPlan);
-      const teacherPlatformTier = teacherRecord.teacherSubscriptionTier as UserSubscriptionTierTeacher || 'Free';
-      const platformPlanDetails = teacherPlatformPlansData.find(p => p.id === teacherPlatformTier);
-      const commissionRate = platformPlanDetails?.commissionRate !== undefined ? platformPlanDetails.commissionRate / 100 : 0.10; 
+      try {
+        const teacherRecord = await pbAdmin.collection('teacher_data').getOne(targetTeacherId);
+        const teacherPlatformTier = teacherRecord.teacherSubscriptionTier as UserSubscriptionTierTeacher || 'Free';
+        const platformPlanDetails = teacherPlatformPlansData.find(p => p.id === teacherPlatformTier);
+        const commissionRate = platformPlanDetails?.commissionRate !== undefined ? platformPlanDetails.commissionRate / 100 : 0.10; 
+        const totalAmountPaidByStudent = orderDetailsFromRazorpay.amount / 100; 
+        const edunexusCommissionAmount = totalAmountPaidByStudent * commissionRate;
+        const teacherNetShare = totalAmountPaidByStudent - edunexusCommissionAmount;
+        const teacherContentPlanRecord = await pbAdmin.collection('teachers_upgrade_plan').getOne(teacherPlanId); 
 
-      const totalAmountPaidByStudent = orderDetailsFromRazorpay.amount / 100; 
-      const edunexusCommissionAmount = totalAmountPaidByStudent * commissionRate;
-      const teacherNetShare = totalAmountPaidByStudent - edunexusCommissionAmount;
+        console.log(`[Razorpay Verify Payment INFO] Creating record in 'students_teachers_upgrade_plan'...`);
+        await pbAdmin.collection('students_teachers_upgrade_plan').create({
+          student: studentIdForTeacherPlan, teacher: targetTeacherId, teachers_plan_id: teacherPlanId, teachers_plan_name_cache: teacherContentPlanRecord.Plan_name,
+          payment_id_razorpay: razorpay_payment_id, order_id_razorpay: razorpay_order_id, payment_status: 'successful',
+          starting_date: new Date().toISOString(), expiry_date: expiryDateISO,
+          amount_paid_to_edunexus: edunexusCommissionAmount, amount_recieved_to_teacher: teacherNetShare, referral_code_used: referralCodeUsed || null,
+        });
+        console.log(`[Razorpay Verify Payment SUCCESS] Record created in 'students_teachers_upgrade_plan'.`);
 
-      const teacherContentPlanRecord = await pbAdmin.collection('teachers_upgrade_plan').getOne(planId); 
+        console.log(`[Razorpay Verify Payment INFO] Updating student ${studentIdForTeacherPlan}'s 'subscription_by_teacher' field...`);
+        await pbAdmin.collection('users').update(studentIdForTeacherPlan, { "subscription_by_teacher+": targetTeacherId });
+        console.log(`[Razorpay Verify Payment SUCCESS] Student ${studentIdForTeacherPlan}'s 'subscription_by_teacher' updated.`);
 
-      console.log(`[Razorpay Verify Payment INFO] Creating record in 'students_teachers_upgrade_plan'...`);
-      await pbAdmin.collection('students_teachers_upgrade_plan').create({
-        student: userId, 
-        teacher: teacherIdForPlan, 
-        teachers_plan_id: planId, 
-        teachers_plan_name_cache: teacherContentPlanRecord.Plan_name,
-        payment_id_razorpay: razorpay_payment_id,
-        order_id_razorpay: razorpay_order_id,
-        payment_status: 'successful',
-        starting_date: new Date().toISOString(),
-        expiry_date: expiryDateISO,
-        amount_paid_to_edunexus: edunexusCommissionAmount, 
-        amount_recieved_to_teacher: teacherNetShare, 
-        referral_code_used: referralCodeUsed || null,
-      });
-      console.log(`[Razorpay Verify Payment SUCCESS] Record created in 'students_teachers_upgrade_plan'.`);
+        console.log(`[Razorpay Verify Payment INFO] Updating teacher plan ${teacherPlanId}'s 'enrolled_students' field...`);
+        await pbAdmin.collection('teachers_upgrade_plan').update(teacherPlanId, { "enrolled_students+": studentIdForTeacherPlan });
+        console.log(`[Razorpay Verify Payment SUCCESS] Teacher plan ${teacherPlanId}'s 'enrolled_students' updated.`);
 
-      console.log(`[Razorpay Verify Payment INFO] Updating student ${userId}'s 'subscription_by_teacher' field...`);
-      await pbAdmin.collection('users').update(userId, { "subscription_by_teacher+": teacherIdForPlan });
-      console.log(`[Razorpay Verify Payment SUCCESS] Student ${userId}'s 'subscription_by_teacher' updated.`);
-
-      console.log(`[Razorpay Verify Payment INFO] Updating teacher plan ${planId}'s 'enrolled_students' field...`);
-      await pbAdmin.collection('teachers_upgrade_plan').update(planId, { "enrolled_students+": userId });
-      console.log(`[Razorpay Verify Payment SUCCESS] Teacher plan ${planId}'s 'enrolled_students' updated.`);
-
-      console.log(`[Razorpay Verify Payment INFO] Updating teacher ${teacherIdForPlan}'s 'wallet_money'...`);
-      const currentTeacherData = await pbAdmin.collection('teacher_data').getOne(teacherIdForPlan);
-      const currentWalletMoney = Number(currentTeacherData.wallet_money) || 0;
-      const newWalletMoney = currentWalletMoney + teacherNetShare;
-      await pbAdmin.collection('teacher_data').update(teacherIdForPlan, { wallet_money: newWalletMoney });
-      console.log(`[Razorpay Verify Payment SUCCESS] Teacher ${teacherIdForPlan}'s wallet_money updated to ${newWalletMoney}. Net share: ${teacherNetShare}`);
-
+        console.log(`[Razorpay Verify Payment INFO] Updating teacher ${targetTeacherId}'s 'wallet_money'...`);
+        const currentTeacherData = await pbAdmin.collection('teacher_data').getOne(targetTeacherId);
+        const currentWalletMoney = Number(currentTeacherData.wallet_money) || 0;
+        const newWalletMoney = currentWalletMoney + teacherNetShare;
+        await pbAdmin.collection('teacher_data').update(targetTeacherId, { wallet_money: newWalletMoney });
+        console.log(`[Razorpay Verify Payment SUCCESS] Teacher ${targetTeacherId}'s wallet_money updated to ${newWalletMoney}. Net share: ${teacherNetShare}`);
+      } catch(studentTeacherPlanError: any) {
+        console.error(`[Razorpay Verify Payment CRITICAL ERROR] Failed during 'student_teacher_plan' processing for student ${studentIdForTeacherPlan}, teacher ${targetTeacherId}, plan ${teacherPlanId}. Error:`, studentTeacherPlanError.data || studentTeacherPlanError.message, "Full Error:", studentTeacherPlanError);
+        return NextResponse.json({ 
+          verified: true,
+          error: `Payment successful, but failed to enroll in teacher's plan. Contact support with Order ID ${razorpay_order_id}. DB Error: ${studentTeacherPlanError.data?.message || studentTeacherPlanError.message}`,
+          message: `Payment successful, but failed to enroll in teacher's plan. Contact support with Order ID ${razorpay_order_id}. DB Error: ${studentTeacherPlanError.data?.message || studentTeacherPlanError.message}`
+        }, { status: 200 });
+      }
     } else {
+      console.error(`[Razorpay Verify Payment ERROR] Invalid userType: ${userType}`);
       return NextResponse.json({ verified: false, error: "Invalid userType for payment." }, { status: 400 });
     }
 
@@ -168,9 +199,9 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("[Razorpay Verify Payment CRITICAL ERROR] (Outer Try-Catch):", error.response ? error.response.data : error.message, "Full Error:", error);
     let errorMessage = "Payment verification failed due to a server error.";
-    if (error.response && error.response.data && error.response.data.error && error.response.data.error.description) { // Razorpay specific error structure
+    if (error.response && error.response.data && error.response.data.error && error.response.data.error.description) { 
       errorMessage = error.response.data.error.description;
-    } else if (error.data && error.data.message) { // PocketBase specific error structure
+    } else if (error.data && error.data.message) { 
        errorMessage = error.data.message;
        if(error.data.data && typeof error.data.data === 'object') {
            const fieldErrors = Object.entries(error.data.data).map(([key, val]: [string, any]) => `${key}: ${val.message}`).join('; ');
