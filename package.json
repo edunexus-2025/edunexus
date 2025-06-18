@@ -53,6 +53,7 @@
     "next-themes": "^0.3.0",
     "patch-package": "^8.0.0",
     "pocketbase": "^0.21.3",
+    "razorpay": "^2.9.4",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
@@ -78,5 +79,3 @@
     "webpack": "^5.99.9"
   }
 }
-
-    
