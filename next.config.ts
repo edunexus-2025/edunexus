@@ -3,7 +3,7 @@ import type { NextConfig } from 'next';
 
 // Updated PocketBase URL to be used for image remote patterns
 const pocketbaseUrlString = 'https://ae8425c5-5ede-4664-bdaa-b238298ae1be-00-4oi013hd9264.sisko.replit.dev';
-const pocketbaseRemotePatterns: Array<import('next/dist/shared/lib/image-config').ImageRemotePattern> = [];
+const pocketbaseRemotePatterns: Array<import('next/dist/shared/lib/image-config').RemotePattern> = [];
 
 if (pocketbaseUrlString) {
   try {
@@ -73,8 +73,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
-      // Removed the explicit entry for f3605bbf-1d05-4292-9f0b-d3cd0ac21935-00-2eeov1wweb7qq.sisko.replit.dev
-      // Existing cluster-specific URLs, keep if still needed, otherwise remove
+      { // Replit domain from the error - ensure pathname is correct
+        protocol: 'https',
+        hostname: 'f3605bbf-1d05-4292-9f0b-d3cd0ac21935-00-2eeov1wweb7qq.sisko.replit.dev',
+        port: '',
+        pathname: '/api/files/**', 
+      }// Existing cluster-specific URLs, keep if still needed, otherwise remove
       {
         protocol: 'https',
         hostname: '9000-firebase-studio-1748410223729.cluster-ancjwrkgr5dvux4qug5rbzyc2y.cloudworkstations.dev',
