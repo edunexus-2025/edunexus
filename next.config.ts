@@ -19,8 +19,6 @@ if (pocketbaseUrlString) {
     console.error(`[next.config.js] FATAL: Invalid PocketBase URL ('${pocketbaseUrlString}') provided. Cannot add it to image remotePatterns. Error: ${(e as Error).message}. IMAGES FROM POCKETBASE WILL LIKELY FAIL TO LOAD.`);
   }
 } else {
-  // This else block might not be strictly necessary if the URL is hardcoded and always valid,
-  // but kept for structural similarity if it were to become dynamic again.
   console.warn(`[next.config.js] WARNING: PocketBase URL is not defined. Images from PocketBase will not load. This is unexpected if the URL is hardcoded.`);
 }
 
@@ -47,7 +45,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'www.citypng.com', // Added this entry
+        hostname: 'www.citypng.com', 
         port: '',
         pathname: '/**',
       },
@@ -75,11 +73,11 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
-      {
+      { // Ensure this Replit domain for images from teacher_question_data (type: "url") is present
         protocol: 'https',
-        hostname: 'f3605bbf-1d05-4292-9f0b-d3cd0ac21935-00-2eeov1wweb7qq.sisko.replit.dev', // Added this from the error
+        hostname: 'f3605bbf-1d05-4292-9f0b-d3cd0ac21935-00-2eeov1wweb7qq.sisko.replit.dev',
         port: '',
-        pathname: '/api/files/**', // Path from the error URL
+        pathname: '/api/files/**', 
       },
       // Existing cluster-specific URLs, keep if still needed, otherwise remove
       {
@@ -100,7 +98,7 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**', 
       },
-      ...pocketbaseRemotePatterns, // Add the dynamically generated PocketBase pattern(s)
+      ...pocketbaseRemotePatterns, // Add the dynamically generated PocketBase pattern(s) for type: "file" fields
     ],
   },
   experimental: {
