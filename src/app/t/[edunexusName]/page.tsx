@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { User, Plan as AppPlanType } from '@/lib/types'; // Use AppPlanType for pricing, TeacherPlan for content plans
+import { useAuth } from '@/contexts/AuthContext'; // Added import
 
 // --- Types ---
 interface TeacherDataRecord extends RecordModel {
@@ -291,4 +292,3 @@ export default function TeacherPublicAdPage() {
   );
 }
 
-    
