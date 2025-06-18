@@ -52,7 +52,8 @@ import {
   DollarSign, 
   MessagesSquare, 
   Trophy, 
-  Zap // Added Zap icon for upgrade
+  Zap,
+  Wallet // Added Wallet icon
 } from 'lucide-react';
 import { ThemeToggleButton } from './ThemeToggleButton';
 import { NotificationPopover } from './NotificationPopover';
@@ -86,6 +87,7 @@ const teacherNavItems = [
   { href: Routes.teacherMyStudents, label: 'My Students', icon: <Users /> },
   { href: Routes.teacherManageDiscussion, label: 'Manage Discussion', icon: <MessagesSquare /> }, 
   { href: Routes.teacherStudentPerformance, label: 'Student Performance', icon: <BarChart3 /> },
+  { href: Routes.teacherWallet, label: 'My Wallet', icon: <Wallet /> }, // New Wallet Link
   { href: Routes.teacherCreateAds, label: 'Create Ads', icon: <Megaphone /> },
   { href: Routes.teacherUpgradePlatformPlan, label: 'Upgrade Plan', icon: <Zap /> }, 
   { href: Routes.teacherSettings, label: 'Settings', icon: <Settings /> },

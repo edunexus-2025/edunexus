@@ -96,8 +96,8 @@ export const Routes = {
   teacherDashboard: '/teacher/dashboard',
   teacherMyContent: '/teacher/dashboard/my-content',
   teacherManagePlans: '/teacher/dashboard/manage-plans',
-  teacherViewPlan: (planId: string) => `/teacher/dashboard/manage-plans/${planId}`, // New route
-  teacherUpgradePlatformPlan: '/teacher/dashboard/upgrade-plan', // New route for teacher's own platform plan
+  teacherViewPlan: (planId: string) => `/teacher/dashboard/manage-plans/${planId}`, 
+  teacherUpgradePlatformPlan: '/teacher/dashboard/upgrade-plan', 
   teacherStudentPerformance: '/teacher/dashboard/student-performance',
   teacherSettings: '/teacher/dashboard/settings',
   teacherMyStudents: '/teacher/dashboard/my-students',
@@ -114,6 +114,7 @@ export const Routes = {
   teacherUpgradeAds: '/teacher/dashboard/upgrade-ads',
   teacherPublicAdPage: (edunexusName: string): string => `/t/${edunexusName}`,
   teacherManageDiscussion: '/teacher/dashboard/manage-discussion',
+  teacherWallet: '/teacher/dashboard/wallet', // New Wallet Route
 };
 
 // Helper to convert display names to URL-friendly slugs
@@ -275,7 +276,6 @@ export const teacherPlatformPlansData: Plan[] = [
     ctaText: 'Current Plan',
     commissionRate: 10,
     maxContentPlans: 2, 
-    // maxStudentsPerContentPlan: 10, // Removed
     qbAccess: false,
   },
   {
@@ -293,7 +293,6 @@ export const teacherPlatformPlansData: Plan[] = [
     ctaText: 'Upgrade to Starter',
     commissionRate: 3,
     maxContentPlans: 5,
-    // maxStudentsPerContentPlan: 30, // Removed
     qbAccess: false, 
   },
   {
@@ -304,7 +303,7 @@ export const teacherPlatformPlansData: Plan[] = [
     priceSuffix: '/year',
     priceValue: 599,
     features: [
-      "Create up to 5 content plans", // Can be higher or 'Unlimited'
+      "Create up to 5 content plans", 
       "Full access to EduNexus Question Bank (if applicable)",
       "Advanced analytics and reporting tools",
       "Priority support",
@@ -313,7 +312,6 @@ export const teacherPlatformPlansData: Plan[] = [
     ctaText: 'Upgrade to Pro',
     commissionRate: 1.5,
     maxContentPlans: 5,
-    // maxStudentsPerContentPlan: 'Unlimited', // Removed
     qbAccess: true,
   },
 ];
