@@ -213,9 +213,9 @@ export const allPlansData: Plan[] = [
     id: 'Dpp',
     name: 'Pulse',
     description: "Daily rhythm of practice. Focus on daily problems and foundational tests.",
-    price: '₹379',
-    priceSuffix: '/year',
-    priceValue: 379,
+    price: '₹1',
+    priceSuffix: '/- year',
+    priceValue: 1,
     features: [
       'All Nova features',
       'Access to free test series',
