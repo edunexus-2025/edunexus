@@ -70,11 +70,12 @@ export default function UpgradePage() {
 
       let isEligibleByPlan = true;
       if (promoRecord.plan_by && Array.isArray(promoRecord.plan_by) && promoRecord.plan_by.length > 0 && currentUserTier) {
-        const normalizedPlanByRequiredForPromo = promoRecord.plan_by.map(p => p === 'Full Length' ? 'Full_length' : p) as UserSubscriptionTierStudent[];
+        // Assuming promoRecord.plan_by from DB is already UserSubscriptionTierStudent[] and contains 'Full_length'
+        const planByRequiredForPromo = promoRecord.plan_by as UserSubscriptionTierStudent[];
         
         const validStudentTiersForCheck: UserSubscriptionTierStudent[] = ['Free', 'Dpp', 'Chapterwise', 'Full_length', 'Combo'];
         if (validStudentTiersForCheck.includes(currentUserTier as UserSubscriptionTierStudent)) {
-          if (!normalizedPlanByRequiredForPromo.includes(currentUserTier as UserSubscriptionTierStudent)) {
+          if (!planByRequiredForPromo.includes(currentUserTier as UserSubscriptionTierStudent)) {
             isEligibleByPlan = false;
           }
         } else {
@@ -85,7 +86,7 @@ export default function UpgradePage() {
 
       if (!isEligibleByPlan) {
         setPromoError(`This promo code is not applicable with your current plan (${currentUserTier || 'N/A'}).`);
-        setAppliedPromo(promoRecord);
+        setAppliedPromo(promoRecord); // Still show applied promo, but with error
         toast({ title: "Promo Not Applicable To Your Current Plan", description: `This code isn't valid for your current subscription tier.`, variant: "default" });
         setIsVerifyingPromo(false);
         return;
@@ -410,16 +411,16 @@ export default function UpgradePage() {
           let actualDiscountPercentageApplied = 0;
           
           const studentTierValuesForPromoCheck: UserSubscriptionTierStudent[] = ['Free', 'Dpp', 'Chapterwise', 'Full_length', 'Combo'];
-
-          const normalizedPromoPlanFor = (Array.isArray(appliedPromo?.plan_for) ? appliedPromo!.plan_for : [])
-                                            .map(p => p === 'Full Length' ? 'Full_length' : p) as UserSubscriptionTierStudent[];
+          
+          // Assuming appliedPromo.plan_for from DB is clean UserSubscriptionTierStudent[]
+          const promoApplicablePlans = (Array.isArray(appliedPromo?.plan_for) ? appliedPromo!.plan_for : []) as UserSubscriptionTierStudent[];
 
           const isPlanEligibleForPromo = appliedPromo &&
             finalPriceValue > 0 &&
             studentTierValuesForPromoCheck.includes(plan.id as UserSubscriptionTierStudent) &&
             appliedPromo.plan_for &&
             Array.isArray(appliedPromo.plan_for) &&
-            normalizedPromoPlanFor.includes(plan.id as UserSubscriptionTierStudent) &&
+            promoApplicablePlans.includes(plan.id as UserSubscriptionTierStudent) && // Use the already typed array
             (!appliedPromo.expiry_date || new Date(appliedPromo.expiry_date) >= new Date());
 
           if (isPlanEligibleForPromo) {
@@ -532,4 +533,3 @@ export default function UpgradePage() {
     </div>
   );
 }
-

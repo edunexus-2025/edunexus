@@ -25,7 +25,7 @@ interface TestResultSummary extends RecordModel {
   status: string;
   created: string; // Submission date
   inferredSubject?: string;
-  test_type_model?: 'Chapterwise' | 'Full Length' | 'Challenge';
+  test_type_model?: 'Chapterwise' | 'Full_length' | 'Challenge'; // Corrected to Full_length
   test_id: string; // Added to fetch original test details
   original_total_questions?: number; // From test_pages
   original_duration_minutes?: number; // From test_pages
@@ -86,7 +86,7 @@ export default function MyProgressPage() {
           return {
             ...r,
             inferredSubject: inferSubjectFromTestName(r.test_name),
-            test_type_model: 'Chapterwise' as const,
+            test_type_model: 'Chapterwise' as const, // Assuming these are all chapterwise for now
             original_total_questions: originalTotalQuestions,
             original_duration_minutes: originalDurationMinutes,
           };
@@ -133,7 +133,7 @@ export default function MyProgressPage() {
       } else if (filterTestType === 'chapterwise') {
         typeMatch = result.test_type_model === 'Chapterwise';
       } else if (filterTestType === 'fullLength') {
-        typeMatch = result.test_type_model === 'Full Length';
+        typeMatch = result.test_type_model === 'Full_length'; // Corrected
       } else if (filterTestType === 'challenge') {
         typeMatch = result.test_type_model === 'Challenge';
       }
@@ -188,7 +188,7 @@ export default function MyProgressPage() {
     );
   }
 
-  const testsCount = filteredTestResults.filter(r => r.test_type_model === 'Chapterwise').length; // For now, only chapterwise
+  const testsCount = filteredTestResults.filter(r => r.test_type_model === 'Chapterwise' || r.test_type_model === 'Full_length').length;
 
   return (
     <div className="space-y-8 p-4 md:p-6">
@@ -296,4 +296,3 @@ export default function MyProgressPage() {
     </div>
   );
 }
-

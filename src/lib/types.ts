@@ -2,7 +2,7 @@
 // Represents the structure of user data from PocketBase, aligned with your collection
 import type { RecordModel } from 'pocketbase'; // Added import for RecordModel
 
-export type UserSubscriptionTierStudent = 'Free' | 'Chapterwise' | 'Full_length' | 'Dpp' | 'Combo';
+export type UserSubscriptionTierStudent = 'Free' | 'Chapterwise' | 'Full_length' | 'Dpp' | 'Combo'; // Corrected to Full_length
 export type UserSubscriptionTierTeacher = 'Free' | 'Starter' | 'Pro';
 
 export interface Plan {
@@ -147,7 +147,7 @@ export interface DiscussionGroup {
   type: 'app_plan' | 'teacher_group' | 'general_topic';
   description?: string;
   icon?: React.ElementType;
-  requiredTier?: UserSubscriptionTierStudent | 'Full Length';
+  requiredTier?: UserSubscriptionTierStudent | 'Full_length'; // Corrected
 }
 
 export interface ChallengeInviteRecord extends RecordModel {
@@ -312,4 +312,3 @@ export interface TeacherReferralCode extends RecordModel {
   created: string;
   updated: string;
 }
-    

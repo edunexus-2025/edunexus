@@ -449,7 +449,7 @@ export const TeacherAdSchema = z.object({
 });
 export type TeacherAdInput = z.infer<typeof TeacherAdSchema>;
 
-export const EduNexusPlanEnum = z.enum(["Free", "Dpp", "Chapterwise", "Full Length", "Combo"]);
+export const EduNexusPlanEnum = z.enum(["Free", "Dpp", "Chapterwise", "Full_length", "Combo"]); // Corrected "Full Length"
 
 export const DiscussionGroupManagementFormSchema = z.object({
   group_name: z.string().min(3, "Group name must be at least 3 characters.").max(100, "Group name cannot exceed 100 characters."),
@@ -479,7 +479,7 @@ export const StudentDashboardAdSchema = z.object({
 export type StudentDashboardAdInput = z.infer<typeof StudentDashboardAdSchema>;
 
 // Referral Code Management Schema
-export const StudentReferralPlanEnum = z.enum(["Free", "Chapterwise", "Full_length", "Dpp", "Combo"]);
+export const StudentReferralPlanEnum = z.enum(["Free", "Chapterwise", "Full_length", "Dpp", "Combo"]); // Corrected "Full Length"
 export type StudentReferralPlan = z.infer<typeof StudentReferralPlanEnum>;
 
 export const ReferralCodeSchema = z.object({
@@ -527,4 +527,3 @@ export const TeacherReferralCodeSchema = z.object({
   expiry_date: z.string().optional().nullable().refine(val => !val || !isNaN(Date.parse(val)), { message: "Invalid date format for expiry date." }),
 });
 export type TeacherReferralCodeInput = z.infer<typeof TeacherReferralCodeSchema>;
-
