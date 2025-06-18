@@ -18,7 +18,7 @@ if (pocketbaseUrlString) {
   try {
     const url = new URL(pocketbaseUrlString);
     pocketbaseRemotePatterns.push({
-      protocol: url.protocol.slice(0, -1) as 'http' | 'https';
+      protocol: url.protocol.slice(0, -1) as 'http' | 'https',
       hostname: url.hostname,
       port: url.port || '',
       pathname: '/api/files/**', // Standard PocketBase file path

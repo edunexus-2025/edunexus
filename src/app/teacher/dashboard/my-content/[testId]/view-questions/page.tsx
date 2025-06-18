@@ -23,29 +23,37 @@ interface ParentTest extends RecordModel {
   testName: string;
 }
 
-// Assuming these fields in teacher_question_data now store direct URLs
 interface QuestionRecord extends RecordModel {
   id: string;
   QuestionText?: string;
-  QuestionImage?: string | null; // Now a URL string
+  QuestionImage?: string | null;
   OptionAText?: string;
-  OptionAImage?: string | null; // Now a URL string
+  OptionAImage?: string | null;
   OptionBText?: string;
-  OptionBImage?: string | null; // Now a URL string
+  OptionBImage?: string | null;
   OptionCText?: string;
-  OptionCImage?: string | null; // Now a URL string
+  OptionCImage?: string | null;
   OptionDText?: string;
-  OptionDImage?: string | null; // Now a URL string
+  OptionDImage?: string | null;
   CorrectOption?: "Option A" | "Option B" | "Option C" | "Option D";
   LessonName?: string;
   teacher?: string;
   explanationText?: string;
-  explanationImage?: string | null; // Now a URL string
+  explanationImage?: string | null;
 }
 
-// DisplayableQuestion is now essentially the same as QuestionRecord for URL-based images
 type DisplayableQuestion = QuestionRecord;
 
+const OLD_HOSTNAME = "f3605bbf-1d05-4292-9f0b-d3cd0ac21935-00-2eeov1wweb7qq.sisko.replit.dev";
+const NEW_POCKETBASE_HOSTNAME = "ae8425c5-5ede-4664-bdaa-b238298ae1be-00-4oi013hd9264.sisko.replit.dev";
+
+const correctImageUrlHostname = (url: string | null | undefined): string | null => {
+  if (!url || typeof url !== 'string') return null;
+  if (url.includes(OLD_HOSTNAME)) {
+    return url.replace(OLD_HOSTNAME, NEW_POCKETBASE_HOSTNAME);
+  }
+  return url;
+};
 
 const renderLatex = (text: string | undefined | null): React.ReactNode => {
   if (!text) return null;
@@ -94,7 +102,6 @@ export default function ViewTestQuestionsPage() {
   const [parentTest, setParentTest] = useState<ParentTest | null>(null);
   const [questions, setQuestions] = useState<DisplayableQuestion[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  // No longer need imageUrls state as URLs are directly in question objects
 
   const [isLoadingParentTest, setIsLoadingParentTest] = useState(true);
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(true);
@@ -105,7 +112,6 @@ export default function ViewTestQuestionsPage() {
   const [isSavingCorrectOption, setIsSavingCorrectOption] = useState(false);
 
   const optionLabels: Array<"Option A" | "Option B" | "Option C" | "Option D"> = ["Option A", "Option B", "Option C", "Option D"];
-
 
   useEffect(() => {
     let isMounted = true;
@@ -167,7 +173,6 @@ export default function ViewTestQuestionsPage() {
         
         try {
           if (!isMounted) return;
-          // Fetch questions directly. URLs are assumed to be in these records.
           const fetchedQuestions = await pb.collection('teacher_question_data').getFullList<DisplayableQuestion>({
             filter: questionFilter,
             sort: 'created',
@@ -325,6 +330,15 @@ export default function ViewTestQuestionsPage() {
     );
   }
 
+  // Correct image URLs before rendering
+  const correctedQuestionImage = correctImageUrlHostname(currentQuestion.QuestionImage);
+  const correctedOptionAImage = correctImageUrlHostname(currentQuestion.OptionAImage);
+  const correctedOptionBImage = correctImageUrlHostname(currentQuestion.OptionBImage);
+  const correctedOptionCImage = correctImageUrlHostname(currentQuestion.OptionCImage);
+  const correctedOptionDImage = correctImageUrlHostname(currentQuestion.OptionDImage);
+  const correctedExplanationImage = correctImageUrlHostname(currentQuestion.explanationImage);
+
+
   return (
     <div className="space-y-6 p-2 sm:p-4 md:p-6 bg-slate-50 dark:bg-slate-950 min-h-screen">
       <div className="flex items-center justify-between mb-4 max-w-3xl mx-auto">
@@ -357,12 +371,12 @@ export default function ViewTestQuestionsPage() {
                   {renderLatex(currentQuestion.QuestionText)}
                 </div>
               )}
-              {currentQuestion.QuestionImage && isValidHttpUrl(currentQuestion.QuestionImage) && (
+              {correctedQuestionImage && isValidHttpUrl(correctedQuestionImage) && (
                 <div className="my-3 text-center">
-                  <NextImage src={currentQuestion.QuestionImage} alt="Question Image" width={400} height={300} className="rounded object-contain inline-block border" data-ai-hint="question diagram"/>
+                  <NextImage src={correctedQuestionImage} alt="Question Image" width={400} height={300} className="rounded object-contain inline-block border" data-ai-hint="question diagram"/>
                 </div>
               )}
-               {!(currentQuestion.QuestionText || (currentQuestion.QuestionImage && isValidHttpUrl(currentQuestion.QuestionImage))) && (
+               {!(currentQuestion.QuestionText || (correctedQuestionImage && isValidHttpUrl(correctedQuestionImage))) && (
                 <p className="text-sm text-muted-foreground italic">No question text or image provided.</p>
               )}
             </div>
@@ -372,6 +386,9 @@ export default function ViewTestQuestionsPage() {
               {optionLabels.map((optLabel, index) => {
                 const textKey = `Option${String.fromCharCode(65 + index)}Text` as keyof DisplayableQuestion;
                 const imageUrlKey = `Option${String.fromCharCode(65 + index)}Image` as keyof DisplayableQuestion;
+                
+                // Use the corrected URLs
+                const correctedOptionImageUrl = correctImageUrlHostname(currentQuestion[imageUrlKey] as string | null | undefined);
                 const isThisOptionCorrect = currentQuestion.CorrectOption === optLabel;
 
                 return (
@@ -389,12 +406,12 @@ export default function ViewTestQuestionsPage() {
                           {renderLatex(currentQuestion[textKey] as string)}
                         </div>
                       )}
-                      {currentQuestion[imageUrlKey] && isValidHttpUrl(currentQuestion[imageUrlKey] as string | undefined) && (
+                      {correctedOptionImageUrl && isValidHttpUrl(correctedOptionImageUrl) && (
                          <div className="mt-1.5">
-                           <NextImage src={currentQuestion[imageUrlKey] as string} alt={`Option ${String.fromCharCode(65 + index)} Image`} width={150} height={80} className="rounded object-contain border" data-ai-hint="option illustration"/>
+                           <NextImage src={correctedOptionImageUrl} alt={`Option ${String.fromCharCode(65 + index)} Image`} width={150} height={80} className="rounded object-contain border" data-ai-hint="option illustration"/>
                          </div>
                       )}
-                       {!(currentQuestion[textKey] || (currentQuestion[imageUrlKey] && isValidHttpUrl(currentQuestion[imageUrlKey] as string | undefined))) && <p className="text-muted-foreground italic">Option {String.fromCharCode(65 + index)} content not available.</p>}
+                       {!(currentQuestion[textKey] || (correctedOptionImageUrl && isValidHttpUrl(correctedOptionImageUrl))) && <p className="text-muted-foreground italic">Option {String.fromCharCode(65 + index)} content not available.</p>}
                     </div>
                   </div>
                 );
@@ -427,7 +444,7 @@ export default function ViewTestQuestionsPage() {
               </Card>
             )}
             
-            { (currentQuestion.explanationText || (currentQuestion.explanationImage && isValidHttpUrl(currentQuestion.explanationImage))) && !isEditingCorrectOption &&
+            { (currentQuestion.explanationText || (correctedExplanationImage && isValidHttpUrl(correctedExplanationImage))) && !isEditingCorrectOption &&
               <div className="mt-6 pt-4 border-t border-border">
                 <h4 className="text-md font-semibold text-muted-foreground mb-2">Explanation:</h4>
                 {currentQuestion.explanationText && (
@@ -435,14 +452,14 @@ export default function ViewTestQuestionsPage() {
                      {renderLatex(currentQuestion.explanationText)}
                    </div>
                 )}
-                {currentQuestion.explanationImage && isValidHttpUrl(currentQuestion.explanationImage) && (
+                {correctedExplanationImage && isValidHttpUrl(correctedExplanationImage) && (
                   <div className="my-3 text-center">
-                    <NextImage src={currentQuestion.explanationImage} alt="Explanation Image" width={300} height={200} className="rounded object-contain inline-block border" data-ai-hint="explanation diagram"/>
+                    <NextImage src={correctedExplanationImage} alt="Explanation Image" width={300} height={200} className="rounded object-contain inline-block border" data-ai-hint="explanation diagram"/>
                   </div>
                 )}
               </div>
             }
-             { !(currentQuestion.explanationText || (currentQuestion.explanationImage && isValidHttpUrl(currentQuestion.explanationImage))) && !isEditingCorrectOption &&
+             { !(currentQuestion.explanationText || (correctedExplanationImage && isValidHttpUrl(correctedExplanationImage))) && !isEditingCorrectOption &&
                 <p className="text-sm text-muted-foreground mt-4 text-center">No explanation available for this question.</p>
              }
           </CardContent>
