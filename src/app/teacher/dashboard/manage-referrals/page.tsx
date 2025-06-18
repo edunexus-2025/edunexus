@@ -43,6 +43,9 @@ import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import Link from 'next/link'; // Added missing import
+import { Routes } from '@/lib/constants';
+
 
 interface TeacherReferralCodeWithPlanNames extends TeacherReferralCode {
   applicable_plan_names?: string[];
@@ -234,7 +237,7 @@ export default function TeacherManageReferralsPage() {
 
       {teacherId && 
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
+          <DialogContent className="sm:max-w-lg md:max-w-xl max-h-[85vh] flex flex-col">
             <DialogHeader className="pt-6 px-6 pb-4 border-b"><DialogTitle>{editingCode ? "Edit Referral Code" : "Create New Referral Code"}</DialogTitle><DialogDescription>{editingCode ? "Update details for this code." : "Set up a new referral code."}</DialogDescription></DialogHeader>
             <ScrollArea className="flex-grow px-6 py-4 overflow-y-auto">
               <Form {...form}>
@@ -272,3 +275,4 @@ export default function TeacherManageReferralsPage() {
     </div>
   );
 }
+
