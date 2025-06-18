@@ -115,7 +115,7 @@ export const Routes = {
   teacherPublicAdPage: (edunexusName: string): string => `/t/${edunexusName}`,
   teacherManageDiscussion: '/teacher/dashboard/manage-discussion',
   teacherWallet: '/teacher/dashboard/wallet',
-  teacherManageReferrals: '/teacher/dashboard/manage-referrals', // New Route
+  teacherManageReferrals: '/teacher/dashboard/manage-referrals',
 };
 
 // Helper to convert display names to URL-friendly slugs
@@ -304,16 +304,17 @@ export const teacherPlatformPlansData: Plan[] = [
     priceSuffix: '/year',
     priceValue: 599,
     features: [
-      "Create up to 10 content plans", // Example: Increased limit
-      "Full access to EduNexus Question Bank (if applicable)",
+      "Create up to 10 content plans", 
+      "Full access to EduNexus Question Bank",
       "Advanced analytics and reporting tools",
       "Priority support",
     ],
     isRecommended: true,
     ctaText: 'Upgrade to Pro',
     commissionRate: 5, // EduNexus takes 5%
-    maxContentPlans: 10, // Example: Increased limit
+    maxContentPlans: 10, 
     qbAccess: true,
   },
 ];
 
+    

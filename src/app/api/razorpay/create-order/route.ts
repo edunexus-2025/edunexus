@@ -1,8 +1,10 @@
 
 import { NextResponse, NextRequest } from 'next/server';
 import Razorpay from 'razorpay';
-import { AppConfig } from '@/lib/constants';
+import { AppConfig, escapeForPbFilter } from '@/lib/constants';
 import crypto from 'crypto'; // For generating short random string
+import pb from '@/lib/pocketbase'; // Import PocketBase client for teacher referral validation
+import type { TeacherReferralCode } from '@/lib/types';
 
 const RAZORPAY_KEY_ID = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
@@ -25,22 +27,11 @@ const generateShortRandomString = (length: number): string => {
 
 const getPlanIdAbbreviation = (planId: string): string => {
   const knownPlans: Record<string, string> = {
-    "Free": "FRE",
-    "Starter": "STR",
-    "Pro": "PRO",
-    "Dpp": "DPP",
-    "Chapterwise": "CHW",
-    "Full_length": "FLL", // Underscore for consistency with how it might be stored
-    "Combo": "CMB",
+    "Free": "FRE", "Starter": "STR", "Pro": "PRO",
+    "Dpp": "DPP", "Chapterwise": "CHW", "Full_length": "FLL", "Combo": "CMB",
   };
-  if (knownPlans[planId]) {
-    return knownPlans[planId];
-  }
-  // If it's likely a PocketBase ID (typically 15 chars)
-  if (planId && planId.length === 15 && /^[a-z0-9]+$/.test(planId)) {
-    return planId.substring(planId.length - 6).toUpperCase();
-  }
-  // Fallback for other planId formats
+  if (knownPlans[planId]) return knownPlans[planId];
+  if (planId && planId.length === 15 && /^[a-z0-9]+$/.test(planId)) return planId.substring(planId.length - 6).toUpperCase();
   return planId.substring(0, 3).toUpperCase();
 };
 
@@ -48,11 +39,10 @@ const getUserTypeAbbreviation = (userType: string): string => {
     switch(userType) {
         case 'student_platform_plan': return 'SPP';
         case 'teacher_platform_plan': return 'TPP';
-        case 'student_teacher_plan': return 'STP';
+        case 'student_teacher_plan': return 'STP'; // Student buying Teacher's Content Plan
         default: return userType.substring(0,3).toUpperCase();
     }
 };
-
 
 export async function POST(request: NextRequest) {
   if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
@@ -61,14 +51,14 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { 
-      amount, // Expected in paisa (e.g., 50000 for ₹500.00)
+    let { 
+      amount, // Expected in base currency unit (e.g., 500 for ₹500.00)
       currency = 'INR', 
       planId, 
       userId, 
-      userType, // 'student_platform_plan', 'teacher_platform_plan', 'student_teacher_plan'
-      teacherIdForPlan, 
-      referralCodeUsed, 
+      userType, 
+      teacherIdForPlan, // For 'student_teacher_plan': ID of the teacher whose plan is being bought
+      referralCodeUsed, // For 'student_teacher_plan': Teacher's referral code
       productDescription 
     } = body;
 
@@ -82,27 +72,45 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing teacherIdForPlan for student subscribing to a teacher plan.' }, { status: 400 });
     }
 
-    // Generate a shorter receipt ID
+    let finalAmount = Number(amount);
+    let appliedReferralCodeDetails: string | null = null;
+
+    if (userType === 'student_teacher_plan' && referralCodeUsed && teacherIdForPlan) {
+      try {
+        const filter = `teacher = "${escapeForPbFilter(teacherIdForPlan)}" && referral_code_string = "${escapeForPbFilter(referralCodeUsed.trim().toUpperCase())}" && (expiry_date = "" || expiry_date = null || expiry_date >= "${new Date().toISOString().split('T')[0]}")`;
+        const promoRecord = await pb.collection('teacher_refferal_code').getFirstListItem<TeacherReferralCode>(filter);
+        
+        if (promoRecord.applicable_plan_ids.includes(planId)) {
+          const discountPercent = Number(promoRecord.discount_percentage);
+          if (discountPercent > 0 && discountPercent <= 100) {
+            const discountValue = (finalAmount * discountPercent) / 100;
+            finalAmount = finalAmount - discountValue;
+            appliedReferralCodeDetails = `${promoRecord.referral_code_string} (${discountPercent}% off)`;
+            console.log(`[Razorpay Create Order] INFO: Teacher referral code "${referralCodeUsed}" applied. Original: ${amount}, Discount: ${discountPercent}%, New: ${finalAmount}`);
+          }
+        } else {
+          console.log(`[Razorpay Create Order] INFO: Teacher referral code "${referralCodeUsed}" not applicable to plan ${planId}.`);
+        }
+      } catch (promoError: any) {
+        if (promoError.status === 404) {
+          console.log(`[Razorpay Create Order] INFO: Teacher referral code "${referralCodeUsed}" not found or expired for teacher ${teacherIdForPlan}.`);
+        } else {
+          console.warn(`[Razorpay Create Order] WARN: Error validating teacher referral code:`, promoError.data || promoError.message);
+        }
+      }
+    }
+    
+    finalAmount = Math.max(1, finalAmount); // Ensure amount is at least 1 (Razorpay minimum)
+
     const appPrefix = "ENX";
     const userTypeAbbr = getUserTypeAbbreviation(userType);
     const planIdShort = getPlanIdAbbreviation(String(planId));
     const userIdShort = String(userId).substring(String(userId).length - 8);
     const randomSuffix = generateShortRandomString(6);
-    
-    const receiptId = `${appPrefix}-${userTypeAbbr}-${planIdShort}-${userIdShort}-${randomSuffix}`;
-
-    if (receiptId.length > 40) {
-        // This should not happen with the new logic, but as a safeguard:
-        console.error(`[Razorpay Create Order] ERROR: Generated receiptId is still too long: ${receiptId} (Length: ${receiptId.length}). Truncating.`);
-        // If it's still too long, truncate it forcefully, though this might risk non-uniqueness.
-        // Better to ensure the components above are short enough.
-        // For now, let's assume the new logic keeps it < 40.
-        // If this error log appears, the abbreviation logic needs more refinement.
-    }
-
+    const receiptId = `${appPrefix}-${userTypeAbbr}-${planIdShort}-${userIdShort}-${randomSuffix}`.substring(0, 40);
 
     const options = {
-      amount: Math.round(Number(amount) * 100), 
+      amount: Math.round(Number(finalAmount) * 100), // Amount in paisa
       currency: currency,
       receipt: receiptId,
       notes: {
@@ -110,7 +118,7 @@ export async function POST(request: NextRequest) {
         userId: String(userId),
         userType: String(userType),
         ...(teacherIdForPlan && { teacherIdForPlan: String(teacherIdForPlan) }), 
-        ...(referralCodeUsed && { referralCodeUsed: String(referralCodeUsed) }),
+        ...(appliedReferralCodeDetails && { referralCodeUsed: appliedReferralCodeDetails }), // Store applied code with discount
         productDescription: String(productDescription || `Payment for ${planId}`),
       },
     };
@@ -124,13 +132,9 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('[Razorpay Create Order] CRITICAL ERROR:', error);
     let errorMessage = "Failed to create Razorpay order.";
-    // Check if it's a Razorpay specific error structure
-    if (error.statusCode && error.error && error.error.description) {
-      errorMessage = error.error.description;
-    } else if (error.message) {
-      errorMessage = error.message;
-    }
+    if (error.statusCode && error.error && error.error.description) { errorMessage = error.error.description; }
+    else if (error.message) { errorMessage = error.message; }
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
-
+    

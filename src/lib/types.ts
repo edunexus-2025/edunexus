@@ -226,11 +226,11 @@ export interface DiscussionMessage {
   collectionName?: string;
 }
 
-export interface TeacherPlan extends RecordModel {
+export interface TeacherPlan extends RecordModel { // Updated to use RecordModel for consistency
   id: string;
   teacher: string;
   Plan_name: string;
-  plan_price: string;
+  plan_price: string; // Stored as string, e.g., "0", "299"
   plan: 'Monthly' | 'Weekly' | 'Yearly'; // This is plan_duration from schema
   plan_point_1?: string;
   plan_point_2?: string;
@@ -241,6 +241,7 @@ export interface TeacherPlan extends RecordModel {
   created: string;
   updated: string;
   enrolledStudentCount?: number; // For client-side display
+  // Removed max_students as it was removed from schema
 }
 
 export interface StudentSubscribedPlan extends RecordModel {
@@ -257,7 +258,7 @@ export interface StudentSubscribedPlan extends RecordModel {
   amount_recieved_to_teacher: number; // Net amount for the teacher
   payment_id_razorpay?: string; 
   order_id_razorpay?: string;
-  referral_code_used?: string; // Added
+  referral_code_used?: string;
   expand?: {
     student?: { // Student details who subscribed
       id: string;
@@ -311,3 +312,4 @@ export interface TeacherReferralCode extends RecordModel {
   created: string;
   updated: string;
 }
+    
