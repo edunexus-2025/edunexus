@@ -14,14 +14,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AppConfig, Routes, escapeForPbFilter } from '@/lib/constants';
-// Input removed as referral input is moved
+import { AppConfig, Routes, escapeForPbFilter, APP_BASE_URL } from '@/lib/constants'; // Added APP_BASE_URL
 import {
   AlertCircle, GraduationCap, BarChart2, Users, Link as LinkIcon, Instagram, Facebook, Youtube, Twitter, Send as TelegramIcon, Globe as WebsiteIcon, ExternalLink, ShieldCheck, Star, TrendingUp, ListChecks, BookOpenCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { User, Plan as AppPlanType, TeacherPlan as TeacherPlanType } from '@/lib/types';
-import { useAuth } from '@/contexts/AuthContext'; // Corrected import for useAuth
+import type { User, TeacherPlan as TeacherPlanType } from '@/lib/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 // --- Types ---
 interface TeacherDataRecord extends RecordModel {
@@ -39,7 +38,7 @@ interface TeacherAdRecord extends RecordModel {
   user: string; // Teacher ID
   instagram_page?: string;
   facebook_page?: string;
-  edunexus_profile?: string;
+  edunexus_profile?: string; // This might become less relevant for the direct link
   youtube_channel?: string;
   x_page?: string;
   telegram_channel_username?: string;
@@ -88,7 +87,7 @@ const getPbFileUrl = (record: RecordModel | null | undefined, fieldName: string)
 export default function TeacherPublicAdPage() {
   const params = useParams();
   const router = useRouter();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser } = useAuth(); 
   const { toast } = useToast();
   const edunexusNameParam = typeof params.edunexusName === 'string' ? params.edunexusName : '';
 
@@ -158,7 +157,7 @@ export default function TeacherPublicAdPage() {
 
     const setupSubscriptions = async () => {
         if (!isMounted) return;
-        const teacherId = pageData?.teacherData?.id; // Get teacherId after initial fetch
+        const teacherId = pageData?.teacherData?.id; 
         
         if (teacherId) {
             try {
@@ -171,11 +170,8 @@ export default function TeacherPublicAdPage() {
                 if (componentIsMounted()) console.error("Error subscribing to teacher_ads:", subError);
             }
             
-            if (edunexusName) { // Subscribe to teacher_data by edunexusName if available for profile pic/name changes
+            if (edunexusName) { 
                 try {
-                    // Note: PocketBase doesn't directly support subscribing to a single record by a non-ID field filter.
-                    // A more robust way would be to subscribe by record ID if you can get it first, or handle broader updates.
-                    // For simplicity here, we subscribe to all changes and re-filter if the specific teacher's record changes.
                     unsubscribeTeacherData = await pb.collection('teacher_data').subscribe('*', (e) => {
                          if (componentIsMounted() && e.record.EduNexus_Name === edunexusName) {
                             fetchData(componentIsMounted);
@@ -188,7 +184,6 @@ export default function TeacherPublicAdPage() {
         }
     };
     
-    // Only set up subscriptions if we have teacherData from the initial fetch
     if (pageData?.teacherData?.id) {
         setupSubscriptions();
     }
@@ -198,7 +193,7 @@ export default function TeacherPublicAdPage() {
       if (unsubscribeAds) unsubscribeAds();
       if (unsubscribeTeacherData) unsubscribeTeacherData();
     };
-  }, [fetchData, edunexusName, pageData?.teacherData?.id]); // Re-run if edunexusName changes or teacherData.id becomes available
+  }, [fetchData, edunexusName, pageData?.teacherData?.id]);
 
 
   if (isLoading) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> <Navbar /> <main className="flex-1 container mx-auto px-2 sm:px-4 py-6 md:py-8 max-w-4xl"> <Skeleton className="h-12 w-3/4 mb-4" /> <Card className="shadow-xl"><CardHeader className="p-4 sm:p-6 text-center border-b"> <Skeleton className="h-24 w-24 rounded-full mx-auto mb-3" /> <Skeleton className="h-8 w-1/2 mx-auto" /> <Skeleton className="h-5 w-1/3 mx-auto mt-1" /> </CardHeader> <CardContent className="p-4 sm:p-6 space-y-6"> <Skeleton className="h-20 w-full" /> <Skeleton className="h-32 w-full" /> </CardContent> </Card> </main> </div> ); }
@@ -209,7 +204,17 @@ export default function TeacherPublicAdPage() {
   const finalAbout = adData?.about || teacherData?.about || "No detailed information provided by the teacher yet.";
   const finalAvatar = adSpecificAvatarUrl || teacherAvatarUrl;
 
-  const socialLinksList: SocialLinkProps[] = [ { href: adData?.instagram_page, icon: <Instagram size={18} />, label: "Instagram" }, { href: adData?.facebook_page, icon: <Facebook size={18} />, label: "Facebook" }, { href: adData?.youtube_channel, icon: <Youtube size={18} />, label: "YouTube" }, { href: adData?.x_page, icon: <Twitter size={18} />, label: "X (Twitter)" }, { href: adData?.telegram_channel_username, icon: <TelegramIcon size={18} />, label: "Telegram" }, { href: adData?.teacher_app_link, icon: <WebsiteIcon size={18} />, label: "App/Website" }, { href: adData?.edunexus_profile, icon: (AppConfig.appName === 'EduNexus' ? <GraduationCap size={18}/> : <LinkIcon size={18}/>), label: `${AppConfig.appName} Profile`}, ].filter(link => link.href && link.href.trim() !== '');
+  const appBaseUrl = APP_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:9002'); // Fallback if APP_BASE_URL is undefined
+
+  const socialLinksList: SocialLinkProps[] = [
+    { href: teacherData.EduNexus_Name ? `${appBaseUrl}${Routes.teacherPublicAdPage(teacherData.EduNexus_Name)}` : undefined, icon: <GraduationCap size={18}/>, label: `${AppConfig.appName} Profile`},
+    { href: adData?.instagram_page, icon: <Instagram size={18} />, label: "Instagram" },
+    { href: adData?.facebook_page, icon: <Facebook size={18} />, label: "Facebook" },
+    { href: adData?.youtube_channel, icon: <Youtube size={18} />, label: "YouTube" },
+    { href: adData?.x_page, icon: <Twitter size={18} />, label: "X (Twitter)" },
+    { href: adData?.telegram_channel_username, icon: <TelegramIcon size={18} />, label: "Telegram" },
+    { href: adData?.teacher_app_link, icon: <WebsiteIcon size={18} />, label: "App/Website" },
+  ].filter(link => link.href && link.href.trim() !== '');
 
   return (
     <div className="flex flex-col min-h-screen bg-muted/30">

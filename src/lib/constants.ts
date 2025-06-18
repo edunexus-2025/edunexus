@@ -5,6 +5,10 @@ export const AppConfig = {
   appName: 'EduNexus',
 };
 
+// Define APP_BASE_URL with a client-side fallback
+export const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:9002');
+
+
 export const Routes = {
   home: '/',
   login: '/login',
@@ -113,7 +117,7 @@ export const Routes = {
   teacherCreateAds: '/teacher/dashboard/create-ads',
   teacherUpgradeAds: '/teacher/dashboard/upgrade-ads',
   teacherPublicAdPage: (edunexusName: string): string => `/t/${edunexusName}`,
-  teacherPublicPlansPage: (edunexusName: string): string => `/teacher-plans/${edunexusName}`, // New Route
+  teacherPublicPlansPage: (edunexusName: string): string => `/teacher-plans/${edunexusName}`,
   teacherManageDiscussion: '/teacher/dashboard/manage-discussion',
   teacherWallet: '/teacher/dashboard/wallet',
   teacherManageReferrals: '/teacher/dashboard/manage-referrals',
