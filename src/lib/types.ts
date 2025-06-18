@@ -6,7 +6,7 @@ export type UserSubscriptionTierStudent = 'Free' | 'Chapterwise' | 'Full_length'
 export type UserSubscriptionTierTeacher = 'Free' | 'Starter' | 'Pro';
 
 export interface Plan {
-  id: UserSubscriptionTierStudent | UserSubscriptionTierTeacher;
+  id: UserSubscriptionTierStudent | UserSubscriptionTierTeacher | 'TeacherAds'; // Added TeacherAds
   name: string;
   description: string;
   price: string;
@@ -15,6 +15,10 @@ export interface Plan {
   features: string[];
   ctaText?: string;
   isRecommended?: boolean;
+  commissionRate?: number; // For teacher platform plans
+  maxContentPlans?: number; // For teacher platform plans
+  maxStudentsPerContentPlan?: number | 'Unlimited'; // For teacher platform plans
+  qbAccess?: boolean; // For teacher platform plans
 }
 
 export type User = {
@@ -29,7 +33,7 @@ export type User = {
   phoneNumber?: string;
 
   studentSubscriptionTier?: UserSubscriptionTierStudent;
-  teacherSubscriptionTier?: UserSubscriptionTierTeacher;
+  teacherSubscriptionTier?: UserSubscriptionTierTeacher; // Updated
 
   role: 'User' | 'Admin' | 'Teacher';
   avatarUrl?: string;
@@ -56,13 +60,15 @@ export type User = {
   used_free_trial?: boolean;
   can_create_ads?: boolean;
   ads_subscription?: 'Free' | 'Ads Model';
+  max_content_plans_allowed?: number; // New field for teacher's own plan
+  max_students_per_content_plan?: number | 'Unlimited'; // New field
 
   created?: string;
   updated?: string;
   collectionId?: string;
   collectionName?: string;
-  subscription_by_teacher?: string[]; // Changed to string array
-  needsProfileCompletion?: boolean; // New field for OAuth onboarding
+  subscription_by_teacher?: string[];
+  needsProfileCompletion?: boolean;
 };
 
 export type AccessType = "Free" | "Premium";
@@ -110,13 +116,13 @@ export interface NotificationMessage {
   timestamp: Date;
   read?: boolean;
   type?: 'general' | 'challenge_invite' | 'challenge_accepted' | 'challenge_rejected' | 'test_assigned' | 'invitation';
-  bywho_if_student?: string; // ID of student sender
-  bywho_if_teacher?: string;  // ID of teacher sender
-  bywho?: string; // General sender ID, might be redundant if specific ones are used
+  bywho_if_student?: string;
+  bywho_if_teacher?: string;
+  bywho?: string;
   towho?: string[];
-  approved?: boolean | null | undefined; // Added undefined for initial pending state clarity
-  related_challenge_id?: string; // ID of the student_create_challenge record
-  related_invite_id?: string; // ID of the students_challenge_invites record
+  approved?: boolean | null | undefined;
+  related_challenge_id?: string;
+  related_invite_id?: string;
 }
 
 
@@ -146,13 +152,13 @@ export interface DiscussionGroup {
 }
 
 export interface ChallengeInviteRecord extends RecordModel {
-    student: string; // Invitee
-    created_challenged_data: string; // Challenge ID
-    Accepted_or_not?: boolean | null | undefined; // Changed to boolean
+    student: string; 
+    created_challenged_data: string; 
+    Accepted_or_not?: boolean | null | undefined; 
     expand?: {
-      created_challenged_data?: { // The challenge record
+      created_challenged_data?: { 
         id: string;
-        student: string; // Creator of the challenge
+        student: string; 
         Subject: string;
         Lesson: string;
         number_of_question: number;
@@ -160,12 +166,12 @@ export interface ChallengeInviteRecord extends RecordModel {
         Exam_specific_questions?: string;
         duration?: number;
         challenge_name?: string;
-        status?: 'pending' | 'active' | 'completed' | 'expired' | 'cancelled'; // Added status
+        status?: 'pending' | 'active' | 'completed' | 'expired' | 'cancelled'; 
         expires_at?: string;
-        created: string; // Added created
-        expiry_time_min: number; // Added expiry_time_min
+        created: string; 
+        expiry_time_min: number; 
         expand?: {
-          student?: { // Creator's details
+          student?: { 
             id: string;
             name: string;
             avatarUrl?: string;
@@ -196,7 +202,7 @@ export interface DiscussionMessage {
   repliedToMessageId?: string;
   repliedToMessageSnippet?: string;
   repliedToSenderName?: string;
-  repliedToIsCurrentUser?: boolean; // Added
+  repliedToIsCurrentUser?: boolean; 
 
   any_image?: string;
   any_link?: string | undefined;
@@ -226,13 +232,16 @@ export interface TeacherPlan extends RecordModel {
   teacher: string;
   Plan_name: string;
   plan_price: string;
-  plan: 'Monthly' | 'Weekly' | 'Yearly';
+  plan: 'Monthly' | 'Weekly' | 'Yearly'; // This is plan_duration from schema
   plan_point_1?: string;
   plan_point_2?: string;
   plan_point_3?: string;
   plan_point_4?: string;
   plan_point_5?: string;
-  total_student_intake?: number;
+  total_student_intake?: number; // Added this field, matches schema for teachers_upgrade_plan
+  enrolled_students?: string[]; // Added this relation
+  max_students?: number; // Added this
   created: string;
   updated: string;
+  enrolledStudentCount?: number; // For client-side display
 }

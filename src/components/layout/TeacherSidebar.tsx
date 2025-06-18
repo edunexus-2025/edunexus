@@ -50,8 +50,9 @@ import {
   Users2, 
   Megaphone,
   DollarSign, 
-  MessagesSquare, // Added MessagesSquare
-  Trophy, // Added Trophy
+  MessagesSquare, 
+  Trophy, 
+  Zap // Added Zap icon for upgrade
 } from 'lucide-react';
 import { ThemeToggleButton } from './ThemeToggleButton';
 import { NotificationPopover } from './NotificationPopover';
@@ -83,10 +84,10 @@ const teacherNavItems = [
   { href: Routes.teacherMyContent, label: 'My Content', icon: <BookOpenCheck /> },
   { href: Routes.teacherManagePlans, label: 'Manage Plans', icon: <DollarSign /> },
   { href: Routes.teacherMyStudents, label: 'My Students', icon: <Users /> },
-  // { href: Routes.teacherStudentGroups, label: 'Student Groups', icon: <Users2 /> }, // Removed Student Groups
   { href: Routes.teacherManageDiscussion, label: 'Manage Discussion', icon: <MessagesSquare /> }, 
   { href: Routes.teacherStudentPerformance, label: 'Student Performance', icon: <BarChart3 /> },
   { href: Routes.teacherCreateAds, label: 'Create Ads', icon: <Megaphone /> },
+  { href: Routes.teacherUpgradePlatformPlan, label: 'Upgrade Plan', icon: <Zap /> }, 
   { href: Routes.teacherSettings, label: 'Settings', icon: <Settings /> },
 ];
 
@@ -128,6 +129,9 @@ export function TeacherSidebar() {
   const isActive = (href?: string) => { 
     if (!href) return false;
     if (href === Routes.teacherDashboard) return pathname === href;
+    // For nested routes like /teacher/dashboard/my-content/[testId], check if pathname starts with the base
+    if (href === Routes.teacherMyContent && pathname.startsWith(Routes.teacherMyContent)) return true;
+    if (href === Routes.teacherManagePlans && pathname.startsWith(Routes.teacherManagePlans)) return true;
     return pathname.startsWith(href);
   };
 
@@ -263,5 +267,3 @@ export function TeacherSidebar() {
     </Sidebar>
   );
 }
-
-    

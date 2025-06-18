@@ -1,5 +1,5 @@
 
-import type { Plan, UserSubscriptionTierStudent } from '@/lib/types';
+import type { Plan, UserSubscriptionTierStudent, UserSubscriptionTierTeacher } from '@/lib/types';
 
 export const AppConfig = {
   appName: 'EduNexus',
@@ -52,7 +52,7 @@ export const Routes = {
   feedback: '/dashboard/settings/feedback',
   studyPlan: '/dashboard/study-plan',
   studentTeacherRanking: '/dashboard/teacher-ranking',
-  myTeacherPortal: '/dashboard/my-teacher', // New Route
+  myTeacherPortal: '/dashboard/my-teacher', 
   testResult: (resultId: string) => `/dashboard/test-results/chapterwise/${resultId}`,
   testResultCompete: (resultId: string) => `/dashboard/test-results/compete/${resultId}`,
   helpCenter: '/dashboard/help-center',
@@ -96,6 +96,8 @@ export const Routes = {
   teacherDashboard: '/teacher/dashboard',
   teacherMyContent: '/teacher/dashboard/my-content',
   teacherManagePlans: '/teacher/dashboard/manage-plans',
+  teacherViewPlan: (planId: string) => `/teacher/dashboard/manage-plans/${planId}`, // New route
+  teacherUpgradePlatformPlan: '/teacher/dashboard/upgrade-plan', // New route for teacher's own platform plan
   teacherStudentPerformance: '/teacher/dashboard/student-performance',
   teacherSettings: '/teacher/dashboard/settings',
   teacherMyStudents: '/teacher/dashboard/my-students',
@@ -105,9 +107,9 @@ export const Routes = {
   teacherTestPanelViewQuestions: (testId: string) => `/teacher/dashboard/my-content/${testId}/view-questions`,
   teacherTestPanelSettings: (testId: string) => `/teacher/dashboard/my-content/${testId}/settings`,
   teacherTestPanelResults: (testId: string) => `/teacher/dashboard/my-content/${testId}/results`,
-  teacherTestPanelStatus: (testId: string) => `/teacher/dashboard/my-content/${testId}/status`, // New Route
+  teacherTestPanelStatus: (testId: string) => `/teacher/dashboard/my-content/${testId}/status`, 
   teacherRanking: '/teacher/dashboard/ranking',
-  teacherPlan: '/teacher/dashboard/plan',
+  teacherPlan: '/teacher/dashboard/plan', // This seems to be the old route, keep for now or deprecate? -> Let's assume new upgrade page replaces this for 'viewing their own plan'
   teacherCreateAds: '/teacher/dashboard/create-ads',
   teacherUpgradeAds: '/teacher/dashboard/upgrade-ads',
   teacherPublicAdPage: (edunexusName: string): string => `/t/${edunexusName}`,
@@ -256,3 +258,65 @@ const studentTierValues: UserSubscriptionTierStudent[] = ['Free', 'Dpp', 'Chapte
 export const studentPlansData: Plan[] = allPlansData.filter(plan =>
   studentTierValues.includes(plan.id as UserSubscriptionTierStudent)
 );
+
+export const teacherPlatformPlansData: Plan[] = [
+  {
+    id: 'Free',
+    name: 'Teacher Basic',
+    description: "Get started and explore basic teaching tools.",
+    price: '₹0',
+    priceSuffix: 'Always',
+    priceValue: 0,
+    features: [
+      "Manage up to 10 students per content plan",
+      "Create up to 2 content plans (tests/DPP series)", // Example limit for free teachers
+      "Basic analytics for your students",
+      "Limited access to EduNexus Question Bank features",
+    ],
+    ctaText: 'Current Plan',
+    commissionRate: 10,
+    maxContentPlans: 2, 
+    maxStudentsPerContentPlan: 10,
+    qbAccess: false,
+  },
+  {
+    id: 'Starter',
+    name: 'Teacher Starter',
+    description: "More tools and capacity for growing educators.",
+    price: '₹399',
+    priceSuffix: '/year',
+    priceValue: 399,
+    features: [
+      "Manage up to 30 students per content plan",
+      "Create up to 5 content plans",
+      "Enhanced student analytics",
+      "Standard access to EduNexus Question Bank features",
+    ],
+    ctaText: 'Upgrade to Starter',
+    commissionRate: 3,
+    maxContentPlans: 5,
+    maxStudentsPerContentPlan: 30,
+    qbAccess: false, // Example: Limited QB access
+  },
+  {
+    id: 'Pro',
+    name: 'Teacher Pro',
+    description: "Full access to all features for professional educators.",
+    price: '₹599',
+    priceSuffix: '/year',
+    priceValue: 599,
+    features: [
+      "Manage unlimited students per content plan",
+      "Create up to 5 content plans", // Example: can be higher or 'Unlimited'
+      "Full access to EduNexus Question Bank (if applicable)",
+      "Advanced analytics and reporting tools",
+      "Priority support",
+    ],
+    isRecommended: true,
+    ctaText: 'Upgrade to Pro',
+    commissionRate: 1.5,
+    maxContentPlans: 5,
+    maxStudentsPerContentPlan: 'Unlimited',
+    qbAccess: true,
+  },
+];
