@@ -50,7 +50,10 @@ export async function POST(request: NextRequest) {
     pbAdmin = await getAdminPbInstance();
     if (!pbAdmin) {
       console.error("[Razorpay Verify Payment ERROR] Failed to initialize PocketBase admin client. Cannot proceed with DB updates.");
-      return NextResponse.json({ verified: false, error: "Database admin client could not be initialized. Cannot update records." }, { status: 500 });
+      return NextResponse.json({ 
+        verified: false, // Payment might be okay with Razorpay, but we can't confirm our side
+        error: "Critical server error: Database admin client could not be initialized. Plan update failed. Contact support." 
+      }, { status: 500 });
     }
 
     const body = await request.json();
@@ -66,7 +69,11 @@ export async function POST(request: NextRequest) {
       productDescription,
     } = body;
 
+    console.log("[Razorpay Verify Payment INFO] Received verification request. Body:", JSON.stringify(body, null, 2));
+
+
     if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature || !planId || !userId || !userType) {
+      console.error("[Razorpay Verify Payment ERROR] Missing required payment verification details in request body.");
       return NextResponse.json({ verified: false, error: "Missing required payment verification details." }, { status: 400 });
     }
 
@@ -81,7 +88,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ verified: false, error: "Invalid payment signature. Payment verification failed." }, { status: 400 });
     }
 
-    console.log(`[Razorpay Verify Payment INFO] Signature verified. Fetching order details for order_id: ${razorpay_order_id}`);
+    console.log(`[Razorpay Verify Payment INFO] Signature verified. Fetching order details from Razorpay for order_id: ${razorpay_order_id}`);
     const orderDetailsFromRazorpay = await instance.orders.fetch(razorpay_order_id);
     console.log("[Razorpay Verify Payment INFO] Order details from Razorpay:", orderDetailsFromRazorpay);
 
@@ -93,8 +100,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ verified: false, error: "Order details mismatch. Verification failed." }, { status: 400 });
     }
     if (orderDetailsFromRazorpay.status !== 'paid') {
-      console.warn(`[Razorpay Verify Payment WARN] Order status is not 'paid'. Status: ${orderDetailsFromRazorpay.status}`);
-      return NextResponse.json({ verified: false, error: `Payment not completed successfully. Status: ${orderDetailsFromRazorpay.status}` }, { status: 400 });
+      console.warn(`[Razorpay Verify Payment WARN] Razorpay order status is not 'paid'. Status: ${orderDetailsFromRazorpay.status}`);
+      return NextResponse.json({ verified: false, error: `Payment not completed successfully according to Razorpay. Status: ${orderDetailsFromRazorpay.status}` }, { status: 400 });
     }
 
     const today = new Date();
@@ -109,14 +116,14 @@ export async function POST(request: NextRequest) {
           model: newPlanIdForStudent, 
           expiry_date: expiryDateISO 
         });
-        console.log(`[Razorpay Verify Payment SUCCESS] Student ${studentIdToUpdate} platform plan updated to ${newPlanIdForStudent}.`);
+        console.log(`[Razorpay Verify Payment SUCCESS] Student ${studentIdToUpdate} platform plan updated in DB to ${newPlanIdForStudent}.`);
       } catch (dbUpdateError: any) {
         console.error(`[Razorpay Verify Payment CRITICAL ERROR] Failed to update student ${studentIdToUpdate} plan to ${newPlanIdForStudent} in 'users' collection. Error:`, dbUpdateError.data || dbUpdateError.message, "Full Error:", dbUpdateError);
         return NextResponse.json({ 
-          verified: true,
-          error: `Payment successful, but failed to update your plan. Contact support with Order ID ${razorpay_order_id}. DB Error: ${dbUpdateError.data?.message || dbUpdateError.message}`,
-          message: `Payment successful, but failed to update your plan. Contact support with Order ID ${razorpay_order_id}. DB Error: ${dbUpdateError.data?.message || dbUpdateError.message}`
-        }, { status: 200 }); // Respond 200 to Razorpay, client gets error message
+          verified: true, // Payment itself was valid with Razorpay
+          error: `Payment successful, but failed to update your plan in our system. Please contact support with Order ID ${razorpay_order_id}. DB Error: ${dbUpdateError.data?.message || dbUpdateError.message}`,
+          message: `Payment successful, but failed to update your plan. Contact support with Order ID: ${razorpay_order_id}. Error Ref: DB_UPDATE_USR_PLAN`
+        }, { status: 200 }); // Respond 200 to client, but with error message
       }
     } else if (userType === 'teacher_platform_plan') {
       const teacherIdToUpdate = String(userId);
@@ -127,15 +134,14 @@ export async function POST(request: NextRequest) {
         await pbAdmin.collection('teacher_data').update(teacherIdToUpdate, { 
           teacherSubscriptionTier: newPlanIdForTeacher,
           max_content_plans_allowed: planDetails?.maxContentPlans ?? 0,
-          // expiry_date can be added if teacher platform plans have expiry
         });
-        console.log(`[Razorpay Verify Payment SUCCESS] Teacher ${teacherIdToUpdate} platform plan updated to ${newPlanIdForTeacher}.`);
+        console.log(`[Razorpay Verify Payment SUCCESS] Teacher ${teacherIdToUpdate} platform plan updated in DB to ${newPlanIdForTeacher}.`);
       } catch (dbUpdateError: any) {
         console.error(`[Razorpay Verify Payment CRITICAL ERROR] Failed to update teacher ${teacherIdToUpdate} plan to ${newPlanIdForTeacher}. Error:`, dbUpdateError.data || dbUpdateError.message, "Full Error:", dbUpdateError);
         return NextResponse.json({ 
           verified: true,
           error: `Payment successful, but failed to update teacher platform plan. Contact support with Order ID ${razorpay_order_id}. DB Error: ${dbUpdateError.data?.message || dbUpdateError.message}`,
-          message: `Payment successful, but failed to update teacher platform plan. Contact support with Order ID ${razorpay_order_id}. DB Error: ${dbUpdateError.data?.message || dbUpdateError.message}`
+          message: `Payment successful, but failed to update teacher platform plan. Contact support with Order ID: ${razorpay_order_id}. Error Ref: DB_UPDATE_TCH_PLAN`
         }, { status: 200 });
       }
     } else if (userType === 'student_teacher_plan') {
@@ -186,7 +192,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ 
           verified: true,
           error: `Payment successful, but failed to enroll in teacher's plan. Contact support with Order ID ${razorpay_order_id}. DB Error: ${studentTeacherPlanError.data?.message || studentTeacherPlanError.message}`,
-          message: `Payment successful, but failed to enroll in teacher's plan. Contact support with Order ID ${razorpay_order_id}. DB Error: ${studentTeacherPlanError.data?.message || studentTeacherPlanError.message}`
+          message: `Payment successful, but failed to enroll in teacher's plan. Contact support with Order ID: ${razorpay_order_id}. Error Ref: DB_UPDATE_STP_PLAN`
         }, { status: 200 });
       }
     } else {

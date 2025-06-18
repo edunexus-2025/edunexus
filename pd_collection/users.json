@@ -1,14 +1,14 @@
+
 [
     {
         "id": "pbc_1377172174",
-        "listRule": "@request.auth.id != \"\"",
-        "viewRule": "@request.auth.id != \"\"",
+        "listRule": "@request.auth.id != ''",
+        "viewRule": "@request.auth.id != ''",
         "createRule": "",
         "updateRule": "@request.auth.id = id || @request.auth.role = \"Admin\"",
         "deleteRule": "@request.auth.role = \"admin\"",
         "name": "users",
         "type": "auth",
-        "system": false,
         "schema": [
             {
                 "id": "text3208210256",
@@ -17,12 +17,7 @@
                 "system": true,
                 "required": true,
                 "presentable": false,
-                "options": {
-                    "min": 15,
-                    "max": 15,
-                    "pattern": "^[a-z0-9]+$",
-                    "autogeneratePattern": "[a-z0-9]{15}"
-                }
+                "options": { "min": 15, "max": 15, "pattern": "^[a-z0-9]+$", "autogeneratePattern": "[a-z0-9]{15}" }
             },
             {
                 "id": "password901924565",
@@ -31,11 +26,7 @@
                 "system": true,
                 "required": true,
                 "presentable": false,
-                "options": {
-                    "min": 8,
-                    "max": null, 
-                    "pattern": "" 
-                }
+                "options": { "min": 8, "max": null, "pattern": "" }
             },
             {
                 "id": "text2504183744",
@@ -44,12 +35,7 @@
                 "system": true,
                 "required": true,
                 "presentable": false,
-                "options": {
-                    "min": 30,
-                    "max": 60,
-                    "pattern": "",
-                    "autogeneratePattern": "[a-zA-Z0-9]{50}"
-                }
+                "options": { "min": 30, "max": 60, "pattern": "", "autogeneratePattern": "[a-zA-Z0-9]{50}" }
             },
             {
                 "id": "email3885137012",
@@ -58,10 +44,7 @@
                 "system": true,
                 "required": true,
                 "presentable": true, 
-                "options": {
-                    "exceptDomains": null,
-                    "onlyDomains": null
-                }
+                "options": { "exceptDomains": null, "onlyDomains": null }
             },
             {
                 "id": "bool1547992806",
@@ -88,12 +71,7 @@
                 "system": false,
                 "required": true, 
                 "presentable": true,
-                "options": {
-                    "min": 1, 
-                    "max": 100, 
-                    "pattern": "",
-                    "autogeneratePattern": ""
-                }
+                "options": { "min": 1, "max": 100, "pattern": "", "autogeneratePattern": "" }
             },
             {
                 "id": "text1146066909",
@@ -102,12 +80,7 @@
                 "system": false,
                 "required": false,
                 "presentable": true,
-                "options": {
-                    "min": 10,
-                    "max": 15,
-                    "pattern": "^[+]?[0-9\\s-()]*$",
-                    "autogeneratePattern": ""
-                }
+                "options": { "min": 10, "max": 15, "pattern": "^[+]?[0-9\\s-()]*$", "autogeneratePattern": "" }
             },
             {
                 "id": "text3981121951",
@@ -116,12 +89,7 @@
                 "system": false,
                 "required": false,
                 "presentable": true,
-                "options": {
-                    "min": null,
-                    "max": null,
-                    "pattern": "",
-                    "autogeneratePattern": ""
-                }
+                "options": { "min": null, "max": null, "pattern": "", "autogeneratePattern": "" }
             },
             {
                 "id": "select3616895705",
@@ -132,14 +100,7 @@
                 "presentable": true,
                 "options": {
                     "maxSelect": 1,
-                    "values": [
-                        "Free",
-                        "Chapterwise",
-                        "Full_length",
-                        "Combo",
-                        "Dpp",
-                        "Teacher"
-                    ]
+                    "values": [ "Free", "Chapterwise", "Full_length", "Combo", "Dpp", "Teacher" ]
                 }
             },
             {
@@ -149,14 +110,7 @@
                 "system": false,
                 "required": false,
                 "presentable": true,
-                "options": {
-                    "maxSelect": 1,
-                    "values": [
-                        "User",
-                        "Admin",
-                        "Teacher"
-                    ]
-                }
+                "options": { "maxSelect": 1, "values": [ "User", "Admin", "Teacher" ] }
             },
             {
                 "id": "date4141751240",
@@ -174,10 +128,7 @@
                 "system": false,
                 "required": false,
                 "presentable": true,
-                "options": {
-                    "exceptDomains": null,
-                    "onlyDomains": null
-                }
+                "options": { "exceptDomains": null, "onlyDomains": null }
             },
             {
                 "id": "file_avatar_user", 
@@ -201,11 +152,7 @@
                 "system": false,
                 "required": false,
                 "presentable": true,
-                "options": {
-                    "min": 0,
-                    "max": null,
-                    "noDecimal": true
-                }
+                "options": { "min": 0, "max": null, "noDecimal": true }
             },
             {
                 "id": "number2580276998",
@@ -214,11 +161,7 @@
                 "system": false,
                 "required": false,
                 "presentable": true,
-                "options": {
-                    "min": 2020,
-                    "max": 2035,
-                    "noDecimal": true
-                }
+                "options": { "min": 2020, "max": 2035, "noDecimal": true }
             },
             {
                 "id": "text2762015300",
@@ -227,12 +170,7 @@
                 "system": false,
                 "required": false,
                 "presentable": true,
-                "options": {
-                    "min": null,
-                    "max": null,
-                    "pattern": "",
-                    "autogeneratePattern": ""
-                }
+                "options": { "min": null, "max": null, "pattern": "", "autogeneratePattern": "" }
             },
             {
                 "id": "text2761983308",
@@ -241,12 +179,7 @@
                 "system": false,
                 "required": false,
                 "presentable": false,
-                "options": {
-                    "min": null,
-                    "max": null,
-                    "pattern": "",
-                    "autogeneratePattern": ""
-                }
+                "options": { "min": null, "max": null, "pattern": "", "autogeneratePattern": "" }
             },
             {
                 "id": "json3639692647",
@@ -264,12 +197,7 @@
                 "system": false,
                 "required": false,
                 "presentable": true,
-                "options": {
-                    "min": null,
-                    "max": null,
-                    "pattern": "",
-                    "autogeneratePattern": ""
-                }
+                "options": { "min": null, "max": null, "pattern": "", "autogeneratePattern": "" }
             },
             {
                 "id": "date233413008",
@@ -347,13 +275,7 @@
                 "system": false,
                 "required": false,
                 "presentable": false,
-                "options": {
-                    "maxSelect": 1,
-                    "values": [
-                        "Free",
-                        "Pro"
-                    ]
-                }
+                "options": { "maxSelect": 1, "values": [ "Free", "Pro" ] }
             }
         ],
         "indexes": [
@@ -362,6 +284,7 @@
             "CREATE INDEX `idx_4aFXgdXcox` ON `users` (`phone`)",
             "CREATE INDEX `idx_4EcXbculaF` ON `users` (`referralCode`)"
         ],
+        "system": false,
         "options": { 
             "authRule": "",
             "manageRule": null, 
@@ -373,49 +296,19 @@
                 }
             },
             "oauth2": {
-                "mappedFields": {
-                    "id": "",
-                    "name": "",
-                    "username": "",
-                    "avatarURL": ""
-                },
-                "enabled": true
+                "mappedFields": { "id": "", "name": "", "username": "", "avatarURL": "" }, "enabled": true
             },
-            "passwordAuth": {
-                "enabled": true,
-                "identityFields": [
-                    "email"
-                ]
-            },
-            "mfa": {
-                "enabled": false,
-                "duration": 1800,
-                "rule": ""
-            },
+            "passwordAuth": { "enabled": true, "identityFields": [ "email" ] },
+            "mfa": { "enabled": false, "duration": 1800, "rule": "" },
             "otp": {
-                "enabled": true,
-                "duration": 180,
-                "length": 8,
-                "emailTemplate": {
-                    "subject": "OTP for {APP_NAME}",
-                    "body": "<p>Hello,</p>\n<p>Your one-time password is: <strong>{OTP}</strong></p>\n<p><i>If you didn't ask for the one-time password, you can ignore this email.</i></p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>"
-                }
+                "enabled": true, "duration": 180, "length": 8,
+                "emailTemplate": { "subject": "OTP for {APP_NAME}", "body": "<p>Hello,</p>\n<p>Your one-time password is: <strong>{OTP}</strong></p>\n<p><i>If you didn't ask for the one-time password, you can ignore this email.</i></p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>" }
             },
-            "authToken": {
-                "duration": 604800
-            },
-            "passwordResetToken": {
-                "duration": 1800
-            },
-            "emailChangeToken": {
-                "duration": 1800
-            },
-            "verificationToken": {
-                "duration": 259200
-            },
-            "fileToken": {
-                "duration": 180
-            },
+            "authToken": { "duration": 604800 },
+            "passwordResetToken": { "duration": 1800 },
+            "emailChangeToken": { "duration": 1800 },
+            "verificationToken": { "duration": 259200 },
+            "fileToken": { "duration": 180 },
             "verificationTemplate": {
                 "subject": "Verify your {APP_NAME} email",
                 "body": "<p>Hello,</p>\n<p>Thank you for joining us at {APP_NAME}.</p>\n<p>Click on the button below to verify your email address.</p>\n<p>\n  <a class=\"btn\" href=\"{APP_URL}/_/#/auth/confirm-verification/{TOKEN}\" target=\"_blank\" rel=\"noopener\">Verify</a>\n</p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>"
