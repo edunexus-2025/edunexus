@@ -4,7 +4,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowRight, BookOpenCheck, Users, BarChart3, Settings as SettingsIcon, ClipboardSignature, ShieldCheck, DollarSign, Megaphone } from 'lucide-react';
+import { ArrowRight, BookOpenCheck, Users, BarChart3, Settings as SettingsIcon, ClipboardSignature, ShieldCheck, DollarSign, Megaphone, Wallet } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Routes, AppConfig } from '@/lib/constants';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -50,6 +50,12 @@ export default function TeacherDashboardPage() {
       description: 'Promote your courses and content to students on ' + AppConfig.appName + '.',
       icon: <Megaphone className="h-7 w-7 text-primary" />,
     },
+     {
+      href: Routes.teacherWallet,
+      title: 'My Wallet',
+      description: 'Track your earnings from student subscriptions.',
+      icon: <Wallet className="h-7 w-7 text-primary" />,
+    },
     {
       href: Routes.teacherSettings,
       title: 'Settings',
@@ -72,7 +78,7 @@ export default function TeacherDashboardPage() {
           </CardContent>
         </Card>
         <div className="grid md:grid-cols-2 gap-6">
-          {[...Array(6)].map((_, i) => ( // Increased skeleton count to 6
+          {[...Array(6)].map((_, i) => ( 
             <Card key={i} className="shadow-md">
               <CardHeader><Skeleton className="h-6 w-2/3" /></CardHeader>
               <CardContent><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-5/6 mt-1" /></CardContent>
@@ -142,5 +148,3 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
-
-    
