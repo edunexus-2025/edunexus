@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Routes } from '@/lib/constants';
+import { Routes, AppConfig, escapeForPbFilter } from '@/lib/constants';
 import { ArrowLeft, CalendarDays, CheckCircle, ChevronRight, Clock, ListChecks, PlayCircle, HelpCircle, AlertTriangle, Video, ShieldAlert, NotebookText } from 'lucide-react'; // Added NotebookText
 import { useEffect, useState, useCallback } from 'react';
 import pb from '@/lib/pocketbase';
@@ -15,8 +15,12 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import type { TestPagesRecord } from '@/lib/types'; // Import the updated type
+import type { TestPagesRecord } from '@/lib/types';
 
+// This interface is now simplified to primarily handle platform tests from 'test_pages'
+interface TestDisplayData extends TestPagesRecord {
+  // Any additional display-specific fields can be added here if needed
+}
 
 const inferSubjectFromTestName = (testName: string): string | undefined => {
     const lowerTestName = testName.toLowerCase();
@@ -34,7 +38,7 @@ export default function TestSeriesDetailPage() {
   const { toast } = useToast();
   const testSeriesId = typeof params.testSeriesId === 'string' ? params.testSeriesId : '';
 
-  const [testData, setTestData] = useState<TestPagesRecord | null>(null);
+  const [testData, setTestData] = useState<TestDisplayData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,65 +50,35 @@ export default function TestSeriesDetailPage() {
     }
     if (isMountedGetter()) { setIsLoading(true); setError(null); }
     try {
-      let record: RecordModel;
-      let collectionName: 'test_pages' | 'teacher_tests' = 'test_pages';
-      
-      // Try fetching from 'test_pages' first (platform tests)
-      try {
-        record = await pb.collection('test_pages').getOne<RecordModel>(testSeriesId);
-      } catch (testPagesError: any) {
-        if (testPagesError.status === 404) {
-          // If not found in 'test_pages', try 'teacher_tests'
-          try {
-            record = await pb.collection('teacher_tests').getOne<RecordModel>(testSeriesId);
-            collectionName = 'teacher_tests';
-          } catch (teacherTestsError: any) {
-            if (teacherTestsError.status === 404) {
-              throw new Error(`Test not found in platform or teacher collections (ID: ${testSeriesId}).`);
-            }
-            throw teacherTestsError; // Re-throw other errors from teacher_tests
-          }
-        } else {
-          throw testPagesError; // Re-throw other errors from test_pages
-        }
-      }
-      
+      // Only fetch from 'test_pages' for platform tests
+      const record = await pb.collection('test_pages').getOne<RecordModel>(testSeriesId);
       if (!isMountedGetter()) return;
 
-      const typeArray: string[] = Array.isArray(record.Type) ? record.Type : (typeof record.Type === 'string' ? [record.Type] : (Array.isArray(record.type) ? record.type : (typeof record.type === 'string' ? [record.type] : [])));
+      const typeArray: string[] = Array.isArray(record.Type) ? record.Type : (typeof record.Type === 'string' ? [record.Type] : []);
       
       const syllabusArray = typeof record.TestTags === 'string'
         ? record.TestTags.split(',').map(tag => tag.trim()).filter(tag => tag)
         : (record.Test_Description ? [record.Test_Description] : ['Syllabus not specified']);
 
-      let totalQuestions = 0;
-      if (collectionName === 'test_pages') {
-          totalQuestions = typeof record.TotalQuestion === 'number' ? record.TotalQuestion : 0;
-      } else if (collectionName === 'teacher_tests') {
-          const questionIds = record.questions as string[] | undefined;
-          totalQuestions = Array.isArray(questionIds) ? questionIds.length : 0;
-      }
-      
-      const derivedSubject = record.Model === 'Chapterwise' || record.model === 'Chapterwise' 
-        ? inferSubjectFromTestName(record.TestName || record.testName || '') 
+      const derivedSubject = record.Model === 'Chapterwise' 
+        ? inferSubjectFromTestName(record.TestName || '') 
         : undefined;
 
-      const mappedData: TestPagesRecord = {
-        ...record, // Spread existing record properties
+      const mappedData: TestDisplayData = {
+        ...record,
         id: record.id,
-        TestName: record.TestName || record.testName || 'Untitled Test', // Handle both potential field names
-        TotalTime: String(record.TotalTime || record.duration || '0'),
-        Type: typeArray,
-        Model: (record.Model || record.model) as TestPagesRecord['Model'] || 'Full Length',
-        Exam: record.Exam || record.QBExam || 'General',
+        TestName: record.TestName || 'Untitled Test',
+        TotalTime: String(record.TotalTime || '0'),
+        Type: typeArray as TestDisplayData['Type'],
+        Model: record.Model as TestDisplayData['Model'] || 'Full_length',
+        Exam: record.Exam as TestDisplayData['Exam'] || 'General',
         TestTags: record.TestTags || undefined,
         PhysicsQuestion: record.PhysicsQuestion as string[] | undefined,
         ChemistryQuestion: record.ChemistryQuestion as string[] | undefined,
         MathsQuestion: record.MathsQuestion as string[] | undefined,
         BiologyQuestion: record.BiologyQuestion as string[] | undefined,
-        derivedSubject: derivedSubject, // Add derivedSubject
-        TotalQuestion: totalQuestions, // Add TotalQuestion
-        collectionName: collectionName, // Store which collection it came from
+        derivedSubject: derivedSubject, 
+        TotalQuestion: typeof record.TotalQuestion === 'number' ? record.TotalQuestion : 0,
       };
       if (isMountedGetter()) setTestData(mappedData);
     } catch (err: any) {
@@ -165,14 +139,9 @@ export default function TestSeriesDetailPage() {
   }
 
   const isFreeTest = testData.Type.includes("Free");
-  const isTeacherTest = testData.collectionName === 'teacher_tests';
   
-  // If it's a teacher test, it will go to the new /live page which handles PIN, then instructions, then test.
-  // If it's a platform test, it goes to the old instructions page.
-  const startButtonLink = isTeacherTest 
-    ? Routes.studentTakeTeacherTestLive(testData.id) 
-    : Routes.studentTestInstructions(testData.id);
-  // Button text remains the same as the /live page handles the context of PIN vs Instructions
+  // For platform tests, it always goes to the standard instructions page
+  const startButtonLink = Routes.studentTestInstructions(testData.id);
   const startButtonText = "View Instructions & Start";
 
 
@@ -221,10 +190,5 @@ export default function TestSeriesDetailPage() {
     </div>
   );
 }
-
-    
-
 ```
-  </change>
-  <change>
-    <file>/
+</changes>

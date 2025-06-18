@@ -256,7 +256,7 @@ export interface StudentSubscribedPlan extends RecordModel {
   updated: string;
   amount_paid_to_edunexus: number; // Commission amount to EduNexus
   amount_recieved_to_teacher: number; // Net amount for the teacher
-  payment_id_razorpay?: string; 
+  payment_id_razorpay?: string;
   order_id_razorpay?: string;
   referral_code_used?: string;
   expand?: {
@@ -311,8 +311,8 @@ export interface TeacherReferralCode extends RecordModel {
   updated: string;
 }
 
-// For the new teacher_test_student_results collection
-export interface TeacherTestAnswerLogItem {
+// This type represents a single item in the answers_log for TeacherTestAttempt
+export interface AnswerLogItem {
   questionId: string;
   selectedOption: string | null;
   correctOption: string | null;
@@ -321,24 +321,49 @@ export interface TeacherTestAnswerLogItem {
   timeSpentSeconds: number;
 }
 
-export interface TeacherTestStudentResult extends RecordModel {
+// This type represents a record in the `teacher_test_attempts` collection
+export interface TeacherTestAttempt extends RecordModel {
   student: string;
   teacher_test: string;
   teacher: string;
-  test_name_cache: string;
-  start_time: string; // ISO Date
-  end_time?: string; // ISO Date
-  duration_taken_seconds?: number;
-  total_questions_in_test: number;
-  attempted_questions: number;
-  correct_answers: number;
-  incorrect_answers: number;
-  unattempted_questions: number;
-  score_obtained: number;
-  max_score_possible: number;
+  test_name_cache?: string; // Optional, for caching
+  plan_type_cache?: string; // Optional, for caching
+  score: number;
+  max_score: number;
   percentage?: number;
-  answers_log?: string | TeacherTestAnswerLogItem[]; // Can be JSON string or parsed array
-  status: 'completed' | 'in_progress' | 'terminated_time_up' | 'terminated_pin_attempts_exceeded';
-  plan_type_at_attempt: UserSubscriptionTierStudent | 'TeacherPlan_Student';
-  teacher_plan_id_if_applicable?: string;
+  answers_log: string | AnswerLogItem[]; // JSON string from DB, but parsed to array in app
+  status: 'completed' | 'in_progress' | 'terminated_time_up' | 'terminated_manual';
+  start_time: string; // ISO Date string
+  end_time?: string; // ISO Date string
+  duration_taken_seconds?: number;
+  proctoring_flags?: Record<string, any>; // Could be more specific if flags are known
+  plan_details?: {
+    studentPlan?: UserSubscriptionTierStudent;
+    teacherPlanId?: string; // if it was a subscription to a teacher's specific content plan
+  };
+  total_questions_in_test?: number; // Added
+  attempted_questions_count?: number; // Added
+  correct_answers_count?: number; // Added
+  incorrect_answers_count?: number; // Added
+  unattempted_questions_count?: number; // Added
+  attempt_date?: string; // Added, for when the attempt was made
 }
+
+export interface TestPagesRecord extends RecordModel {
+  TestName: string;
+  TotalQuestion?: number;
+  TotalTime: string;
+  Type: Array<'Free' | 'Premium' | 'Free_Premium'>;
+  Model: 'Chapterwise' | 'Full_length';
+  Exam?: 'MHT CET' | 'JEE MAIN' | 'NEET';
+  TestTags?: string;
+  PhysicsQuestion?: string[];
+  ChemistryQuestion?: string[];
+  MathsQuestion?: string[];
+  BiologyQuestion?: string[];
+  derivedSubject?: string; // For client-side inference
+}
+
+```
+  </change>
+  <change
