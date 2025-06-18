@@ -1,11 +1,12 @@
+
 [
     {
         "id": "pbc_3669383003",
-        "listRule": "",
-        "viewRule": "",
-        "createRule": "",
-        "updateRule": "",
-        "deleteRule": "",
+        "listRule": "@request.auth.id != ''",
+        "viewRule": "@request.auth.id != ''",
+        "createRule": "@request.auth.id != \"\" && teacher = @request.auth.id",
+        "updateRule": "@request.auth.id != \"\" && teacher = @request.auth.id",
+        "deleteRule": "@request.auth.id != \"\" && teacher = @request.auth.id",
         "name": "teacher_question_data",
         "type": "base",
         "system": false,
@@ -33,7 +34,7 @@
                 "minSelect": 0,
                 "name": "teacher",
                 "presentable": false,
-                "required": false,
+                "required": true,
                 "system": false,
                 "type": "relation"
             },
@@ -112,7 +113,7 @@
                 "id": "select3176711591",
                 "maxSelect": 1,
                 "name": "CorrectOption",
-                "presentable": false,
+                "presentable": true,
                 "required": false,
                 "system": false,
                 "type": "select",
@@ -134,9 +135,9 @@
                 "min": null,
                 "name": "LessonName",
                 "pattern": "",
-                "presentable": true,
+                "presentable": false,
                 "primaryKey": false,
-                "required": false,
+                "required": true,
                 "system": false,
                 "type": "text"
             },
@@ -148,9 +149,9 @@
                 "min": null,
                 "name": "QBExam",
                 "pattern": "",
-                "presentable": true,
+                "presentable": false,
                 "primaryKey": false,
-                "required": false,
+                "required": true,
                 "system": false,
                 "type": "text"
             },
@@ -174,7 +175,7 @@
                 "id": "url3024747866",
                 "name": "QuestionImage",
                 "onlyDomains": null,
-                "presentable": false,
+                "presentable": true,
                 "required": false,
                 "system": false,
                 "type": "url"
