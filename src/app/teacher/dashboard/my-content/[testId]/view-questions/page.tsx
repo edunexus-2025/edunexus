@@ -44,16 +44,9 @@ interface QuestionRecord extends RecordModel {
 
 type DisplayableQuestion = QuestionRecord;
 
+// This hostname might still appear in old database URLs
 const OLD_HOSTNAME = "f3605bbf-1d05-4292-9f0b-d3cd0ac21935-00-2eeov1wweb7qq.sisko.replit.dev";
-const NEW_POCKETBASE_HOSTNAME = "ae8425c5-5ede-4664-bdaa-b238298ae1be-00-4oi013hd9264.sisko.replit.dev";
-
-const correctImageUrlHostname = (url: string | null | undefined): string | null => {
-  if (!url || typeof url !== 'string') return null;
-  if (url.includes(OLD_HOSTNAME)) {
-    return url.replace(OLD_HOSTNAME, NEW_POCKETBASE_HOSTNAME);
-  }
-  return url;
-};
+// The new, correct hostname will be derived from the environment variable
 
 const renderLatex = (text: string | undefined | null): React.ReactNode => {
   if (!text) return null;
@@ -73,7 +66,10 @@ const renderLatex = (text: string | undefined | null): React.ReactNode => {
         return <BlockMath key={index} math={part.substring(2, part.length - 2)} />;
       }
       if (part.startsWith('\\begin{') && part.includes('\\end{')) {
-        return <BlockMath key={index} math={part} />
+        const envMatch = part.match(/^\\begin\{(.*?)\}/);
+        if (envMatch && ['equation', 'align', 'gather', 'matrix', 'pmatrix', 'bmatrix', 'vmatrix', 'Vmatrix', 'cases', 'array', 'subequations'].includes(envMatch[1])) {
+          return <BlockMath key={index} math={part} />
+        }
       }
     } catch (e) {
       return <span key={index} className="text-destructive" title="LaTeX Error">{part}</span>;
@@ -110,8 +106,29 @@ export default function ViewTestQuestionsPage() {
   const [isEditingCorrectOption, setIsEditingCorrectOption] = useState(false);
   const [editableCorrectOption, setEditableCorrectOption] = useState<QuestionRecord['CorrectOption'] | undefined>(undefined);
   const [isSavingCorrectOption, setIsSavingCorrectOption] = useState(false);
+  
+  const [newPocketBaseHostname, setNewPocketBaseHostname] = useState<string | null>(null);
 
-  const optionLabels: Array<"Option A" | "Option B" | "Option C" | "Option D"> = ["Option A", "Option B", "Option C", "Option D"];
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_POCKETBASE_URL) {
+      try {
+        const url = new URL(process.env.NEXT_PUBLIC_POCKETBASE_URL);
+        setNewPocketBaseHostname(url.hostname);
+      } catch (e) {
+        console.error("Invalid NEXT_PUBLIC_POCKETBASE_URL:", e);
+        // Fallback or error handling if URL is malformed
+      }
+    }
+  }, []);
+
+
+  const correctImageUrlHostname = useCallback((url: string | null | undefined): string | null => {
+    if (!url || typeof url !== 'string' || !newPocketBaseHostname) return url; // Return original if new hostname isn't set yet
+    if (url.includes(OLD_HOSTNAME)) {
+      return url.replace(OLD_HOSTNAME, newPocketBaseHostname);
+    }
+    return url;
+  }, [newPocketBaseHostname]);
 
   useEffect(() => {
     let isMounted = true;
@@ -266,19 +283,20 @@ export default function ViewTestQuestionsPage() {
     }
   };
 
+  const optionLabels: Array<"Option A" | "Option B" | "Option C" | "Option D"> = ["Option A", "Option B", "Option C", "Option D"];
 
   if (isLoadingParentTest || isLoadingQuestions) {
     return (
-      <div className="space-y-6 p-4 md:p-6 bg-slate-50 dark:bg-slate-950 min-h-screen">
-        <div className="flex items-center justify-between mb-4 max-w-3xl mx-auto">
+      <div className="max-w-4xl mx-auto space-y-6 p-4 md:p-6">
+        <div className="flex items-center justify-between mb-4">
           <Skeleton className="h-8 w-32" />
           <Skeleton className="h-8 w-1/2" />
           <div className="w-8"></div>
         </div>
-        <Card className="shadow-lg max-w-3xl mx-auto">
+        <Card className="shadow-lg">
           <CardHeader className="p-4 border-b flex justify-between items-center">
-            <Skeleton className="h-6 w-1/4" />
-            <Skeleton className="h-8 w-8 rounded-full" />
+             <Skeleton className="h-6 w-1/4" />
+             <Skeleton className="h-8 w-8 rounded-full" />
           </CardHeader>
           <CardContent className="p-4 md:p-6 space-y-4">
             <Skeleton className="h-5 w-1/3" />
@@ -330,14 +348,12 @@ export default function ViewTestQuestionsPage() {
     );
   }
 
-  // Correct image URLs before rendering
   const correctedQuestionImage = correctImageUrlHostname(currentQuestion.QuestionImage);
   const correctedOptionAImage = correctImageUrlHostname(currentQuestion.OptionAImage);
   const correctedOptionBImage = correctImageUrlHostname(currentQuestion.OptionBImage);
   const correctedOptionCImage = correctImageUrlHostname(currentQuestion.OptionCImage);
   const correctedOptionDImage = correctImageUrlHostname(currentQuestion.OptionDImage);
   const correctedExplanationImage = correctImageUrlHostname(currentQuestion.explanationImage);
-
 
   return (
     <div className="space-y-6 p-2 sm:p-4 md:p-6 bg-slate-50 dark:bg-slate-950 min-h-screen">
@@ -387,7 +403,6 @@ export default function ViewTestQuestionsPage() {
                 const textKey = `Option${String.fromCharCode(65 + index)}Text` as keyof DisplayableQuestion;
                 const imageUrlKey = `Option${String.fromCharCode(65 + index)}Image` as keyof DisplayableQuestion;
                 
-                // Use the corrected URLs
                 const correctedOptionImageUrl = correctImageUrlHostname(currentQuestion[imageUrlKey] as string | null | undefined);
                 const isThisOptionCorrect = currentQuestion.CorrectOption === optLabel;
 

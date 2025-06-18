@@ -1,15 +1,24 @@
 
 import type { NextConfig } from 'next';
 
-// Updated PocketBase URL to be used for image remote patterns
-const pocketbaseUrlString = 'https://ae8425c5-5ede-4664-bdaa-b238298ae1be-00-4oi013hd9264.sisko.replit.dev';
-
 // Define a local interface for the remote pattern structure
 interface CustomRemotePattern {
   protocol: 'http' | 'https';
   hostname: string;
   port?: string;
   pathname?: string;
+}
+
+// Read the PocketBase URL from the environment variable
+// Fallback to the hardcoded URL if the environment variable is not set
+const pocketbaseUrlString = process.env.NEXT_PUBLIC_POCKETBASE_URL || 'https://ae8425c5-5ede-4664-bdaa-b238298ae1be-00-4oi013hd9264.sisko.replit.dev';
+
+if (!process.env.NEXT_PUBLIC_POCKETBASE_URL && process.env.NODE_ENV !== 'test') {
+  console.warn(
+    `[next.config.js] WARNING: PocketBase URL is not set in environment variables (NEXT_PUBLIC_POCKETBASE_URL).
+    Falling back to default: ${pocketbaseUrlString}
+    Please set this variable in your .env.local file.`
+  );
 }
 
 const pocketbaseRemotePatterns: Array<CustomRemotePattern> = [];
@@ -23,12 +32,12 @@ if (pocketbaseUrlString) {
       port: url.port || '',
       pathname: '/api/files/**', // Standard PocketBase file path
     });
-    console.log(`[next.config.js] Successfully added PocketBase remote pattern: ${url.protocol}//${url.hostname}${url.port ? ':' + url.port : ''}/api/files/**`);
+    console.log(`[next.config.js] Successfully added PocketBase remote pattern for: ${url.protocol}//${url.hostname}${url.port ? ':' + url.port : ''}/api/files/**`);
   } catch (e) {
-    console.error(`[next.config.js] FATAL: Invalid PocketBase URL ('${pocketbaseUrlString}') provided. Cannot add it to image remotePatterns. Error: ${(e as Error).message}. IMAGES FROM POCKETBASE WILL LIKELY FAIL TO LOAD.`);
+    console.error(`[next.config.js] FATAL: Invalid PocketBase URL ('${pocketbaseUrlString}') from env/fallback. Cannot add it to image remotePatterns. Error: ${(e as Error).message}. IMAGES FROM POCKETBASE WILL LIKELY FAIL TO LOAD.`);
   }
 } else {
-  console.warn(`[next.config.js] WARNING: PocketBase URL is not defined. Images from PocketBase will not load. This is unexpected if the URL is hardcoded.`);
+  console.warn(`[next.config.js] WARNING: PocketBase URL is effectively undefined. Images from PocketBase will not load.`);
 }
 
 const nextConfig: NextConfig = {
@@ -82,13 +91,14 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
-      // Add the problematic Replit hostname that is causing the error
-      {
-        protocol: 'https',
-        hostname: 'f3605bbf-1d05-4292-9f0b-d3cd0ac21935-00-2eeov1wweb7qq.sisko.replit.dev',
-        port: '',
-        pathname: '/api/files/**', // Assuming it follows a similar path structure
-      },
+      // Add the problematic Replit hostname that is causing the error IF it's still needed for some old data
+      // For now, we'll assume it's not needed and should be removed as per user's intent for a single source URL.
+      // {
+      //   protocol: 'https',
+      //   hostname: 'f3605bbf-1d05-4292-9f0b-d3cd0ac21935-00-2eeov1wweb7qq.sisko.replit.dev',
+      //   port: '',
+      //   pathname: '/api/files/**', 
+      // },
       {
         protocol: 'https',
         hostname: '9000-firebase-studio-1748410223729.cluster-ancjwrkgr5dvux4qug5rbzyc2y.cloudworkstations.dev',
