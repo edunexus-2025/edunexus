@@ -28,8 +28,15 @@ export default function TeacherUpgradePlatformPlanPage() {
   const [isProcessingPayment, setIsProcessingPayment] = useState<string | null>(null);
 
   const currentTeacherTier = teacher?.teacherSubscriptionTier || 'Free';
+  const currentAdsSubscription = teacher?.ads_subscription || 'Free';
+
 
   const handleUpgrade = async (plan: Plan) => {
+    if (plan.customActivationLink) {
+      router.push(plan.customActivationLink);
+      return;
+    }
+
     if (!teacher || !teacher.id || !teacher.email || !teacher.name || !teacher.phoneNumber) {
       toast({ 
         title: "Profile Incomplete", 
@@ -114,13 +121,23 @@ export default function TeacherUpgradePlatformPlanPage() {
                 productDescription: `${AppConfig.appName} Teacher Plan - ${plan.name}`
               }),
             });
-            const verificationData = await verificationResponse.json();
-            if (verificationResponse.ok && verificationData.verified) {
-              toast({ title: "Payment Successful!", description: "Processing your upgrade..." });
-              await authRefresh(); // Refresh auth context to get updated teacher details
-              router.push(Routes.teacherDashboard); // Redirect to teacher dashboard
+            // The verify-payment route now redirects to /activate-plan which handles the DB update & authRefresh
+            // So, we don't expect JSON here directly for plan update status, but for the redirect.
+            if (verificationResponse.ok && verificationResponse.redirected) {
+                // If redirection happened, it means verify-payment likely created an activation token.
+                // The new page /activate-plan will handle the final DB update and user feedback.
+                // No specific client-side update needed here, as the redirected page will manage it.
+                // If not redirected but ok, it might be an old flow, log it.
+                 console.log("Payment verified, server redirected to activation page.");
+            } else if (verificationResponse.ok && !verificationResponse.redirected) {
+                 console.warn("Payment verified, but server did not redirect. This might be an old verification flow. User might need to refresh manually or visit dashboard.");
+                 toast({ title: "Payment Verified", description: "Your payment was verified. Please check your dashboard for plan updates."});
+                 await authRefresh();
+                 router.push(Routes.teacherDashboard);
+
             } else {
-              toast({ title: "Payment Verification Failed", description: verificationData.error || "Please contact support.", variant: "destructive" });
+                 const verificationData = await verificationResponse.json().catch(() => ({ error: "Could not parse verification error response."}));
+                 toast({ title: "Payment Verification Failed", description: verificationData.error || "Please contact support.", variant: "destructive" });
             }
           } catch (verifyError: any) {
             toast({ title: "Verification Error", description: verifyError.message || "An error occurred.", variant: "destructive" });
@@ -180,9 +197,12 @@ export default function TeacherUpgradePlatformPlanPage() {
         </CardHeader>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
         {teacherPlatformPlansData.map((plan) => {
-          const isCurrent = currentTeacherTier === plan.id;
+          const isCurrentPlatformTier = currentTeacherTier === plan.id && plan.id !== 'Ads Model';
+          const isCurrentAdsModel = plan.id === 'Ads Model' && currentAdsSubscription === 'Ads Model';
+          const isCurrent = isCurrentPlatformTier || isCurrentAdsModel;
+          
           return (
             <Card
               key={plan.id}
@@ -211,7 +231,7 @@ export default function TeacherUpgradePlatformPlanPage() {
                     </span>
                     <span className="text-sm ml-1 text-muted-foreground">{plan.priceSuffix}</span>
                   </div>
-                   {plan.commissionRate !== undefined && (
+                   {plan.commissionRate !== undefined && plan.id !== 'Ads Model' && (
                     <p className="text-xs text-muted-foreground mt-1">EduNexus Commission: {plan.commissionRate}%</p>
                   )}
               </CardHeader>
@@ -224,8 +244,8 @@ export default function TeacherUpgradePlatformPlanPage() {
                       <span className="text-sm text-foreground/90">{feature}</span>
                     </li>
                   ))}
-                  {plan.maxContentPlans !== undefined && <li><ShieldCheck className="inline h-5 w-5 mr-1.5 text-primary/70" /> Max {plan.maxContentPlans} Content Plans</li>}
-                  {plan.qbAccess !== undefined && <li><Zap className="inline h-5 w-5 mr-1.5 text-primary/70" /> QB Access: {plan.qbAccess ? 'Full EduNexus QB' : 'Limited/Own QB'}</li>}
+                  {plan.id !== 'Ads Model' && plan.maxContentPlans !== undefined && <li><ShieldCheck className="inline h-5 w-5 mr-1.5 text-primary/70" /> Max {plan.maxContentPlans} Content Plans</li>}
+                  {plan.id !== 'Ads Model' && plan.qbAccess !== undefined && <li><Zap className="inline h-5 w-5 mr-1.5 text-primary/70" /> QB Access: {plan.qbAccess ? 'Full EduNexus QB' : 'Limited/Own QB'}</li>}
                 </ul>
               </CardContent>
               <CardFooter className="p-6 mt-auto border-t">

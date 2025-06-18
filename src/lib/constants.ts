@@ -214,8 +214,8 @@ export const allPlansData: Plan[] = [
     name: 'Pulse',
     description: "Daily rhythm of practice. Focus on daily problems and foundational tests.",
     price: '₹1',
-    priceSuffix: '/- year',
-    priceValue: 1,
+    priceSuffix: '/- year', // Updated
+    priceValue: 1,      // Updated
     features: [
       'All Nova features',
       'Access to free test series',
@@ -328,6 +328,21 @@ export const teacherPlatformPlansData: Plan[] = [
     commissionRate: 5, // EduNexus takes 5%
     maxContentPlans: 10, 
     qbAccess: true,
+  },
+  {
+    id: 'Ads Model', // Matches User['ads_subscription'] type
+    name: 'Advertisement Creator Pack',
+    description: "Enable tools to create and manage advertisements for your content on EduNexus.",
+    price: '₹10',
+    priceSuffix: '/month (Activation via Telegram)',
+    priceValue: 10, // This is monthly, but Razorpay flow is annual.
+    features: [
+      "Create promotional ads for your profile & plans",
+      "Reach a wider student audience on EduNexus",
+      "Track ad performance (coming soon)"
+    ],
+    ctaText: 'Activate Ad Features',
+    customActivationLink: Routes.teacherUpgradeAds, // Special link for this plan
   },
 ];
 
