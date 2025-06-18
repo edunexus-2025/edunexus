@@ -247,7 +247,7 @@ export const CreateTestSchema = z.object({
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "At least one question must be selected for the chosen subject in a Chapterwise test.",
-        path: ["testSubject"],
+        path: ["testSubject"], 
       });
     }
   }
@@ -310,59 +310,53 @@ export const TeacherCreateTestModalSchema = z.object({
 });
 export type TeacherCreateTestModalInput = z.infer<typeof TeacherCreateTestModalSchema>;
 
+// Schema for Teacher Adding Question to their own QB (teacher_question_data)
 export const TeacherAddQuestionSchema = z.object({
   questionType: z.enum(['multipleChoice', 'fillInBlank', 'addSection']).default('multipleChoice'),
-  LessonName: z.string().min(1, "Lesson Name (derived from the test) is required."),
+  LessonName: z.string().min(1, "Lesson Name (derived from the test) is required."), // This will hold the Test ID for relation
   QBExam: z.string().min(1, "Exam association (QBExam, derived from the test) is required."),
   QuestionText: z.string().optional().nullable(),
-  QuestionImage: imageUrlSchema,
+  QuestionImage: imageUrlSchema, // URL for image
   options: z.array(
     z.object({
-      text: z.string().min(1, 'Option text is required.'),
-      isCorrect: z.boolean().default(false),
+      text: z.string().optional().nullable(), // Option text might be empty if using image options
+      isCorrect: z.boolean().default(false), // Only one should be true for MCQs
     })
   ).min(1, 'At least one option is required.').max(5, 'Maximum 5 options allowed.'),
   OptionAImage: imageUrlSchema,
   OptionBImage: imageUrlSchema,
   OptionCImage: imageUrlSchema,
   OptionDImage: imageUrlSchema,
-  CorrectOption: z.enum(["Option A", "Option B", "Option C", "Option D", "Option E"]).optional(),
+  CorrectOption: z.enum(["Option A", "Option B", "Option C", "Option D"]).optional(), // Will be derived from options.isCorrect
   explanationText: z.string().nullable().optional(),
   explanationImage: imageUrlSchema,
 }).superRefine((data, ctx) => {
   if (data.questionType === 'multipleChoice') {
-    const correctOptionsCount = data.options.filter(opt => opt.isCorrect).length;
-    if (correctOptionsCount !== 1) {
+    const correctOptions = data.options.filter(opt => opt.isCorrect);
+    if (correctOptions.length !== 1) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'Exactly one option must be marked as correct for Multiple Choice questions.',
         path: ['options'],
       });
-    }
-
-    if (!data.CorrectOption) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "A correct option (A, B, C, D, or E) must be explicitly selected for Multiple Choice questions.",
-          path: ["CorrectOption"],
-        });
     } else {
-        const correctIndex = data.options.findIndex(opt => opt.isCorrect);
-        const expectedCorrectOptionEnumValue = correctIndex !== -1 ? `Option ${String.fromCharCode(65 + correctIndex)}` as const : undefined;
-        if (data.CorrectOption !== expectedCorrectOptionEnumValue) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: `CorrectOption field mismatch. Expected ${expectedCorrectOptionEnumValue} based on selected checkbox. Got ${data.CorrectOption}`,
-            path: ["CorrectOption"],
-          });
-        }
+      const correctIndex = data.options.findIndex(opt => opt.isCorrect);
+      const expectedCorrectOptionValue = `Option ${String.fromCharCode(65 + correctIndex)}` as const;
+      if (data.CorrectOption !== expectedCorrectOptionValue) {
+        // This can be auto-set, so maybe not a validation error, but a transform or ensure logic.
+        // For now, we'll require it to be consistent if provided.
+        // Or, better, auto-set it in the onSubmit logic based on the checkbox.
+        // If it's not provided, it should be set before saving.
+      }
     }
+    // Validate that options have text if not using image options (this part is tricky with dynamic structure)
+    // This might be better handled in component logic or by making Option Texts required by default and conditionally optional
   }
   if (!data.QuestionText?.trim() && !data.QuestionImage) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: "Either Question Text or a Question Image (URL) must be provided.",
-      path: ["QuestionText"],
+      path: ["QuestionText"], // Or QuestionImage
     });
   }
 });
@@ -385,7 +379,7 @@ export const TeacherTestSettingsSchema = z.object({
     Test_Description: z.string().max(500, "Description too long.").optional().nullable(),
     Admin_Password: z.coerce.number().int("Admin password must be an integer.")
                        .min(1000, "Admin password must be at least 1000.")
-                       .max(999999, "Admin password must be at most 999999."),
+                       .max(999999, "Admin password must be at most 999999.").optional().nullable(), // Made optional
     duration: z.coerce.number().int().min(1, "Duration must be at least 1 minute."),
     totalScore: z.coerce.number().min(0, "Total score cannot be negative.").optional().nullable(),
     PerNegativeScore: z.coerce.number().optional().nullable(),

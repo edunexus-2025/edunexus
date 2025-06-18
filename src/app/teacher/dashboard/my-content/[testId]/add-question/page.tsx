@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ImageImportModal } from '@/components/teacher/ImageImportModal';
-import { QbModal } from '@/components/teacher/QbModal'; // Import QB Modal
+import { QbModal } from '@/components/teacher/QbModal'; 
 import NextImage from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import pb from '@/lib/pocketbase';
@@ -44,7 +44,7 @@ const isValidHttpUrl = (string: string | null | undefined): string is string => 
 interface ParentTestData {
   id: string;
   testName: string;
-  QBExam: string;
+  QBExam: string; // This will come from the teacher_tests.QBExam field
   model: "Chapterwise" | "Full Length"; 
 }
 
@@ -90,7 +90,7 @@ export default function TeacherAddQuestionToTestPage() {
     let isMounted = true;
     if (testId && !isLoadingTeacher && teacher?.id) {
       setIsLoadingParentTest(true);
-      pb.collection('teacher_tests').getOne<RecordModel>(testId, {fields: 'id,testName,QBExam,model'}) 
+      pb.collection('teacher_tests').getOne<RecordModel>(testId,{fields: 'id,testName,QBExam,model'}) 
         .then(record => {
           if (isMounted) {
             if (!record.testName || !record.QBExam || !record.model) {
@@ -106,7 +106,7 @@ export default function TeacherAddQuestionToTestPage() {
               model: record.model as ParentTestData['model'],
             };
             setParentTestData(data);
-            form.setValue('LessonName', data.testName, { shouldValidate: true });
+            form.setValue('LessonName', data.id, { shouldValidate: true }); // LessonName (relation) uses parent test ID
             form.setValue('QBExam', data.QBExam, { shouldValidate: true });
           }
         })
@@ -140,28 +140,28 @@ export default function TeacherAddQuestionToTestPage() {
       toast({ title: "Authentication Error", description: "Teacher not logged in.", variant: "destructive" });
       return;
     }
-     if (!parentTestData || !parentTestData.testName || !parentTestData.QBExam) {
-      toast({ title: "Error", description: "Parent test data (name or exam) is missing. Cannot save question. Ensure parent test has a valid name and QBExam set.", variant: "destructive" });
+     if (!parentTestData || !parentTestData.id || !parentTestData.QBExam) {
+      toast({ title: "Error", description: "Parent test data (ID or QBExam) is missing. Cannot save question. Ensure parent test has a valid name and QBExam set.", variant: "destructive" });
       return;
     }
     
     const dataForTeacherQuestionData: Record<string, any> = {
       teacher: teacher.id,
-      LessonName: data.LessonName,
-      QBExam: data.QBExam,
+      LessonName: parentTestData.id, // This is the Test ID for the relation
+      QBExam: parentTestData.QBExam, // This is the Test's QBExam   
       QuestionText: data.QuestionText?.trim() || null,
-      QuestionImage: data.QuestionImage || null, 
+      QuestionImage: data.QuestionImage || null, // URL from modal or direct input
       OptionAText: data.options[0]?.text?.trim() || null,
-      OptionAImage: data.OptionAImage || null,
+      OptionAImage: data.OptionAImage || null, // URL from modal or direct input
       OptionBText: data.options[1]?.text?.trim() || null,
-      OptionBImage: data.OptionBImage || null,
+      OptionBImage: data.OptionBImage || null, // URL from modal or direct input
       OptionCText: data.options[2]?.text?.trim() || null,
-      OptionCImage: data.OptionCImage || null,
+      OptionCImage: data.OptionCImage || null, // URL from modal or direct input
       OptionDText: data.options[3]?.text?.trim() || null,
-      OptionDImage: data.OptionDImage || null,
-      CorrectOption: data.CorrectOption || null,
+      OptionDImage: data.OptionDImage || null, // URL from modal or direct input
+      CorrectOption: data.CorrectOption || null, // e.g., "Option A"
       explanationText: data.explanationText?.trim() || null,
-      explanationImage: data.explanationImage || null,
+      explanationImage: data.explanationImage || null, // URL from modal or direct input
     };
     
     Object.keys(dataForTeacherQuestionData).forEach(key => {
@@ -170,15 +170,14 @@ export default function TeacherAddQuestionToTestPage() {
       }
     });
 
-    console.log("Final data payload for teacher_question_data (with image URLs):", dataForTeacherQuestionData);
+    console.log("Final data payload for teacher_question_data:", dataForTeacherQuestionData);
 
     try {
       const createdQuestionRecord = await pb.collection('teacher_question_data').create(dataForTeacherQuestionData);
       
-      // Link question to parent test
       if (parentTestData && createdQuestionRecord.id) {
         await pb.collection('teacher_tests').update(parentTestData.id, {
-          "questions+": createdQuestionRecord.id,
+          "questions_teachers+": createdQuestionRecord.id, // Link to the new 'questions_teachers' field
         });
       }
 
@@ -189,7 +188,7 @@ export default function TeacherAddQuestionToTestPage() {
       
       form.reset({
         questionType: 'multipleChoice',
-        LessonName: parentTestData.testName, 
+        LessonName: parentTestData.id, // Reset with Test ID for relation
         QBExam: parentTestData.QBExam,    
         QuestionText: '', QuestionImage: null,
         options: [
@@ -203,7 +202,7 @@ export default function TeacherAddQuestionToTestPage() {
       });
       setImagePreviews({});
     } catch (error: any) {
-      console.error("Failed to save question to teacher_question_data:", error.data?.data || error.message, "Full error:", error);
+      console.error("Failed to save question:", error.data?.data || error.message, "Full error:", error);
       let errorMsg = "Could not save question. Please ensure all required fields are filled and image URLs are valid if provided.";
       if (error.data?.data) {
         errorMsg = Object.entries(error.data.data).map(([key, val]: [string, any]) => `${key}: ${val.message}`).join('; ');
@@ -228,7 +227,8 @@ export default function TeacherAddQuestionToTestPage() {
   
   const visibleTopBarButtons = allTopBarButtons.filter(btn => {
     if (btn.label === 'QB') {
-      return parentTestData?.model === 'Full Length';
+      // Allow QB button if parent test is Full Length OR if it's Chapterwise and parentTestData exists
+      return parentTestData?.model === 'Full Length' || (parentTestData?.model === 'Chapterwise' && !!parentTestData);
     }
     return true;
   });
@@ -252,6 +252,8 @@ export default function TeacherAddQuestionToTestPage() {
     
     currentOptions.forEach((opt, index) => {
       const isCurrentlyChecked = form.getValues(`options.${index}.isCorrect`);
+      // Only the selectedIndex should be true if it wasn't already checked.
+      // If it was already checked, clicking it again should uncheck it (and nothing else becomes checked).
       const shouldBeChecked = index === selectedIndex && !isCurrentlyChecked;
 
       form.setValue(`options.${index}.isCorrect`, shouldBeChecked);
@@ -260,6 +262,9 @@ export default function TeacherAddQuestionToTestPage() {
       }
     });
     
+    // If no new option was checked (meaning the clicked one was deselected),
+    // check if any other option is still marked as correct.
+    // If no option is correct after this operation, CorrectOption should be undefined.
     if (!newCorrectOptionValue) {
        const stillCheckedIndex = form.getValues('options').findIndex(opt => opt?.isCorrect);
        if (stillCheckedIndex === -1) {
@@ -279,7 +284,7 @@ export default function TeacherAddQuestionToTestPage() {
 
   const handleImageAssignFromModal = (imageUrl: string | null) => { 
     if (imageTargetField && imageUrl) {
-      form.setValue(imageTargetField, imageUrl); 
+      form.setValue(imageTargetField, imageUrl as any); // Cast as 'any' because Zod schema expects File | URL
       setImagePreviews(prev => ({ ...prev, [imageTargetField as string]: imageUrl }));
     } else if (imageTargetField && imageUrl === null) { 
       form.setValue(imageTargetField, null);
@@ -384,8 +389,8 @@ export default function TeacherAddQuestionToTestPage() {
                     control={form.control}
                     name="LessonName"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-1"><Book className="h-4 w-4 text-muted-foreground"/>Lesson Name (from Test) *</FormLabel>
+                      <FormItem hidden>
+                        <FormLabel className="flex items-center gap-1"><Book className="h-4 w-4 text-muted-foreground"/>Lesson Name (Test ID) *</FormLabel>
                         <FormControl><span><Input {...field} value={field.value ?? ''} disabled className="bg-slate-200 dark:bg-slate-700 opacity-75" /></span></FormControl>
                         <FormMessage />
                       </FormItem>
@@ -396,7 +401,7 @@ export default function TeacherAddQuestionToTestPage() {
                     control={form.control}
                     name="QBExam"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem hidden>
                         <FormLabel className="flex items-center gap-1"><TagIcon className="h-4 w-4 text-muted-foreground"/>Exam Association (QBExam) *</FormLabel>
                         <FormControl><span><Input {...field} value={field.value ?? ''} disabled className="bg-slate-200 dark:bg-slate-700 opacity-75" /></span></FormControl>
                         <FormMessage />
@@ -571,5 +576,3 @@ export default function TeacherAddQuestionToTestPage() {
     </div>
   );
 }
-
-

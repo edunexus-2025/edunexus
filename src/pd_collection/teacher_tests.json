@@ -1,11 +1,12 @@
+
 [
     {
         "id": "pbc_2863365490",
         "listRule": "@request.auth.id != \"\"",
         "viewRule": "@request.auth.id != \"\"",
-        "createRule": "@request.auth.id != \"\" && teacherId = @request.auth.id",
-        "updateRule": "@request.auth.id != \"\" && teacherId = @request.auth.id",
-        "deleteRule": "@request.auth.id != \"\" && teacherId = @request.auth.id",
+        "createRule": "@request.auth.id != \"\" && @request.auth.collectionName = \"teacher_data\" && teacherId = @request.auth.id",
+        "updateRule": "@request.auth.id != \"\" && @request.auth.collectionName = \"teacher_data\" && teacherId = @request.auth.id",
+        "deleteRule": "@request.auth.id != \"\" && @request.auth.collectionName = \"teacher_data\" && teacherId = @request.auth.id",
         "name": "teacher_tests",
         "type": "base",
         "system": false,
@@ -35,7 +36,7 @@
                 "unique": false,
                 "options": {
                     "collectionId": "pbc_2504364897",
-                    "cascadeDelete": false,
+                    "cascadeDelete": true,
                     "minSelect": 1,
                     "maxSelect": 1,
                     "displayFields": ["name", "EduNexus_Name"]
@@ -121,17 +122,33 @@
             {
                 "system": false,
                 "id": "relation2329695445",
-                "name": "questions",
+                "name": "questions_edunexus",
                 "type": "relation",
                 "required": false,
-                "presentable": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "pbc_1874489316",
+                    "cascadeDelete": false,
+                    "minSelect": 0,
+                    "maxSelect": 200,
+                    "displayFields": ["id", "questionText", "subject", "lessonName"]
+                }
+            },
+             {
+                "system": false,
+                "id": "relation2675178835",
+                "name": "questions_teachers",
+                "type": "relation",
+                "required": false,
+                "presentable": false,
                 "unique": false,
                 "options": {
                     "collectionId": "pbc_3669383003",
                     "cascadeDelete": false,
                     "minSelect": 0,
                     "maxSelect": 200,
-                    "displayFields": ["id", "QuestionText"]
+                    "displayFields": ["id", "QuestionText", "QBExam"]
                 }
             },
             {
@@ -195,3 +212,4 @@
         "system": false
     }
 ]
+    

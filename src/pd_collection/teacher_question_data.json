@@ -4,13 +4,13 @@
         "id": "pbc_3669383003",
         "listRule": "@request.auth.id != \"\"",
         "viewRule": "@request.auth.id != \"\"",
-        "createRule": "@request.auth.id != \"\" && teacher = @request.auth.id",
-        "updateRule": "@request.auth.id != \"\" && teacher = @request.auth.id",
-        "deleteRule": "@request.auth.id != \"\" && teacher = @request.auth.id",
+        "createRule": "@request.auth.id != \"\" && @request.auth.collectionName = \"teacher_data\" && teacher = @request.auth.id",
+        "updateRule": "@request.auth.id != \"\" && @request.auth.collectionName = \"teacher_data\" && teacher = @request.auth.id",
+        "deleteRule": "@request.auth.id != \"\" && @request.auth.collectionName = \"teacher_data\" && teacher = @request.auth.id",
         "name": "teacher_question_data",
         "type": "base",
         "system": false,
-        "fields": [
+        "schema": [
             {
                 "system": true,
                 "id": "text3208210256",
@@ -36,10 +36,10 @@
                 "unique": false,
                 "options": {
                     "collectionId": "pbc_2504364897",
-                    "cascadeDelete": false,
+                    "cascadeDelete": true, 
                     "minSelect": 1,
                     "maxSelect": 1,
-                    "displayFields": null
+                    "displayFields": ["name"]
                 }
             },
             {
@@ -132,7 +132,7 @@
             },
             {
                 "system": false,
-                "id": "relation3239013921", 
+                "id": "relation3239013921",
                 "name": "LessonName",
                 "type": "relation",
                 "required": true,
@@ -143,7 +143,7 @@
                     "cascadeDelete": false,
                     "minSelect": 1,
                     "maxSelect": 1,
-                    "displayFields": ["testName"] 
+                    "displayFields": ["testName"]
                 }
             },
             {
@@ -286,5 +286,4 @@
         "system": false
     }
 ]
-      
     
