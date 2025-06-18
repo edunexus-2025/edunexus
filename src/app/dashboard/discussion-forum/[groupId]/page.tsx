@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardDescription, CardTitle, CardHeader, CardContent } from '@/components/ui/card';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"; // Added AlertDialog imports
 import { AlertCircle, Send, ArrowLeft, MessageSquare as MessageSquareIcon, Loader2, ThumbsUp, ThumbsDown, MessageSquareReply, X, Link as LinkIcon, Image as ImageIconLucide, Trash2, Edit2 as EditIcon, Paperclip, MessageSquareText } from 'lucide-react';
 import Link from 'next/link';
 import { Routes, escapeForPbFilter, AppConfig } from '@/lib/constants';
@@ -161,6 +162,7 @@ export default function DiscussionGroupPage() {
   const [replyingToMessageInfo, setReplyingToMessageInfo] = useState<{ id: string; senderName: string; messageSnippet: string; isCurrentUserReplyTo: boolean } | null>(null);
   const [editingMessageContent, setEditingMessageContent] = useState<{ id: string, currentText: string } | null>(null);
   const [processingInteractionId, setProcessingInteractionId] = useState<string | null>(null);
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
 
 
   const scrollAreaViewportRef = useRef<HTMLDivElement>(null);
@@ -219,6 +221,12 @@ export default function DiscussionGroupPage() {
         unsubscribeMessages = await pb.collection('discussion_form_messages').subscribe('*', async (e) => {
           if (!isMounted) return;
           if (e.record.group !== groupIdParam) return;
+          
+          if (e.action === 'delete') {
+            setMessages(prev => prev.filter(msg => msg.id !== e.record.id));
+            return;
+          }
+
           try {
             const fullRecord = await pb.collection('discussion_form_messages').getOne(e.record.id, { expand: EXPAND_STRING, '$autoCancel': false });
             if (!isMounted) return;
@@ -226,7 +234,6 @@ export default function DiscussionGroupPage() {
             if (e.action === 'create') setMessages(prev => { if (prev.find(m => m.id === mappedMessage.id)) return prev; return [...prev, mappedMessage]; });
             else if (e.action === 'update') setMessages(prev => prev.map(msg => msg.id === mappedMessage.id ? mappedMessage : msg));
           } catch (fetchError: any) { if (isMounted) console.error(`Error fetching full message on ${e.action} event (ID: ${e.record.id}). Full error:`, fetchError.data || fetchError); }
-          if (e.action === 'delete') setMessages(prev => prev.filter(msg => msg.id !== e.record.id));
         });
       } catch (subError) { if (isMounted) console.error("Error subscribing:", subError); }
     };
@@ -307,6 +314,24 @@ export default function DiscussionGroupPage() {
       toast({ title: editingMessageContent ? "Error Updating Message" : "Error Sending Message", description: err.data?.message || err.message, variant: "destructive", duration: 7000 });
     } finally { setIsSending(false); }
   };
+  
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!activeUser?.id) { toast({ title: "Authentication Error", variant: "destructive" }); return; }
+    setDeletingMessageId(messageId);
+    try {
+      await pb.collection('discussion_form_messages').delete(messageId);
+      toast({ title: "Message Deleted" });
+      // Real-time subscription should handle UI update by removing the message.
+      // If not, uncomment the line below:
+      // setMessages(prev => prev.filter(msg => msg.id !== messageId));
+    } catch (err: any) {
+      console.error("Failed to delete message:", err.data || err.message);
+      toast({ title: "Error Deleting Message", description: err.data?.message || err.message, variant: "destructive" });
+    } finally {
+      setDeletingMessageId(null);
+    }
+  };
+
 
   const handleLikeDislike = async (messageId: string, interactionType: 'like' | 'dislike') => {
     if (!activeUser?.id) { toast({ title: "Login Required", variant: "destructive" }); return; }
@@ -431,12 +456,31 @@ export default function DiscussionGroupPage() {
                     </div>
                   )}
                   {msg.any_link && (<div className="mt-1.5"><a href={msg.any_link} target="_blank" rel="noopener noreferrer" className="text-xs text-current/80 hover:text-current hover:underline flex items-center gap-1 break-all"><LinkIcon size={12} /> {msg.any_link.length > 35 ? msg.any_link.substring(0, 32) + '...' : msg.any_link}</a></div>)}
-                  <div className={cn("flex items-center gap-1 mt-1.5", msg.isCurrentUser ? "justify-start" : "justify-end")}>
+                  <div className={cn("flex items-center gap-0.5 mt-1.5", msg.isCurrentUser ? "justify-start" : "justify-end")}>
                       <Button variant="ghost" size="icon" onClick={() => handleLikeDislike(msg.id, 'like')} disabled={!canCurrentUserLikeDislike || processingInteractionId === msg.id} className={cn("h-6 w-auto p-0.5 text-xs", msg.like_by?.includes(activeUser?.id || '') ? (msg.isCurrentUser ? 'text-sky-300' : 'text-sky-500') : (msg.isCurrentUser ? 'text-primary-foreground/60 hover:text-primary-foreground/90' : 'text-muted-foreground/70 hover:text-muted-foreground'))} title={!canCurrentUserLikeDislike ? "Teachers cannot like/dislike" : "Like"}><ThumbsUp size={12} /><span className="ml-0.5 text-[10px]">{msg.likes || 0}</span></Button>
                       <Button variant="ghost" size="icon" onClick={() => handleLikeDislike(msg.id, 'dislike')} disabled={!canCurrentUserLikeDislike || processingInteractionId === msg.id} className={cn("h-6 w-auto p-0.5 text-xs", msg.unlike_by?.includes(activeUser?.id || '') ? (msg.isCurrentUser ? 'text-orange-300' : 'text-orange-500') : (msg.isCurrentUser ? 'text-primary-foreground/60 hover:text-primary-foreground/90' : 'text-muted-foreground/70 hover:text-muted-foreground'))} title={!canCurrentUserLikeDislike ? "Teachers cannot like/dislike" : "Dislike"}><ThumbsDown size={12} /><span className="ml-0.5 text-[10px]">{msg.dislikes || 0}</span></Button>
                       {!msg.isCurrentUser && <Button variant="ghost" size="icon" onClick={() => startReply(msg)} className="h-6 w-6 p-0.5 text-muted-foreground/70 hover:text-muted-foreground"><MessageSquareReply size={12} /></Button>}
-                      {currentTeacher && (msg.isCurrentUser || currentTeacher.id === msg.by_whom_teacher_id) && (
-                         <Button variant="ghost" size="icon" onClick={() => startEdit(msg)} className={cn("h-6 w-6 p-0.5", msg.isCurrentUser ? 'text-primary-foreground/60 hover:text-primary-foreground/90' : 'text-muted-foreground/70 hover:text-muted-foreground')}><EditIcon size={12} /></Button>
+                      {msg.isCurrentUser && (currentTeacher || (currentUser && msg.by_whom_student_id === currentUser.id)) && (
+                        <>
+                           <Button variant="ghost" size="icon" onClick={() => startEdit(msg)} className={cn("h-6 w-6 p-0.5", msg.isCurrentUser ? 'text-primary-foreground/60 hover:text-primary-foreground/90' : 'text-muted-foreground/70 hover:text-muted-foreground')}><EditIcon size={12} /></Button>
+                           <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                 <Button variant="ghost" size="icon" disabled={deletingMessageId === msg.id} className={cn("h-6 w-6 p-0.5", msg.isCurrentUser ? 'text-red-300/70 hover:text-red-300' : 'text-destructive/70 hover:text-destructive')} title="Delete message">
+                                  {deletingMessageId === msg.id ? <Loader2 className="animate-spin h-3 w-3" /> : <Trash2 size={12} />}
+                                 </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Message?</AlertDialogTitle>
+                                  <AlertDialogDescription>Are you sure you want to delete this message? This action cannot be undone.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDeleteMessage(msg.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                        </>
                       )}
                   </div>
                   <p className={cn("text-[10px] mt-0.5", msg.isCurrentUser ? 'text-primary-foreground/50 text-left' : 'text-muted-foreground/60 text-right')}>{formatDistanceToNow(new Date(msg.created), { addSuffix: true })}</p>
@@ -484,4 +528,3 @@ export default function DiscussionGroupPage() {
   );
 }
 
-    
