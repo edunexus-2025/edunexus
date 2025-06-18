@@ -15,7 +15,7 @@ import { Routes } from '@/lib/constants'; // Ensure Routes is imported
 interface TeacherTest extends RecordModel {
   id: string;
   testName: string;
-  Admin_Password?: string; 
+  Admin_Password?: string;
   // Add other relevant fields from your teacher_tests collection
 }
 
@@ -69,14 +69,18 @@ export default function TeacherTestPanelPage() {
     return () => { isMounted = false; };
   }, [testId]);
 
-  // Corrected link generation using Routes.studentTakeTeacherTestLive
-  const testLink = typeof window !== 'undefined' && testId
+  const testLink = typeof window !== 'undefined' && testId && Routes && typeof Routes.studentTakeTeacherTestLive === 'function'
     ? `${window.location.origin}${Routes.studentTakeTeacherTestLive(testId)}`
-    : '';
+    : (typeof window !== 'undefined' && testId ? `${window.location.origin}/fallback-path-error/${testId}` : '');
+
+  if (typeof window !== 'undefined' && testId && !(Routes && typeof Routes.studentTakeTeacherTestLive === 'function')) {
+    console.error("CRITICAL ERROR: Routes.studentTakeTeacherTestLive is not defined as a function!", Routes);
+  }
+
 
   const handleCopyLink = () => {
-    if (!testLink) {
-      toast({ title: "Error", description: "Test link is not available.", variant: "destructive"});
+    if (!testLink || testLink.includes('fallback-path-error')) {
+      toast({ title: "Error", description: "Test link is not available or route is misconfigured.", variant: "destructive"});
       return;
     }
     navigator.clipboard.writeText(testLink)
@@ -158,16 +162,16 @@ export default function TeacherTestPanelPage() {
               <p><strong className="text-foreground">Test Name:</strong> {testData.testName}</p>
               <div className="flex items-center gap-2 flex-wrap">
                 <strong className="text-foreground">Shareable Link:</strong> 
-                {testLink ? (
+                {testLink && !testLink.includes('fallback-path-error') ? (
                   <span className="text-blue-600 dark:text-blue-400 break-all">{testLink}</span>
                 ) : (
-                  <span className="text-muted-foreground italic">Generating link...</span>
+                  <span className="text-muted-foreground italic">{testLink.includes('fallback-path-error') ? 'Error: Link misconfigured' : 'Generating link...'}</span>
                 )}
               </div>
               <p><strong className="text-foreground">Test Password:</strong> {testData.Admin_Password || 'Not set (students can start directly if test is Published)'}</p>
             </CardContent>
             <CardFooter className="p-0 pt-3">
-              <Button onClick={handleCopyLink} variant="outline" size="sm" disabled={!testLink}>
+              <Button onClick={handleCopyLink} variant="outline" size="sm" disabled={!testLink || testLink.includes('fallback-path-error')}>
                 {isCopied ? <Check className="mr-2 h-4 w-4 text-green-500" /> : <Copy className="mr-2 h-4 w-4" />}
                 {isCopied ? 'Copied!' : 'Copy Shareable Link'}
               </Button>

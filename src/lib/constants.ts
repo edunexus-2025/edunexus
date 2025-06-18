@@ -1,3 +1,4 @@
+
 import type { Plan, UserSubscriptionTierStudent, UserSubscriptionTierTeacher } from '@/lib/types';
 
 export const AppConfig = {
@@ -55,7 +56,7 @@ export const Routes = {
   feedback: '/dashboard/settings/feedback',
   studyPlan: '/dashboard/study-plan',
   studentTeacherRanking: '/dashboard/teacher-ranking',
-  myTeacherPortal: '/dashboard/my-teacher', 
+  myTeacherPortal: '/dashboard/my-teacher',
   testResult: (resultId: string) => `/dashboard/test-results/chapterwise/${resultId}`,
   testResultCompete: (resultId: string) => `/dashboard/test-results/compete/${resultId}`,
   helpCenter: '/dashboard/help-center',
@@ -80,7 +81,11 @@ export const Routes = {
   // Student Test Taking Routes
   studentTestInstructions: (testId: string) => `/student/test/${testId}/instructions`,
   studentTestChapterwise: (testId: string) => `/student/test/${testId}/chapterwise`,
-
+  studentTeacherTestPin: (testId: string) => `/student/teacher-test/${testId}/pin`,
+  studentTeacherTestInstructions: (testId: string) => `/student/teacher-test/${testId}/instructions`,
+  studentTeacherTestAttempt: (testId: string) => `/student/teacher-test/${testId}/attempt`,
+  studentTeacherTestResult: (attemptId: string) => `/student/teacher-test/results/${attemptId}`,
+  studentTakeTeacherTestLive: (testId: string) => `/student/teacher-test/${testId}/live`, // New route for teacher test start (PIN, instructions, test)
 
   // Unified Question Bank view
   qbankView: (questionId: string) => `/dashboard/qbank/${questionId}`,
@@ -108,8 +113,8 @@ export const Routes = {
   teacherDashboard: '/teacher/dashboard',
   teacherMyContent: '/teacher/dashboard/my-content',
   teacherManagePlans: '/teacher/dashboard/manage-plans',
-  teacherViewPlan: (planId: string) => `/teacher/dashboard/manage-plans/${planId}`, 
-  teacherUpgradePlatformPlan: '/teacher/dashboard/upgrade-plan', 
+  teacherViewPlan: (planId: string) => `/teacher/dashboard/manage-plans/${planId}`,
+  teacherUpgradePlatformPlan: '/teacher/dashboard/upgrade-plan',
   teacherStudentPerformance: '/teacher/dashboard/student-performance',
   teacherSettings: '/teacher/dashboard/settings',
   teacherMyStudents: '/teacher/dashboard/my-students',
@@ -119,9 +124,9 @@ export const Routes = {
   teacherTestPanelViewQuestions: (testId: string) => `/teacher/dashboard/my-content/${testId}/view-questions`,
   teacherTestPanelSettings: (testId: string) => `/teacher/dashboard/my-content/${testId}/settings`,
   teacherTestPanelResults: (testId: string) => `/teacher/dashboard/my-content/${testId}/results`,
-  teacherTestPanelStatus: (testId: string) => `/teacher/dashboard/my-content/${testId}/status`, 
+  teacherTestPanelStatus: (testId: string) => `/teacher/dashboard/my-content/${testId}/status`,
   teacherRanking: '/teacher/dashboard/ranking',
-  teacherPlan: '/teacher/dashboard/plan', 
+  teacherPlan: '/teacher/dashboard/plan',
   teacherCreateAds: '/teacher/dashboard/create-ads',
   teacherUpgradeAds: '/teacher/dashboard/upgrade-ads',
   teacherPublicAdPage: (edunexusName: string): string => `/t/${edunexusName}`,
@@ -236,7 +241,7 @@ export const allPlansData: Plan[] = [
     ctaText: 'Choose Focus',
   },
   {
-    id: 'Full_length', 
+    id: 'Full_length',
     name: 'Prime',
     description: "Full potential; complete preparation. Access full-length mock tests for exam simulation.",
     price: '₹499',
@@ -269,7 +274,7 @@ export const allPlansData: Plan[] = [
   },
 ];
 
-const studentTierValues: UserSubscriptionTierStudent[] = ['Free', 'Dpp', 'Chapterwise', 'Full_length', 'Combo']; 
+const studentTierValues: UserSubscriptionTierStudent[] = ['Free', 'Dpp', 'Chapterwise', 'Full_length', 'Combo'];
 export const studentPlansData: Plan[] = allPlansData.filter(plan =>
   studentTierValues.includes(plan.id as UserSubscriptionTierStudent)
 );
@@ -283,13 +288,13 @@ export const teacherPlatformPlansData: Plan[] = [
     priceSuffix: 'Always',
     priceValue: 0,
     features: [
-      "Create up to 2 content plans (tests/DPP series)", 
+      "Create up to 2 content plans (tests/DPP series)",
       "Basic analytics for your students",
       "Limited access to EduNexus Question Bank features",
     ],
     ctaText: 'Current Plan',
     commissionRate: 10, // EduNexus takes 10%
-    maxContentPlans: 2, 
+    maxContentPlans: 2,
     qbAccess: false,
   },
   {
@@ -307,7 +312,7 @@ export const teacherPlatformPlansData: Plan[] = [
     ctaText: 'Upgrade to Starter',
     commissionRate: 7.5, // EduNexus takes 7.5%
     maxContentPlans: 5,
-    qbAccess: false, 
+    qbAccess: false,
   },
   {
     id: 'Pro',
@@ -317,7 +322,7 @@ export const teacherPlatformPlansData: Plan[] = [
     priceSuffix: '/year',
     priceValue: 599,
     features: [
-      "Create up to 10 content plans", 
+      "Create up to 10 content plans",
       "Full access to EduNexus Question Bank",
       "Advanced analytics and reporting tools",
       "Priority support",
@@ -325,7 +330,7 @@ export const teacherPlatformPlansData: Plan[] = [
     isRecommended: true,
     ctaText: 'Upgrade to Pro',
     commissionRate: 5, // EduNexus takes 5%
-    maxContentPlans: 10, 
+    maxContentPlans: 10,
     qbAccess: true,
   },
   {
