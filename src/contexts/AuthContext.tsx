@@ -65,6 +65,7 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
   let phoneNumberMapped: string | undefined = undefined;
   let maxContentPlansAllowed: number | undefined = undefined;
   let subscriptionByTeacherArray: string[] = [];
+  let walletMoneyMapped: number | undefined = undefined;
 
 
   if (record.collectionName === 'users') {
@@ -83,6 +84,7 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
     adsSubscriptionTeacher = (record.ads_subscription || 'Free') as User['ads_subscription'];
     phoneNumberMapped = record.phone_number as User['phoneNumber'];
     maxContentPlansAllowed = typeof record.max_content_plans_allowed === 'number' ? record.max_content_plans_allowed : undefined;
+    walletMoneyMapped = typeof record.wallet_money === 'number' ? record.wallet_money : undefined;
   }
 
   const name = record.name || record.meta?.name;
@@ -134,6 +136,7 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
     can_create_ads: canCreateAdsTeacher,
     ads_subscription: adsSubscriptionTeacher,
     max_content_plans_allowed: maxContentPlansAllowed,
+    wallet_money: walletMoneyMapped,
     created: record.created,
     updated: record.updated,
     collectionId: record.collectionId,
@@ -300,7 +303,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         try {
           if (!isMounted) return;
           const fieldsToFetch = model.collectionName === 'teacher_data'
-            ? '*,max_content_plans_allowed,referralStats,subscription_by_teacher'
+            ? '*,max_content_plans_allowed,referralStats,subscription_by_teacher,wallet_money' // Added wallet_money for teacher
             : '*,referralStats,subscription_by_teacher';
 
           const refreshedRecord = await pb.collection(model.collectionName).getOne(model.id, { '$autoCancel': false, expand: 'referralStats', fields: fieldsToFetch });
@@ -499,6 +502,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         ads_subscription: "Free",
         max_content_plans_allowed: teacherPlatformPlansData.find(p => p.id === 'Free')?.maxContentPlans ?? 0,
         subscription_takenby_student: [], // Initialize as empty array
+        wallet_money: 0, // Initialize wallet_money
     };
 
     if (!details.profile_picture) {
@@ -578,11 +582,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if ('about' in data) dataToUpdate.about = data.about;
         if ('subjects_offered' in data) dataToUpdate.subjects_offered = data.subjects_offered;
         if ('profile_picture' in data && data.profile_picture instanceof File) {
-            // If a File object is passed, it should be handled by FormData if updateUserProfile were to use it.
-            // For now, if direct data update is used, this would need pre-upload or be part of a FormData update.
-            // This simplified updateUserProfile assumes simple field updates, not file uploads.
-            // File uploads should be handled separately or this function adapted for FormData.
-            // For this use case, profile_picture update is handled in teacher settings more directly.
+            // File uploads should be handled by FormData separately.
+            // This simplified updateUserProfile assumes simple field updates.
         } else if ('profile_picture' in data && data.profile_picture === null) {
             dataToUpdate.profile_picture = null; // To clear existing
         }
@@ -640,3 +641,4 @@ export const useAuth = () => {
   }
   return context;
 };
+

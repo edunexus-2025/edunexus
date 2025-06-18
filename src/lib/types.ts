@@ -60,6 +60,7 @@ export type User = {
   can_create_ads?: boolean;
   ads_subscription?: 'Free' | 'Ads Model';
   max_content_plans_allowed?: number;
+  wallet_money?: number; // Added for teacher's current balance
 
   created?: string;
   updated?: string;
@@ -252,12 +253,16 @@ export interface StudentSubscribedPlan extends RecordModel {
   teachers_plan_name_cache?: string; // Cache of the plan name
   created: string;
   updated: string;
-  amount_paid_to_edunexus: number; // Total amount paid by student
-  amount_recieved_to_teacher: number; // Net amount for teacher after commission
-  payment_id_razorpay?: string; // Added
-  order_id_razorpay?: string; // Added
+  amount_paid_to_edunexus: number; // Commission amount to EduNexus
+  amount_recieved_to_teacher: number; // Net amount for the teacher
+  payment_id_razorpay?: string; 
+  order_id_razorpay?: string; 
   expand?: {
-    teachers_plan_id?: {
+    student?: { // Student details who subscribed
+      id: string;
+      name: string;
+    };
+    teachers_plan_id?: { // Details of the teacher's plan subscribed to
       Plan_name: string;
       plan_price: string;
       plan: 'Monthly' | 'Weekly' | 'Yearly';
@@ -265,13 +270,14 @@ export interface StudentSubscribedPlan extends RecordModel {
   }
 }
 
-// Added TeacherWalletTransaction type
+// This type might become redundant or used for payout history.
+// For now, keeping it but the Wallet page will primarily use StudentSubscribedPlan for history.
 export interface TeacherWalletTransaction extends RecordModel {
   id: string;
   teacher: string;
   student_histroy?: string; // ID of students_teachers_upgrade_plan record
   total_amount_recieved: number; // Amount received by teacher AFTER EduNexus commission
-  by_which_plan_recieved?: string; // ID of teachers_upgrade_plan record
+  by_which_plan_revieved?: string; // ID of teachers_upgrade_plan record
   transaction_date: string;
   transaction_details?: string;
   created: string;
@@ -288,7 +294,7 @@ export interface TeacherWalletTransaction extends RecordModel {
         teachers_plan_id?: { Plan_name: string; id: string; };
       }
     };
-    by_which_plan_recieved?: {
+    by_which_plan_revieved?: {
       Plan_name: string;
       id: string;
     }

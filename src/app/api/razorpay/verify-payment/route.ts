@@ -51,10 +51,10 @@ export async function POST(request: NextRequest) {
       razorpay_payment_id,
       razorpay_order_id,
       razorpay_signature,
-      planId,
-      userId,
+      planId, // For platform plans: 'Starter', 'Pro'. For teacher content plans: ID of the teacher's plan
+      userId, // Student ID or Teacher ID (depending on userType)
       userType, // 'student_platform_plan', 'teacher_platform_plan', 'student_teacher_plan'
-      teacherIdForPlan, // Only for 'student_teacher_plan'
+      teacherIdForPlan, // Only for 'student_teacher_plan' - This is the ID of the teacher whose plan is being bought
       referralCodeUsed,
       productDescription,
     } = body;
@@ -78,6 +78,7 @@ export async function POST(request: NextRequest) {
     const orderDetailsFromRazorpay = await instance.orders.fetch(razorpay_order_id);
     console.log("[Razorpay Verify Payment INFO] Order details from Razorpay:", orderDetailsFromRazorpay);
 
+    // Verify notes consistency
     if (String(orderDetailsFromRazorpay.notes.userId) !== String(userId) ||
         String(orderDetailsFromRazorpay.notes.planId) !== String(planId) ||
         String(orderDetailsFromRazorpay.notes.userType) !== String(userType) ||
@@ -109,52 +110,52 @@ export async function POST(request: NextRequest) {
       });
       console.log(`[Razorpay Verify Payment INFO] Teacher ${userId} platform plan updated to ${planId}.`);
     } else if (userType === 'student_teacher_plan') {
-      if (!teacherIdForPlan) {
+      if (!teacherIdForPlan) { // teacherIdForPlan is the ID of the teacher whose plan is being bought
         return NextResponse.json({ verified: false, error: "teacherIdForPlan missing for student_teacher_plan type." }, { status: 400 });
       }
+      
+      // Fetch teacher's platform tier to determine commission
       const teacherRecord = await pbAdmin.collection('teacher_data').getOne(teacherIdForPlan);
       const teacherPlatformTier = teacherRecord.teacherSubscriptionTier as UserSubscriptionTierTeacher || 'Free';
       const platformPlanDetails = teacherPlatformPlansData.find(p => p.id === teacherPlatformTier);
-      const commissionRate = platformPlanDetails?.commissionRate !== undefined ? platformPlanDetails.commissionRate / 100 : 0.10; // Default 10% if not found
+      const commissionRate = platformPlanDetails?.commissionRate !== undefined ? platformPlanDetails.commissionRate / 100 : 0.10; // Default 10%
 
       const totalAmountPaidByStudent = orderDetailsFromRazorpay.amount / 100; // Amount in rupees
       const edunexusCommissionAmount = totalAmountPaidByStudent * commissionRate;
       const teacherNetShare = totalAmountPaidByStudent - edunexusCommissionAmount;
 
-      const teacherContentPlanRecord = await pbAdmin.collection('teachers_upgrade_plan').getOne(planId);
+      // Fetch the teacher's content plan details (e.g., name)
+      const teacherContentPlanRecord = await pbAdmin.collection('teachers_upgrade_plan').getOne(planId); // planId here is the ID of the teacher's content plan
 
+      // Create the subscription record for student-teacher plan
       await pbAdmin.collection('students_teachers_upgrade_plan').create({
-        student: userId,
-        teacher: teacherIdForPlan,
-        teachers_plan_id: planId,
+        student: userId, // student who bought the plan
+        teacher: teacherIdForPlan, // teacher whose plan was bought
+        teachers_plan_id: planId, // ID of the specific plan from 'teachers_upgrade_plan'
         teachers_plan_name_cache: teacherContentPlanRecord.Plan_name,
         payment_id_razorpay: razorpay_payment_id,
-        order_id_razorpay: razorpay_order_id, // Storing Razorpay order_id
+        order_id_razorpay: razorpay_order_id,
         payment_status: 'successful',
         starting_date: new Date().toISOString(),
         expiry_date: expiryDateISO,
-        amount_paid_to_edunexus: totalAmountPaidByStudent, // Total amount paid by student
-        amount_recieved_to_teacher: teacherNetShare, // Net amount for teacher
+        amount_paid_to_edunexus: edunexusCommissionAmount, // Amount kept by EduNexus
+        amount_recieved_to_teacher: teacherNetShare, // Amount for the teacher
         referral_code_used: referralCodeUsed || null,
       });
       console.log(`[Razorpay Verify Payment INFO] Student ${userId} subscribed to teacher ${teacherIdForPlan}'s plan ${planId}.`);
 
+      // Update student's record to link to the teacher
       await pbAdmin.collection('users').update(userId, { "subscription_by_teacher+": teacherIdForPlan });
+      // Update teacher's content plan to add enrolled student
       await pbAdmin.collection('teachers_upgrade_plan').update(planId, { "enrolled_students+": userId });
 
-      await pbAdmin.collection('teacher_wallet').create({
-        teacher: teacherIdForPlan,
-        total_amount_recieved: teacherNetShare, // This is the net amount after commission
-        by_which_plan_recieved: planId, // Corrected field name
-        transaction_date: new Date().toISOString(),
-        transaction_details: `Payment from student ${userId.substring(0,7)}... for plan "${teacherContentPlanRecord.Plan_name}". Razorpay Order: ${razorpay_order_id.substring(0,10)}...`,
-        // student_histroy field links to the students_teachers_upgrade_plan record,
-        // Assuming the 'teacher_wallet' table has a relation field named 'student_histroy'
-        // If not, this part needs adjustment or the field needs to be created.
-        // Let's assume it exists for now. We'd need the ID of the created students_teachers_upgrade_plan record.
-        // For simplicity, we'll omit linking it directly here unless it's critical and the ID is available.
-      });
-      console.log(`[Razorpay Verify Payment INFO] Teacher wallet updated for teacher ${teacherIdForPlan}. Net share: ${teacherNetShare}`);
+      // Update teacher's wallet_money in teacher_data collection
+      const currentTeacherData = await pbAdmin.collection('teacher_data').getOne(teacherIdForPlan);
+      const currentWalletMoney = Number(currentTeacherData.wallet_money) || 0;
+      const newWalletMoney = currentWalletMoney + teacherNetShare;
+      await pbAdmin.collection('teacher_data').update(teacherIdForPlan, { wallet_money: newWalletMoney });
+      console.log(`[Razorpay Verify Payment INFO] Teacher ${teacherIdForPlan}'s wallet_money updated to ${newWalletMoney}. Net share: ${teacherNetShare}`);
+
     } else {
       return NextResponse.json({ verified: false, error: "Invalid userType for payment." }, { status: 400 });
     }

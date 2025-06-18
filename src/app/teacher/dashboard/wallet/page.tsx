@@ -15,66 +15,44 @@ import { Wallet as WalletIcon, RefreshCw, AlertCircle, TrendingUp, IndianRupee, 
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { Routes } from '@/lib/constants';
-
-interface TeacherWalletTransaction extends RecordModel {
-  id: string;
-  teacher: string;
-  student_histroy?: string; 
-  total_amount_recieved: number; 
-  by_which_plan_revieved?: string; // Corrected field name from by_which_plan_recieved
-  transaction_date: string;
-  transaction_details?: string;
-  created: string;
-  expand?: {
-    student_histroy?: {
-      id: string;
-      student: string; 
-      teachers_plan_id: string; 
-      amount_paid_to_edunexus: number; 
-      amount_recieved_to_teacher: number; 
-      created: string;
-      expand?: {
-        student?: { name: string; id: string; }; 
-        teachers_plan_id?: { Plan_name: string; id: string; }; 
-      }
-    };
-    by_which_plan_revieved?: { // Corrected field name here as well for expand
-      Plan_name: string;
-      id: string;
-    }
-  }
-}
+import type { StudentSubscribedPlan } from '@/lib/types'; // Import StudentSubscribedPlan
 
 export default function TeacherWalletPage() {
-  const { teacher, isLoadingTeacher } = useAuth();
+  const { teacher, isLoadingTeacher, authRefresh } = useAuth(); // Added authRefresh
   const { toast } = useToast();
 
-  const [transactions, setTransactions] = useState<TeacherWalletTransaction[]>([]);
-  const [totalEarnings, setTotalEarnings] = useState<number>(0);
+  const [transactions, setTransactions] = useState<StudentSubscribedPlan[]>([]);
+  const [currentWalletBalance, setCurrentWalletBalance] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchWalletData = useCallback(async (isMountedGetter: () => boolean = () => true) => {
     if (!teacher?.id) {
-      if (isMountedGetter()) { setIsLoading(false); setTransactions([]); setTotalEarnings(0); }
+      if (isMountedGetter()) { setIsLoading(false); setTransactions([]); setCurrentWalletBalance(0); }
       return;
     }
     if (isMountedGetter()) setIsLoading(true);
     setError(null);
 
     try {
-      // Corrected the expand string here: by_which_plan_recieved -> by_which_plan_revieved
-      const records = await pb.collection('teacher_wallet').getFullList<TeacherWalletTransaction>({
-        filter: `teacher = "${teacher.id}"`,
-        sort: '-transaction_date', 
-        expand: 'student_histroy.student,student_histroy.teachers_plan_id,by_which_plan_revieved', // Corrected field name
+      // Fetch current wallet_money from teacher_data
+      const teacherRecord = await pb.collection('teacher_data').getOne(teacher.id, { fields: 'wallet_money', '$autoCancel': false });
+      if (isMountedGetter()) {
+        setCurrentWalletBalance(Number(teacherRecord.wallet_money) || 0);
+      } else {
+        return;
+      }
+
+      // Fetch transaction history from students_teachers_upgrade_plan
+      const transactionRecords = await pb.collection('students_teachers_upgrade_plan').getFullList<StudentSubscribedPlan>({
+        filter: `teacher = "${teacher.id}" && payment_status = "successful"`,
+        sort: '-created', 
+        expand: 'student(id,name),teachers_plan_id(Plan_name)', 
         '$autoCancel': false,
       });
       
       if (isMountedGetter()) {
-        setTransactions(records);
-        const sum = records.reduce((acc, curr) => acc + (curr.total_amount_recieved || 0), 0);
-        setTotalEarnings(sum);
+        setTransactions(transactionRecords);
       }
 
     } catch (err: any) {
@@ -82,9 +60,9 @@ export default function TeacherWalletPage() {
         const clientError = err as ClientResponseError;
         let errorMsg = `Could not load wallet data. Error: ${clientError.data?.message || clientError.message || 'Unknown error'}.`;
         if (clientError.status === 404) {
-          errorMsg = "No wallet data found. It seems you haven't received any payments yet.";
+          errorMsg = "No wallet data or transaction history found.";
           setTransactions([]);
-          setTotalEarnings(0);
+          // setCurrentWalletBalance will keep its value from teacher_data fetch if that succeeded
           setError(null); 
         } else if (clientError.isAbort || (clientError.name === 'ClientResponseError' && clientError.status === 0)) {
             errorMsg = "Request cancelled. Please try refreshing.";
@@ -93,7 +71,6 @@ export default function TeacherWalletPage() {
           setError(errorMsg);
           toast({ title: "Error", description: errorMsg, variant: "destructive" });
         }
-        // Enhanced logging
         console.error("TeacherWalletPage: Failed to fetch wallet data. Status:", clientError.status, "Response Data:", clientError.data, "Full Error Object:", clientError);
       }
     } finally {
@@ -104,6 +81,8 @@ export default function TeacherWalletPage() {
   useEffect(() => {
     let isMounted = true;
     if (!isLoadingTeacher && teacher) {
+      // Initial fetch and also ensures wallet_money from AuthContext is up-to-date for initial display
+      setCurrentWalletBalance(Number(teacher.wallet_money) || 0);
       fetchWalletData(() => isMounted);
     } else if (!isLoadingTeacher && !teacher) {
       setIsLoading(false);
@@ -111,6 +90,14 @@ export default function TeacherWalletPage() {
     }
     return () => { isMounted = false; };
   }, [isLoadingTeacher, teacher, fetchWalletData]);
+  
+  // Refetch wallet_money specifically if auth context refreshes (e.g. after a payment)
+  useEffect(() => {
+      if (teacher && teacher.wallet_money !== undefined) {
+          setCurrentWalletBalance(Number(teacher.wallet_money) || 0);
+      }
+  }, [teacher?.wallet_money]);
+
 
   if (isLoadingTeacher || isLoading) {
     return (
@@ -139,15 +126,15 @@ export default function TeacherWalletPage() {
       <Card className="shadow-md">
         <CardHeader>
           <CardTitle className="text-xl flex items-center gap-2">
-            <IndianRupee className="h-6 w-6 text-green-500" /> Total Earnings
+            <IndianRupee className="h-6 w-6 text-green-500" /> Current Available Balance
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-4xl font-bold text-green-600">
-            ₹{totalEarnings.toFixed(2)}
+            ₹{currentWalletBalance.toFixed(2)}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            This is your net earning after EduNexus platform fees.
+            This is your net earning available for payout after EduNexus platform fees.
           </p>
         </CardContent>
         <CardFooter>
@@ -192,37 +179,34 @@ export default function TeacherWalletPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
-                    <TableHead>Details</TableHead>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Plan Subscribed</TableHead>
                     <TableHead className="text-right">Amount (Net)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {transactions.map((tx) => {
-                    const studentName = tx.expand?.student_histroy?.expand?.student?.name || 'Unknown Student';
-                    const studentId = tx.expand?.student_histroy?.expand?.student?.id;
-                    // Corrected plan name access for wallet display
-                    const planNameFromWallet = tx.expand?.by_which_plan_revieved?.Plan_name;
-                    const planNameFromStudentHistory = tx.expand?.student_histroy?.expand?.teachers_plan_id?.Plan_name;
-                    const planName = planNameFromWallet || planNameFromStudentHistory || 'Unknown Plan';
-                    const amountNet = tx.total_amount_recieved;
-                    const originalPaymentAmount = tx.expand?.student_histroy?.amount_paid_to_edunexus; 
+                    const studentName = tx.expand?.student?.name || 'Unknown Student';
+                    const planName = tx.expand?.teachers_plan_id?.Plan_name || tx.teachers_plan_name_cache || 'Unknown Plan';
+                    const amountNet = tx.amount_recieved_to_teacher; // This is the net amount for the teacher
+                    const originalPaymentAmount = tx.amount_paid_to_edunexus + tx.amount_recieved_to_teacher; // Recalculate total
 
                     return (
                       <TableRow key={tx.id}>
                         <TableCell className="text-xs">
-                          {format(new Date(tx.transaction_date || tx.created), "dd MMM yy, HH:mm")}
+                          {format(new Date(tx.created), "dd MMM yy, HH:mm")}
                         </TableCell>
-                        <TableCell>
-                          <p className="text-sm font-medium text-foreground">
-                            {tx.transaction_details || `From ${studentName} for "${planName}"`}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Student: {studentId ? studentId.substring(0,8) : 'N/A'}...
-                            {originalPaymentAmount !== undefined && ` (Original Payment: ₹${originalPaymentAmount.toFixed(2)})`}
-                          </p>
+                        <TableCell className="text-sm font-medium text-foreground">
+                          {studentName}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {planName}
                         </TableCell>
                         <TableCell className="text-right font-semibold text-green-600">
                           ₹{amountNet?.toFixed(2) || '0.00'}
+                           {originalPaymentAmount > 0 && amountNet !== undefined && originalPaymentAmount !== amountNet && (
+                            <p className="text-xs font-normal text-muted-foreground">(Original: ₹{originalPaymentAmount.toFixed(2)})</p>
+                           )}
                         </TableCell>
                       </TableRow>
                     );
