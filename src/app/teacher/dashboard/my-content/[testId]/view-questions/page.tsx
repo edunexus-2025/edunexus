@@ -45,11 +45,11 @@ interface DisplayableQuestion extends RecordModel {
 
 interface ParentTest extends RecordModel {
   testName: string;
-  questions_edunexus?: string[];
-  questions_teachers?: string[];
+  questions_edunexus?: string[]; // IDs from question_bank
+  questions_teachers?: string[]; // IDs from teacher_question_data
   expand?: {
-    questions_edunexus?: RecordModel[];
-    questions_teachers?: RecordModel[];
+    questions_edunexus?: RecordModel[]; // Expanded records from question_bank
+    questions_teachers?: RecordModel[]; // Expanded records from teacher_question_data
   };
 }
 
@@ -71,10 +71,11 @@ const renderLatex = (text: string | undefined | null): React.ReactNode => {
 const getPbFileUrlUtil = (record: {collectionId?: string, collectionName?: string, id: string, [key:string]: any} | null | undefined, fieldName: string): string | null => {
     if (record && record[fieldName] && typeof record[fieldName] === 'string' && record.collectionId && record.collectionName) {
       try { return pb.files.getUrl(record as RecordModel, record[fieldName] as string); }
-      catch (e) { console.warn(`Error getting URL for ${fieldName} in record ${record.id}:`, e); return null; }
+      catch (e) { console.warn(`ViewTestQuestionsPage: Error getting URL for ${fieldName} in record ${record.id}:`, e); return null; }
     }
     return null;
 };
+
 
 export default function ViewTestQuestionsPage() {
   const params = useParams();
@@ -110,7 +111,6 @@ export default function ViewTestQuestionsPage() {
           setParentTest(fetchedTest);
           let combinedQuestions: DisplayableQuestion[] = [];
 
-          // Process EduNexus QB Questions
           const eduNexusQs = fetchedTest.expand?.questions_edunexus || [];
           eduNexusQs.forEach((q: RecordModel) => {
             combinedQuestions.push({
@@ -124,7 +124,7 @@ export default function ViewTestQuestionsPage() {
                 { label: 'C', text: q.optionCText, imageUrl: getPbFileUrlUtil(q, 'optionCImage') },
                 { label: 'D', text: q.optionDText, imageUrl: getPbFileUrlUtil(q, 'optionDImage') },
               ],
-              displayCorrectOptionLabel: q.correctOption, // e.g., "A"
+              displayCorrectOptionLabel: q.correctOption,
               displayExplanationText: q.explanationText,
               displayExplanationImageUrl: getPbFileUrlUtil(q, 'explanationImage'),
               source: 'edunexus',
@@ -139,10 +139,8 @@ export default function ViewTestQuestionsPage() {
             });
           });
 
-          // Process Teacher's Own QB Questions
           const teacherQs = fetchedTest.expand?.questions_teachers || [];
           teacherQs.forEach((q: RecordModel) => {
-            // Note: Teacher question images are URLs already
             combinedQuestions.push({
               ...q,
               id: q.id,
@@ -154,14 +152,13 @@ export default function ViewTestQuestionsPage() {
                 { label: 'C', text: q.OptionCText, imageUrl: q.OptionCImage || null },
                 { label: 'D', text: q.OptionDText, imageUrl: q.OptionDImage || null },
               ],
-              displayCorrectOptionLabel: q.CorrectOption?.replace("Option ", "") || "", // "Option A" -> "A"
-              displayExplanationText: q.explanationText, // Using correct field name
+              displayCorrectOptionLabel: q.CorrectOption?.replace("Option ", "") || "",
+              displayExplanationText: q.explanationText, // Corrected to match field name
               displayExplanationImageUrl: q.explanationImage || null, // Direct URL
               source: 'teacher',
-              difficulty: undefined, // Teacher questions don't have difficulty in their schema
-              subject: q.subject, // Teacher questions have subject (from QBExam association)
-              lessonName: fetchedTest.testName, // Associate with the parent test name
               marks: q.marks,
+              subject: q.subject, // Assuming teacher_question_data has 'subject'
+              lessonName: q.LessonName, // Assuming teacher_question_data has 'LessonName'
             });
           });
           
@@ -245,7 +242,7 @@ export default function ViewTestQuestionsPage() {
           </div>
           <div className="p-3 border-b border-border rounded-md bg-background">
             {currentQuestion.displayQuestionText && (<div className="prose prose-sm dark:prose-invert max-w-none mb-4 text-foreground leading-relaxed">{renderLatex(currentQuestion.displayQuestionText)}</div>)}
-            {currentQuestion.displayQuestionImageUrl && (<div className="my-3 text-center"><NextImage src={currentQuestion.displayQuestionImageUrl} alt="Question Image" width={400} height={300} className="rounded object-contain inline-block border" data-ai-hint="question diagram"/></div>)}
+            {currentQuestion.displayQuestionImageUrl && (<div className="my-3 text-center"><NextImage src={currentQuestion.displayQuestionImageUrl} alt="Question Image" width={400} height={300} className="rounded object-contain inline-block border" data-ai-hint="diagram illustration"/></div>)}
             {!(currentQuestion.displayQuestionText || currentQuestion.displayQuestionImageUrl) && (<p className="text-sm text-muted-foreground italic">No question text or image provided.</p>)}
           </div>
           <div className="space-y-3">
@@ -257,7 +254,7 @@ export default function ViewTestQuestionsPage() {
                   <span className={cn("font-semibold", isThisCorrect ? "text-green-700 dark:text-green-300" : "text-primary")}>{opt.label}.</span>
                   <div className="flex-1 text-sm">
                     {opt.text && (<div className={cn("prose prose-sm dark:prose-invert max-w-none", isThisCorrect && "font-semibold")}>{renderLatex(opt.text)}</div>)}
-                    {opt.imageUrl && (<div className="mt-1.5"><NextImage src={opt.imageUrl} alt={`Option ${opt.label}`} width={150} height={80} className="rounded object-contain border" data-ai-hint="option illustration"/></div>)}
+                    {opt.imageUrl && (<div className="mt-1.5"><NextImage src={opt.imageUrl} alt={`Option ${opt.label}`} width={150} height={80} className="rounded object-contain border" data-ai-hint="option diagram"/></div>)}
                     {!(opt.text || opt.imageUrl) && <p className="text-muted-foreground italic">Option {opt.label} content not available.</p>}
                   </div>
                   {isThisCorrect && <Badge className="ml-auto text-xs bg-green-600 text-white px-2 py-0.5">Correct</Badge>}
@@ -282,4 +279,3 @@ export default function ViewTestQuestionsPage() {
     </div>
   );
 }
-
