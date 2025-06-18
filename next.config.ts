@@ -73,12 +73,7 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
-      { // Replit domain from the error - ensure pathname is correct
-        protocol: 'https',
-        hostname: 'f3605bbf-1d05-4292-9f0b-d3cd0ac21935-00-2eeov1wweb7qq.sisko.replit.dev',
-        port: '',
-        pathname: '/api/files/**', 
-      },
+      // Removed the explicit entry for f3605bbf-1d05-4292-9f0b-d3cd0ac21935-00-2eeov1wweb7qq.sisko.replit.dev
       // Existing cluster-specific URLs, keep if still needed, otherwise remove
       {
         protocol: 'https',
