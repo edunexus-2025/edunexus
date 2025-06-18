@@ -12,110 +12,114 @@
         "system": false,
         "fields": [
             {
-                "autogeneratePattern": "[a-z0-9]{15}",
-                "hidden": false,
-                "id": "text3208210256",
-                "max": 15,
-                "min": 15,
-                "name": "id",
-                "pattern": "^[a-z0-9]+$",
-                "presentable": false,
-                "primaryKey": true,
-                "required": true,
                 "system": true,
-                "type": "text"
-            },
-            {
-                "cascadeDelete": false,
-                "collectionId": "pbc_2504364897",
-                "hidden": false,
-                "id": "relation2968954581",
-                "maxSelect": 1,
-                "minSelect": 1,
-                "name": "teacher",
-                "presentable": false,
+                "id": "text3208210256",
+                "name": "id",
+                "type": "text",
                 "required": true,
-                "system": false,
-                "type": "relation"
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": 15,
+                    "max": 15,
+                    "pattern": "^[a-z0-9]+$",
+                    "autogeneratePattern": "[a-z0-9]{15}"
+                }
             },
             {
-                "autogeneratePattern": "",
-                "hidden": false,
+                "system": false,
+                "id": "relation2968954581",
+                "name": "teacher",
+                "type": "relation",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "pbc_2504364897",
+                    "cascadeDelete": false,
+                    "minSelect": 1,
+                    "maxSelect": 1,
+                    "displayFields": null
+                }
+            },
+            {
+                "system": false,
                 "id": "text4277611395",
-                "max": null,
-                "min": null,
                 "name": "QuestionText",
-                "pattern": "",
-                "presentable": true,
-                "primaryKey": false,
+                "type": "text",
                 "required": false,
-                "system": false,
-                "type": "text"
+                "presentable": true,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
             },
             {
-                "autogeneratePattern": "",
-                "hidden": false,
+                "system": false,
                 "id": "text721093678",
-                "max": null,
-                "min": null,
                 "name": "OptionAText",
-                "pattern": "",
-                "presentable": true,
-                "primaryKey": false,
+                "type": "text",
                 "required": false,
-                "system": false,
-                "type": "text"
+                "presentable": true,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
             },
             {
-                "autogeneratePattern": "",
-                "hidden": false,
+                "system": false,
                 "id": "text1834712830",
-                "max": null,
-                "min": null,
                 "name": "OptionBText",
-                "pattern": "",
-                "presentable": true,
-                "primaryKey": false,
+                "type": "text",
                 "required": false,
-                "system": false,
-                "type": "text"
+                "presentable": true,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
             },
             {
-                "autogeneratePattern": "",
-                "hidden": false,
+                "system": false,
                 "id": "text1346066254",
-                "max": null,
-                "min": null,
                 "name": "OptionCText",
-                "pattern": "",
-                "presentable": true,
-                "primaryKey": false,
+                "type": "text",
                 "required": false,
-                "system": false,
-                "type": "text"
+                "presentable": true,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
             },
             {
-                "autogeneratePattern": "",
-                "hidden": false,
+                "system": false,
                 "id": "text3793455966",
-                "max": null,
-                "min": null,
                 "name": "OptionDText",
-                "pattern": "",
-                "presentable": true,
-                "primaryKey": false,
+                "type": "text",
                 "required": false,
-                "system": false,
-                "type": "text"
+                "presentable": true,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
             },
             {
-                "hidden": false,
+                "system": false,
                 "id": "select3176711591",
                 "name": "CorrectOption",
                 "type": "select",
-                "system": false,
                 "required": true,
                 "presentable": true,
+                "unique": false,
                 "options": {
                     "maxSelect": 1,
                     "values": [
@@ -127,138 +131,152 @@
                 }
             },
             {
-                "cascadeDelete": false,
-                "collectionId": "pbc_2863365490",
-                "hidden": false,
-                "id": "relation3239013921",
-                "maxSelect": 1,
-                "minSelect": 1,
-                "name": "LessonName",
-                "presentable": true,
-                "required": true,
                 "system": false,
+                "id": "relation3239013921",
+                "name": "LessonName",
                 "type": "relation",
+                "required": true,
+                "presentable": true,
+                "unique": false,
                 "options": {
                     "collectionId": "pbc_2863365490",
                     "cascadeDelete": false,
                     "minSelect": 1,
                     "maxSelect": 1,
-                    "displayFields": ["testName"]
+                    "displayFields": ["testName"] 
                 }
             },
             {
-                "autogeneratePattern": "",
-                "hidden": false,
+                "system": false,
                 "id": "text3991840572",
-                "max": null,
-                "min": null,
                 "name": "QBExam",
-                "pattern": "",
-                "presentable": true,
-                "primaryKey": false,
+                "type": "text",
                 "required": true,
-                "system": false,
-                "type": "text"
-            },
-            {
-                "autogeneratePattern": "",
-                "hidden": false,
-                "id": "text2935346487",
-                "max": null,
-                "min": null,
-                "name": "explanationText",
-                "pattern": "",
                 "presentable": true,
-                "primaryKey": false,
-                "required": false,
-                "system": false,
-                "type": "text"
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
             },
             {
-                "exceptDomains": null,
-                "hidden": false,
+                "system": false,
+                "id": "text2935346487",
+                "name": "explanationText",
+                "type": "text",
+                "required": false,
+                "presentable": true,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
                 "id": "url3024747866",
                 "name": "QuestionImage",
-                "onlyDomains": null,
-                "presentable": true,
+                "type": "url",
                 "required": false,
-                "system": false,
-                "type": "url"
+                "presentable": true,
+                "unique": false,
+                "options": {
+                    "exceptDomains": null,
+                    "onlyDomains": null
+                }
             },
             {
-                "exceptDomains": null,
-                "hidden": false,
+                "system": false,
                 "id": "url486157856",
                 "name": "OptionAImage",
-                "onlyDomains": null,
-                "presentable": true,
+                "type": "url",
                 "required": false,
-                "system": false,
-                "type": "url"
+                "presentable": true,
+                "unique": false,
+                "options": {
+                    "exceptDomains": null,
+                    "onlyDomains": null
+                }
             },
             {
-                "exceptDomains": null,
-                "hidden": false,
+                "system": false,
                 "id": "url2590923918",
                 "name": "OptionBImage",
-                "onlyDomains": null,
-                "presentable": true,
+                "type": "url",
                 "required": false,
-                "system": false,
-                "type": "url"
+                "presentable": true,
+                "unique": false,
+                "options": {
+                    "exceptDomains": null,
+                    "onlyDomains": null
+                }
             },
             {
-                "exceptDomains": null,
-                "hidden": false,
+                "system": false,
                 "id": "url1362267947",
                 "name": "OptionCImage",
-                "onlyDomains": null,
-                "presentable": true,
+                "type": "url",
                 "required": false,
-                "system": false,
-                "type": "url"
+                "presentable": true,
+                "unique": false,
+                "options": {
+                    "exceptDomains": null,
+                    "onlyDomains": null
+                }
             },
             {
-                "exceptDomains": null,
-                "hidden": false,
+                "system": false,
                 "id": "url1278721939",
                 "name": "OptionDImage",
-                "onlyDomains": null,
-                "presentable": true,
+                "type": "url",
                 "required": false,
-                "system": false,
-                "type": "url"
+                "presentable": true,
+                "unique": false,
+                "options": {
+                    "exceptDomains": null,
+                    "onlyDomains": null
+                }
             },
             {
-                "exceptDomains": null,
-                "hidden": false,
+                "system": false,
                 "id": "url2014677041",
                 "name": "explanationImage",
-                "onlyDomains": null,
-                "presentable": true,
+                "type": "url",
                 "required": false,
-                "system": false,
-                "type": "url"
+                "presentable": true,
+                "unique": false,
+                "options": {
+                    "exceptDomains": null,
+                    "onlyDomains": null
+                }
             },
             {
-                "hidden": false,
+                "system": false,
                 "id": "autodate2990389176",
                 "name": "created",
-                "onCreate": true,
-                "onUpdate": false,
+                "type": "autodate",
+                "required": false,
                 "presentable": false,
-                "system": false,
-                "type": "autodate"
+                "unique": false,
+                "options": {
+                    "onCreate": true,
+                    "onUpdate": false
+                }
             },
             {
-                "hidden": false,
+                "system": false,
                 "id": "autodate3332085495",
                 "name": "updated",
-                "onCreate": true,
-                "onUpdate": true,
+                "type": "autodate",
+                "required": false,
                 "presentable": false,
-                "system": false,
-                "type": "autodate"
+                "unique": false,
+                "options": {
+                    "onCreate": true,
+                    "onUpdate": true
+                }
             }
         ],
         "indexes": [
@@ -268,3 +286,5 @@
         "system": false
     }
 ]
+
+        

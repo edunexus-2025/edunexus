@@ -2,7 +2,7 @@
 [
     {
         "id": "pbc_2863365490",
-        "listRule": "@request.auth.id != \"\" && teacherId = @request.auth.id",
+        "listRule": "@request.auth.id != \"\"",
         "viewRule": "@request.auth.id != \"\"",
         "createRule": "@request.auth.id != \"\" && teacherId = @request.auth.id",
         "updateRule": "@request.auth.id != \"\" && teacherId = @request.auth.id",
@@ -12,68 +12,72 @@
         "system": false,
         "fields": [
             {
-                "autogeneratePattern": "[a-z0-9]{15}",
-                "hidden": false,
-                "id": "text3208210256",
-                "max": 15,
-                "min": 15,
-                "name": "id",
-                "pattern": "^[a-z0-9]+$",
-                "presentable": false,
-                "primaryKey": true,
-                "required": true,
                 "system": true,
-                "type": "text"
+                "id": "text3208210256",
+                "name": "id",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": 15,
+                    "max": 15,
+                    "pattern": "^[a-z0-9]+$",
+                    "autogeneratePattern": "[a-z0-9]{15}"
+                }
             },
             {
-                "cascadeDelete": false,
-                "collectionId": "pbc_2504364897",
-                "hidden": false,
+                "system": false,
                 "id": "relation3913794691",
-                "maxSelect": 1,
-                "minSelect": 1,
                 "name": "teacherId",
-                "presentable": true,
+                "type": "relation",
                 "required": true,
-                "system": false,
-                "type": "relation"
+                "presentable": true,
+                "unique": false,
+                "options": {
+                    "collectionId": "pbc_2504364897",
+                    "cascadeDelete": false,
+                    "minSelect": 1,
+                    "maxSelect": 1,
+                    "displayFields": null
+                }
             },
             {
-                "autogeneratePattern": "",
-                "hidden": false,
+                "system": false,
                 "id": "text3389461509",
-                "max": 150,
-                "min": 1,
                 "name": "testName",
-                "pattern": "",
-                "presentable": true,
-                "primaryKey": false,
+                "type": "text",
                 "required": true,
-                "system": false,
-                "type": "text"
+                "presentable": true,
+                "unique": false,
+                "options": {
+                    "min": 1,
+                    "max": 150,
+                    "pattern": ""
+                }
             },
             {
-                "autogeneratePattern": "",
-                "hidden": false,
+                "system": false,
                 "id": "text2254405824",
-                "max": null,
-                "min": 1,
                 "name": "duration",
-                "pattern": "^[0-9]+$",
-                "presentable": true,
-                "primaryKey": false,
+                "type": "text",
                 "required": true,
-                "system": false,
-                "type": "text"
+                "presentable": true,
+                "unique": false,
+                "options": {
+                    "min": 1,
+                    "max": null,
+                    "pattern": "^[0-9]+$"
+                }
             },
             {
-                "hidden": false,
+                "system": false,
                 "id": "select3616895705",
                 "name": "model",
                 "type": "select",
-                "system": false,
                 "required": true,
                 "presentable": true,
+                "unique": false,
                 "options": {
                     "maxSelect": 1,
                     "values": [
@@ -83,13 +87,13 @@
                 }
             },
             {
-                "hidden": false,
+                "system": false,
                 "id": "select2363381545",
                 "name": "type",
                 "type": "select",
-                "system": false,
                 "required": true,
                 "presentable": true,
+                "unique": false,
                 "options": {
                     "maxSelect": 1,
                     "values": [
@@ -99,13 +103,13 @@
                 }
             },
             {
-                "hidden": false,
+                "system": false,
                 "id": "select2063623452",
                 "name": "status",
                 "type": "select",
-                "system": false,
                 "required": true,
                 "presentable": true,
+                "unique": false,
                  "options": {
                     "maxSelect": 1,
                     "values": [
@@ -116,33 +120,29 @@
                 }
             },
             {
-                "cascadeDelete": false,
-                "collectionId": "pbc_3669383003",
-                "hidden": false,
-                "id": "relation2329695445",
-                "maxSelect": 200,
-                "minSelect": 0,
-                "name": "questions",
-                "presentable": true,
-                "required": false,
                 "system": false,
+                "id": "relation2329695445",
+                "name": "questions",
                 "type": "relation",
+                "required": false,
+                "presentable": true,
+                "unique": false,
                 "options": {
                     "collectionId": "pbc_3669383003",
                     "cascadeDelete": false,
                     "minSelect": 0,
                     "maxSelect": 200,
-                    "displayFields": ["id", "QuestionText", "LessonName"]
+                    "displayFields": ["id", "QuestionText"]
                 }
             },
             {
-                "hidden": false,
+                "system": false,
                 "id": "number3496344499",
                 "name": "totalScore",
-                "presentable": true,
-                "required": false,
-                "system": false,
                 "type": "number",
+                "required": false,
+                "presentable": true,
+                "unique": false,
                 "options": {
                     "min": 0,
                     "max": null,
@@ -150,65 +150,28 @@
                 }
             },
             {
-                "hidden": false,
+                "system": false,
                 "id": "number1847253182",
                 "name": "PerNegativeScore",
-                "presentable": true,
-                "required": false,
-                "system": false,
                 "type": "number",
+                "required": false,
+                "presentable": true,
+                "unique": false,
                  "options": {
                     "min": null,
                     "max": null,
                     "noDecimal": false
                 }
             },
+            { "system": false, "id": "number2507168605", "name": "Admin_Password", "type": "number", "required": false, "presentable": false, "unique": false, "options": { "min": 1000, "max": 999999, "noDecimal": true }},
             {
-                "hidden": true, "id": "number1707412729", "name": "PhysicsQuestions", "type": "number", "required": false, "system": false, "options": {"min": 0, "max": null, "noDecimal": true }
-            },
-            {
-                "hidden": true, "id": "number520241329", "name": "ChemistryQuestions", "type": "number", "required": false, "system": false, "options": {"min": 0, "max": null, "noDecimal": true }
-            },
-            {
-                "hidden": true, "id": "number3399273475", "name": "MathsQuestions", "type": "number", "required": false, "system": false, "options": {"min": 0, "max": null, "noDecimal": true }
-            },
-            {
-                "hidden": true, "id": "number4168650354", "name": "BiologyQuestions", "type": "number", "required": false, "system": false, "options": {"min": 0, "max": null, "noDecimal": true }
-            },
-            {
-                "hidden": true, "id": "number2751317907", "name": "PhysicsScore", "type": "number", "required": false, "system": false, "options": {"min": 0, "max": null, "noDecimal": false }
-            },
-            {
-                "hidden": true, "id": "number1027891066", "name": "ChemistryScore", "type": "number", "required": false, "system": false, "options": {"min": 0, "max": null, "noDecimal": false }
-            },
-            {
-                "hidden": true, "id": "number3948510286", "name": "MathsScore", "type": "number", "required": false, "system": false, "options": {"min": 0, "max": null, "noDecimal": false }
-            },
-            {
-                "hidden": true, "id": "number1210194381", "name": "BiologyScore", "type": "number", "required": false, "system": false, "options": {"min": 0, "max": null, "noDecimal": false }
-            },
-            {
-                "hidden": false,
-                "id": "number2507168605",
-                "name": "Admin_Password",
-                "presentable": false,
-                "required": false, 
                 "system": false,
-                "type": "number",
-                 "options": {
-                    "min": 1000,
-                    "max": 999999,
-                    "noDecimal": true
-                }
-            },
-            {
-                "hidden": false,
                 "id": "select3991840572",
                 "name": "QBExam",
                 "type": "select",
-                "system": false,
                 "required": true,
                 "presentable": true,
+                "unique": false,
                  "options": {
                     "maxSelect": 1,
                     "values": [
@@ -218,102 +181,14 @@
                     ]
                 }
             },
-            {
-                "hidden": false,
-                "id": "bool1375632720",
-                "name": "Students_can_view_their_results_after_the_test",
-                "presentable": false,
-                "required": false,
-                "system": false,
-                "type": "bool"
-            },
-            {
-                "hidden": false,
-                "id": "number1102202353",
-                "name": "How_many_times_can_students_take_the_test",
-                "presentable": false,
-                "required": false,
-                "system": false,
-                "type": "number",
-                "options": {
-                    "min": 1,
-                    "max": 10,
-                    "noDecimal": true
-                }
-            },
-            {
-                "hidden": false,
-                "id": "bool3741509037",
-                "name": "Shuffle_Questions",
-                "presentable": false,
-                "required": false,
-                "system": false,
-                "type": "bool"
-            },
-            {
-                "hidden": false,
-                "id": "select1660153532",
-                "name": "Who_can_take_your_test",
-                "type": "select",
-                "system": false,
-                "required": false,
-                "presentable": false,
-                "options": {
-                    "maxSelect": 1,
-                    "values": [
-                        "EveryOne",
-                        "Group 1",
-                        "Group 2",
-                        "Group 3",
-                        "Group 4",
-                        "Group 5",
-                        "Group 6"
-                    ]
-                }
-            },
-            {
-                "hidden": false,
-                "id": "bool860012282",
-                "name": "Would_you_like_to_get_admin_access_through_link",
-                "presentable": false,
-                "required": false,
-                "system": false,
-                "type": "bool"
-            },
-            {
-                "autogeneratePattern": "",
-                "hidden": false,
-                "id": "text2738425650",
-                "max": 500, 
-                "min": null,
-                "name": "Test_Description",
-                "pattern": "",
-                "presentable": true,
-                "primaryKey": false,
-                "required": false,
-                "system": false,
-                "type": "text"
-            },
-            {
-                "hidden": false,
-                "id": "autodate2990389176",
-                "name": "created",
-                "onCreate": true,
-                "onUpdate": false,
-                "presentable": false,
-                "system": true, 
-                "type": "autodate"
-            },
-            {
-                "hidden": false,
-                "id": "autodate3332085495",
-                "name": "updated",
-                "onCreate": true,
-                "onUpdate": true,
-                "presentable": false,
-                "system": true,
-                "type": "autodate"
-            }
+            { "system": false, "id": "bool1375632720", "name": "Students_can_view_their_results_after_the_test", "type": "bool", "required": false, "presentable": false, "unique": false, "options": {} },
+            { "system": false, "id": "number1102202353", "name": "How_many_times_can_students_take_the_test", "type": "number", "required": false, "presentable": false, "unique": false, "options": { "min": 1, "max": 10, "noDecimal": true }},
+            { "system": false, "id": "bool3741509037", "name": "Shuffle_Questions", "type": "bool", "required": false, "presentable": false, "unique": false, "options": {} },
+            { "system": false, "id": "select1660153532", "name": "Who_can_take_your_test", "type": "select", "required": false, "presentable": false, "unique": false, "options": { "maxSelect": 1, "values": [ "EveryOne", "Group 1", "Group 2", "Group 3", "Group 4", "Group 5", "Group 6" ]}},
+            { "system": false, "id": "bool860012282", "name": "Would_you_like_to_get_admin_access_through_link", "type": "bool", "required": false, "presentable": false, "unique": false, "options": {} },
+            { "system": false, "id": "text2738425650", "name": "Test_Description", "type": "text", "required": false, "presentable": true, "unique": false, "options": { "min": null, "max": 500, "pattern": "" }},
+            { "system": true, "id": "autodate2990389176", "name": "created", "type": "autodate", "required": false, "presentable": false, "unique": false, "options": { "onCreate": true, "onUpdate": false }},
+            { "system": true, "id": "autodate3332085495", "name": "updated", "type": "autodate", "required": false, "presentable": false, "unique": false, "options": { "onCreate": true, "onUpdate": true }}
         ],
         "indexes": [
             "CREATE INDEX idx_teacher_tests_teacherId ON teacher_tests (teacherId)"
@@ -321,5 +196,5 @@
         "system": false
     }
 ]
-    
-    
+
+        
