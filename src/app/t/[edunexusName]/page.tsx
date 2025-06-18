@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import NextImage from 'next/image';
 import Link from 'next/link';
 import pb from '@/lib/pocketbase';
-import type { RecordModel, ClientResponseError } from 'pocketbase';
+import type { RecordModel, ClientResponseError, UnsubscribeFunc } from 'pocketbase';
 import { useToast } from '@/hooks/use-toast';
 import { Navbar } from '@/components/layout/Navbar';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AppConfig, Routes, escapeForPbFilter } from '@/lib/constants';
 // Input removed as referral input is moved
 import {
-  AlertCircle, GraduationCap, BarChart2, Users, Link as LinkIcon, Instagram, Facebook, Youtube, Twitter, Send as TelegramIcon, Globe as WebsiteIcon, ExternalLink, ShieldCheck, Star, TrendingUp, ListChecks, BookOpenCheck // Added BookOpenCheck
+  AlertCircle, GraduationCap, BarChart2, Users, Link as LinkIcon, Instagram, Facebook, Youtube, Twitter, Send as TelegramIcon, Globe as WebsiteIcon, ExternalLink, ShieldCheck, Star, TrendingUp, ListChecks, BookOpenCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { User, Plan as AppPlanType, TeacherPlan as TeacherPlanType } from '@/lib/types';
@@ -59,10 +59,10 @@ interface TeacherAdRecord extends RecordModel {
 interface TeacherAdPageData {
   teacherData: TeacherDataRecord;
   adData: TeacherAdRecord | null;
-  featuredPlans: TeacherPlanType[]; 
+  featuredPlans: TeacherPlanType[];
   teacherAvatarUrl: string;
   adSpecificAvatarUrl?: string | null;
-  hasAnyContentPlans?: boolean; // New flag
+  hasAnyContentPlans?: boolean;
 }
 
 interface SocialLinkProps {
@@ -127,8 +127,8 @@ export default function TeacherPublicAdPage() {
       try {
         const adRecords = await pb.collection('teacher_ads').getFullList<TeacherAdRecord>({ filter: `user = "${teacherData.id}"`, sort: '-created' });
         if (!isMountedGetter()) return;
-        if (adRecords.length > 0) { 
-          adData = adRecords[0]; 
+        if (adRecords.length > 0) {
+          adData = adRecords[0];
           adSpecificAvatarUrl = getPbFileUrl(adData, 'profile_pic_if_not_edunexus_pic');
           if (adData.plan && Array.isArray(adData.plan) && adData.plan.length > 0) {
             const planFilter = adData.plan.map(id => `id = "${escapeForPbFilter(id)}"`).join(' || ');
@@ -136,9 +136,8 @@ export default function TeacherPublicAdPage() {
           }
         }
       } catch (adError: any) { if (isMountedGetter()) console.warn("Ad data not found or error fetching, proceeding with teacher data only:", adError.data || adError.message); }
-      
+
       if (!isMountedGetter()) return;
-      // Check if the teacher has *any* content plans, regardless of featured ones in ad
       if (teacherData.id) {
         const allTeacherPlans = await pb.collection('teachers_upgrade_plan').getList(1, 1, { filter: `teacher = "${teacherData.id}"`, count: true });
         if (isMountedGetter()) hasAnyContentPlans = allTeacherPlans.totalItems > 0;
@@ -149,7 +148,58 @@ export default function TeacherPublicAdPage() {
     finally { if (isMountedGetter()) setIsLoading(false); }
   }, [edunexusName]);
 
-  useEffect(() => { let isMounted = true; fetchData(() => isMounted); return () => { isMounted = false; }; }, [fetchData]);
+  useEffect(() => {
+    let isMounted = true;
+    const componentIsMounted = () => isMounted;
+    let unsubscribeAds: UnsubscribeFunc | undefined;
+    let unsubscribeTeacherData: UnsubscribeFunc | undefined;
+
+    fetchData(componentIsMounted);
+
+    const setupSubscriptions = async () => {
+        if (!isMounted) return;
+        const teacherId = pageData?.teacherData?.id; // Get teacherId after initial fetch
+        
+        if (teacherId) {
+            try {
+                unsubscribeAds = await pb.collection('teacher_ads').subscribe('*', (e) => {
+                    if (componentIsMounted() && e.record.user === teacherId) {
+                        fetchData(componentIsMounted);
+                    }
+                });
+            } catch (subError) {
+                if (componentIsMounted()) console.error("Error subscribing to teacher_ads:", subError);
+            }
+            
+            if (edunexusName) { // Subscribe to teacher_data by edunexusName if available for profile pic/name changes
+                try {
+                    // Note: PocketBase doesn't directly support subscribing to a single record by a non-ID field filter.
+                    // A more robust way would be to subscribe by record ID if you can get it first, or handle broader updates.
+                    // For simplicity here, we subscribe to all changes and re-filter if the specific teacher's record changes.
+                    unsubscribeTeacherData = await pb.collection('teacher_data').subscribe('*', (e) => {
+                         if (componentIsMounted() && e.record.EduNexus_Name === edunexusName) {
+                            fetchData(componentIsMounted);
+                        }
+                    });
+                } catch (subError) {
+                    if (componentIsMounted()) console.error("Error subscribing to teacher_data:", subError);
+                }
+            }
+        }
+    };
+    
+    // Only set up subscriptions if we have teacherData from the initial fetch
+    if (pageData?.teacherData?.id) {
+        setupSubscriptions();
+    }
+
+    return () => {
+      isMounted = false;
+      if (unsubscribeAds) unsubscribeAds();
+      if (unsubscribeTeacherData) unsubscribeTeacherData();
+    };
+  }, [fetchData, edunexusName, pageData?.teacherData?.id]); // Re-run if edunexusName changes or teacherData.id becomes available
+
 
   if (isLoading) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> <Navbar /> <main className="flex-1 container mx-auto px-2 sm:px-4 py-6 md:py-8 max-w-4xl"> <Skeleton className="h-12 w-3/4 mb-4" /> <Card className="shadow-xl"><CardHeader className="p-4 sm:p-6 text-center border-b"> <Skeleton className="h-24 w-24 rounded-full mx-auto mb-3" /> <Skeleton className="h-8 w-1/2 mx-auto" /> <Skeleton className="h-5 w-1/3 mx-auto mt-1" /> </CardHeader> <CardContent className="p-4 sm:p-6 space-y-6"> <Skeleton className="h-20 w-full" /> <Skeleton className="h-32 w-full" /> </CardContent> </Card> </main> </div> ); }
   if (error) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> <Navbar /> <main className="flex-1 container mx-auto px-4 py-8 max-w-2xl"> <Card className="text-center shadow-lg border-destructive bg-destructive/10"><CardHeader><AlertCircle className="mx-auto h-12 w-12 text-destructive mb-3" /><CardTitle className="text-destructive">Error Loading Profile</CardTitle></CardHeader><CardContent><p className="text-destructive/90 whitespace-pre-wrap">{error}</p></CardContent><CardFooter><Button onClick={() => router.push(Routes.home)} variant="outline" className="mx-auto">Go to Homepage</Button></CardFooter></Card> </main> </div> ); }
@@ -172,52 +222,21 @@ export default function TeacherPublicAdPage() {
             {socialLinksList.length > 0 && ( <section> <h2 className="text-xl font-semibold text-primary mb-4">Connect With Me</h2> <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"> {socialLinksList.map(link => <SocialLink key={link.label} {...link} />)} </div> </section> )}
             {adData && (Object.values(adData).some(val => typeof val === 'number' && val > 0) || (adData.total_student_trained || adData.total_edunexus_subscription_offered)) && ( <section> <h2 className="text-xl font-semibold text-primary mb-4">My Achievements & Reach</h2> <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4"> {getStatCard(<Users className="h-6 w-6" />, "Students Trained", adData.total_student_trained)} {getStatCard(<Star className="h-6 w-6" />, "100 Percentilers", adData.students_of_100_percentile_if_any)} {getStatCard(<TrendingUp className="h-6 w-6" />, "99+ Percentilers", adData.students_above_99_percentile_if_any)} {getStatCard(<BarChart2 className="h-6 w-6" />, "98+ Percentilers", adData.students_above_98_percentile_if_any)} {getStatCard(<GraduationCap className="h-6 w-6" />, "90+ Percentilers", adData.students_above_90_percentile_if_any)} {getStatCard(<ShieldCheck className="h-6 w-6" />, `${AppConfig.appName} Plans Sold`, adData.total_edunexus_subscription_offered)} </div> </section> )}
             
-            {/* Section for Featured Plans (if any) and link to All Plans */}
-            {(featuredPlans.length > 0 || hasAnyContentPlans) && (
-              <section className="mt-8 pt-6 border-t">
-                <h2 className="text-xl font-semibold text-primary mb-4">
-                  {featuredPlans.length > 0 ? "Featured Content Plans" : "My Content Plans"}
-                </h2>
-                {featuredPlans.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    {featuredPlans.map(plan => (
-                      <Card key={plan.id} className="shadow-md hover:shadow-lg transition-shadow bg-card border flex flex-col">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-lg font-semibold text-foreground">{plan.Plan_name}</CardTitle>
-                          <div className="flex items-baseline">
-                            <span className="text-2xl font-bold text-primary">₹{plan.plan_price}</span>
-                            <span className="text-sm text-muted-foreground ml-1">/ {plan.plan}</span>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="text-sm text-muted-foreground space-y-1 flex-grow">
-                          <p className="text-xs font-semibold text-muted-foreground uppercase">Features:</p>
-                          <ul className="list-disc list-inside pl-2">
-                            {[plan.plan_point_1, plan.plan_point_2, plan.plan_point_3].filter(Boolean).map((point, idx) => <li key={idx} className="line-clamp-1">{point}</li>)}
-                            {(plan.plan_point_4 || plan.plan_point_5) && <li>+ more...</li>}
-                          </ul>
-                        </CardContent>
-                        <CardFooter className="pt-3 mt-auto">
-                           <Button variant="outline" size="sm" className="w-full" asChild>
-                             <Link href={Routes.teacherPublicPlansPage(teacherData.EduNexus_Name)}>View Details & Subscribe</Link>
-                           </Button>
-                        </CardFooter>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-                {hasAnyContentPlans && teacherData.EduNexus_Name && (
-                    <div className="text-center">
-                        <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                        <Link href={Routes.teacherPublicPlansPage(teacherData.EduNexus_Name)}>
-                            Explore All Plans by {teacherData.name} <BookOpenCheck className="ml-2 h-5 w-5" />
-                        </Link>
-                        </Button>
-                    </div>
-                )}
+            {hasAnyContentPlans && teacherData.EduNexus_Name && (
+              <section className="mt-8 pt-6 border-t text-center">
+                <h2 className="text-xl font-semibold text-primary mb-4">Explore My Content Plans</h2>
+                <p className="text-muted-foreground mb-4">
+                  Check out the detailed subscription plans I offer to help you excel.
+                </p>
+                <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                  <Link href={Routes.teacherPublicPlansPage(teacherData.EduNexus_Name)}>
+                    View All Plans <BookOpenCheck className="ml-2 h-5 w-5" />
+                  </Link>
+                </Button>
               </section>
             )}
           </CardContent>
-          <CardFooter className="p-4 sm:p-6 bg-muted/30 border-t text-center"> <p className="text-xs text-muted-foreground"> To enroll in {teacherData.name}'s courses or for inquiries, please use the contact links provided or explore their content plans. </p> </CardFooter>
+          <CardFooter className="p-4 sm:p-6 bg-muted/30 border-t text-center"> <p className="text-xs text-muted-foreground"> To enroll in {teacherData.name}'s courses or for inquiries, please use the contact links provided or subscribe to a plan. </p> </CardFooter>
         </Card>
       </main>
       <footer className="py-6 text-center text-xs text-muted-foreground border-t bg-background"> © {new Date().getFullYear()} {AppConfig.appName} </footer>
