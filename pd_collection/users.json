@@ -11,125 +11,125 @@
         "system": false,
         "schema": [
             {
-                "autogeneratePattern": "[a-z0-9]{15}",
-                "hidden": false,
                 "id": "text3208210256",
-                "max": 15,
-                "min": 15,
                 "name": "id",
-                "pattern": "^[a-z0-9]+$",
-                "presentable": false,
-                "primaryKey": true,
-                "required": true,
+                "type": "text",
                 "system": true,
-                "type": "text"
+                "required": true,
+                "presentable": false,
+                "options": {
+                    "min": 15,
+                    "max": 15,
+                    "pattern": "^[a-z0-9]+$",
+                    "autogeneratePattern": "[a-z0-9]{15}"
+                }
             },
             {
-                "cost": 0,
-                "hidden": true,
                 "id": "password901924565",
-                "max": 0,
-                "min": 8,
                 "name": "password",
-                "pattern": "",
-                "presentable": false,
-                "required": true,
+                "type": "password",
                 "system": true,
-                "type": "password"
+                "required": true,
+                "presentable": false,
+                "options": {
+                    "min": 8,
+                    "max": null, 
+                    "pattern": "" 
+                }
             },
             {
-                "autogeneratePattern": "[a-zA-Z0-9]{50}",
-                "hidden": true,
                 "id": "text2504183744",
-                "max": 60,
-                "min": 30,
                 "name": "tokenKey",
-                "pattern": "",
-                "presentable": false,
-                "primaryKey": false,
-                "required": true,
+                "type": "text",
                 "system": true,
-                "type": "text"
+                "required": true,
+                "presentable": false,
+                "options": {
+                    "min": 30,
+                    "max": 60,
+                    "pattern": "",
+                    "autogeneratePattern": "[a-zA-Z0-9]{50}"
+                }
             },
             {
-                "exceptDomains": null,
-                "hidden": false,
                 "id": "email3885137012",
                 "name": "email",
-                "onlyDomains": null,
-                "presentable": true,
-                "required": true,
+                "type": "email",
                 "system": true,
-                "type": "email"
+                "required": true,
+                "presentable": true, 
+                "options": {
+                    "exceptDomains": null,
+                    "onlyDomains": null
+                }
             },
             {
-                "hidden": false,
                 "id": "bool1547992806",
                 "name": "emailVisibility",
-                "presentable": false,
-                "required": false,
+                "type": "bool",
                 "system": true,
-                "type": "bool"
+                "required": false,
+                "presentable": false,
+                "options": {}
             },
             {
-                "hidden": false,
                 "id": "bool256245529",
                 "name": "verified",
-                "presentable": false,
-                "required": false,
+                "type": "bool",
                 "system": true,
-                "type": "bool"
+                "required": false,
+                "presentable": false,
+                "options": {}
             },
             {
-                "autogeneratePattern": "",
-                "hidden": false,
                 "id": "text1579384326",
-                "max": 100,
-                "min": 1,
                 "name": "name",
-                "pattern": "",
-                "presentable": true,
-                "primaryKey": false,
-                "required": true,
+                "type": "text",
                 "system": false,
-                "type": "text"
+                "required": true, 
+                "presentable": true,
+                "options": {
+                    "min": 1, 
+                    "max": 100, 
+                    "pattern": "",
+                    "autogeneratePattern": ""
+                }
             },
             {
-                "autogeneratePattern": "",
-                "hidden": false,
                 "id": "text1146066909",
-                "max": 15,
-                "min": 10,
                 "name": "phone",
-                "pattern": "^[+]?[0-9\\s-()]*$",
-                "presentable": true,
-                "primaryKey": false,
-                "required": false,
+                "type": "text",
                 "system": false,
-                "type": "text"
+                "required": false,
+                "presentable": true,
+                "options": {
+                    "min": 10,
+                    "max": 15,
+                    "pattern": "^[+]?[0-9\\s-()]*$",
+                    "autogeneratePattern": ""
+                }
             },
             {
-                "autogeneratePattern": "",
-                "hidden": false,
                 "id": "text3981121951",
-                "max": null,
-                "min": null,
                 "name": "class",
-                "pattern": "",
-                "presentable": true,
-                "primaryKey": false,
-                "required": false,
+                "type": "text",
                 "system": false,
-                "type": "text"
+                "required": false,
+                "presentable": true,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": "",
+                    "autogeneratePattern": ""
+                }
             },
             {
-                "hidden": false,
                 "id": "select3616895705",
                 "name": "model",
-                "presentable": true,
-                "required": false,
-                "system": false,
                 "type": "select",
+                "system": false,
+                "required": false,
+                "presentable": true,
                 "options": {
                     "maxSelect": 1,
                     "values": [
@@ -143,13 +143,12 @@
                 }
             },
             {
-                "hidden": false,
                 "id": "select1466534506",
                 "name": "role",
-                "presentable": true,
-                "required": false,
-                "system": false,
                 "type": "select",
+                "system": false,
+                "required": false,
+                "presentable": true,
                 "options": {
                     "maxSelect": 1,
                     "values": [
@@ -160,27 +159,28 @@
                 }
             },
             {
-                "hidden": false,
                 "id": "date4141751240",
                 "name": "expiry_date",
-                "presentable": true,
-                "required": false,
-                "system": false,
                 "type": "date",
+                "system": false,
+                "required": false,
+                "presentable": true,
                 "options": { "min": "", "max": "" }
             },
             {
-                "exceptDomains": null,
-                "hidden": false,
                 "id": "url742587758",
                 "name": "avatarUrl",
-                "onlyDomains": null,
-                "presentable": true,
-                "required": false,
+                "type": "url",
                 "system": false,
-                "type": "url"
+                "required": false,
+                "presentable": true,
+                "options": {
+                    "exceptDomains": null,
+                    "onlyDomains": null
+                }
             },
             {
+                "id": "file_avatar_user", 
                 "name": "avatar",
                 "type": "file",
                 "system": false,
@@ -195,85 +195,93 @@
                 }
             },
             {
-                "hidden": false,
                 "id": "number1767698865",
                 "name": "totalPoints",
-                "presentable": true,
-                "required": false,
-                "system": false,
                 "type": "number",
-                "options": {"min": 0, "noDecimal": true }
+                "system": false,
+                "required": false,
+                "presentable": true,
+                "options": {
+                    "min": 0,
+                    "max": null,
+                    "noDecimal": true
+                }
             },
             {
-                "hidden": false,
                 "id": "number2580276998",
                 "name": "targetYear",
-                "presentable": true,
-                "required": false,
-                "system": false,
                 "type": "number",
-                "options": {"min": 2020, "max": 2035, "noDecimal": true }
+                "system": false,
+                "required": false,
+                "presentable": true,
+                "options": {
+                    "min": 2020,
+                    "max": 2035,
+                    "noDecimal": true
+                }
             },
             {
-                "autogeneratePattern": "",
-                "hidden": false,
                 "id": "text2762015300",
                 "name": "referralCode",
-                "pattern": "",
-                "presentable": true,
-                "primaryKey": false,
-                "required": false,
-                "system": false,
                 "type": "text",
-                "options": {"min": null, "max": null, "pattern": ""}
+                "system": false,
+                "required": false,
+                "presentable": true,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": "",
+                    "autogeneratePattern": ""
+                }
             },
             {
-                "autogeneratePattern": "",
-                "hidden": false,
                 "id": "text2761983308",
                 "name": "referredByCode",
-                "pattern": "",
-                "presentable": false,
-                "primaryKey": false,
-                "required": false,
-                "system": false,
                 "type": "text",
-                "options": {"min": null, "max": null, "pattern": ""}
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": "",
+                    "autogeneratePattern": ""
+                }
             },
             {
-                "hidden": false,
                 "id": "json3639692647",
                 "name": "referralStats",
-                "presentable": false,
-                "required": false,
-                "system": false,
                 "type": "json",
-                "options": {"maxSize": 524288}
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "options": { "maxSize": 524288 }
             },
             {
-                "autogeneratePattern": "",
-                "hidden": false,
                 "id": "text2046671317",
                 "name": "favExam",
-                "pattern": "",
-                "presentable": true,
-                "primaryKey": false,
-                "required": false,
-                "system": false,
                 "type": "text",
-                "options": {"min": null, "max": null, "pattern": ""}
+                "system": false,
+                "required": false,
+                "presentable": true,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": "",
+                    "autogeneratePattern": ""
+                }
             },
             {
-                "hidden": false,
                 "id": "date233413008",
                 "name": "joineddate",
-                "presentable": true,
-                "required": false,
-                "system": false,
                 "type": "date",
+                "system": false,
+                "required": false,
+                "presentable": true,
                 "options": { "min": "", "max": "" }
             },
             {
+                "id": "relation165744913",
                 "name": "subscription_by_teacher",
                 "type": "relation",
                 "system": false,
@@ -283,14 +291,143 @@
                     "collectionId": "pbc_2504364897",
                     "cascadeDelete": false,
                     "minSelect": 0,
-                    "maxSelect": null,
+                    "maxSelect": null, 
                     "displayFields": null
+                }
+            },
+            {
+                "id": "number3978063606",
+                "name": "Free",
+                "type": "number",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "options": { "min": null, "max": null, "noDecimal": false }
+            },
+            {
+                "id": "number1249738983",
+                "name": "Chapterwise",
+                "type": "number",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "options": { "min": null, "max": null, "noDecimal": false }
+            },
+            {
+                "id": "number445073569",
+                "name": "Full_Length",
+                "type": "number",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "options": { "min": null, "max": null, "noDecimal": false }
+            },
+            {
+                "id": "number4159239364",
+                "name": "Dpp",
+                "type": "number",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "options": { "min": null, "max": null, "noDecimal": false }
+            },
+            {
+                "id": "number1895636814",
+                "name": "Combo",
+                "type": "number",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "options": { "min": null, "max": null, "noDecimal": false }
+            },
+            {
+                "id": "select1567209069",
+                "name": "college_maker_plan",
+                "type": "select",
+                "system": false,
+                "required": false,
+                "presentable": false,
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "Free",
+                        "Pro"
+                    ]
                 }
             }
         ],
         "indexes": [
             "CREATE UNIQUE INDEX `idx_tokenKey_pbc_1377172174` ON `users` (`tokenKey`)",
-            "CREATE UNIQUE INDEX `idx_email_pbc_1377172174` ON `users` (`email`) WHERE `email` != ''"
-        ]
+            "CREATE UNIQUE INDEX `idx_email_pbc_1377172174` ON `users` (`email`) WHERE `email` != ''",
+            "CREATE INDEX `idx_4aFXgdXcox` ON `users` (`phone`)",
+            "CREATE INDEX `idx_4EcXbculaF` ON `users` (`referralCode`)"
+        ],
+        "options": { 
+            "authRule": "",
+            "manageRule": null, 
+            "authAlert": {
+                "enabled": true,
+                "emailTemplate": {
+                    "subject": "Login from a new location",
+                    "body": "<p>Hello,</p>\n<p>We noticed a login to your {APP_NAME} account from a new location.</p>\n<p>If this was you, you may disregard this email.</p>\n<p><strong>If this wasn't you, you should immediately change your {APP_NAME} account password to revoke access from all other locations.</strong></p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>"
+                }
+            },
+            "oauth2": {
+                "mappedFields": {
+                    "id": "",
+                    "name": "",
+                    "username": "",
+                    "avatarURL": ""
+                },
+                "enabled": true
+            },
+            "passwordAuth": {
+                "enabled": true,
+                "identityFields": [
+                    "email"
+                ]
+            },
+            "mfa": {
+                "enabled": false,
+                "duration": 1800,
+                "rule": ""
+            },
+            "otp": {
+                "enabled": true,
+                "duration": 180,
+                "length": 8,
+                "emailTemplate": {
+                    "subject": "OTP for {APP_NAME}",
+                    "body": "<p>Hello,</p>\n<p>Your one-time password is: <strong>{OTP}</strong></p>\n<p><i>If you didn't ask for the one-time password, you can ignore this email.</i></p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>"
+                }
+            },
+            "authToken": {
+                "duration": 604800
+            },
+            "passwordResetToken": {
+                "duration": 1800
+            },
+            "emailChangeToken": {
+                "duration": 1800
+            },
+            "verificationToken": {
+                "duration": 259200
+            },
+            "fileToken": {
+                "duration": 180
+            },
+            "verificationTemplate": {
+                "subject": "Verify your {APP_NAME} email",
+                "body": "<p>Hello,</p>\n<p>Thank you for joining us at {APP_NAME}.</p>\n<p>Click on the button below to verify your email address.</p>\n<p>\n  <a class=\"btn\" href=\"{APP_URL}/_/#/auth/confirm-verification/{TOKEN}\" target=\"_blank\" rel=\"noopener\">Verify</a>\n</p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>"
+            },
+            "resetPasswordTemplate": {
+                "subject": "Reset your {APP_NAME} password",
+                "body": "<p>Hello,</p>\n<p>Click on the button below to reset your password.</p>\n<p>\n  <a class=\"btn\" href=\"{APP_URL}/_/#/auth/confirm-password-reset/{TOKEN}\" target=\"_blank\" rel=\"noopener\">Reset password</a>\n</p>\n<p><i>If you didn't ask to reset your password, you can ignore this email.</i></p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>"
+            },
+            "confirmEmailChangeTemplate": {
+                "subject": "Confirm your {APP_NAME} new email address",
+                "body": "<p>Hello,</p>\n<p>Click on the button below to confirm your new email address.</p>\n<p>\n  <a class=\"btn\" href=\"{APP_URL}/_/#/auth/confirm-email-change/{TOKEN}\" target=\"_blank\" rel=\"noopener\">Confirm new email</a>\n</p>\n<p><i>If you didn't ask to change your email address, you can ignore this email.</i></p>\n<p>\n  Thanks,<br/>\n  {APP_NAME} team\n</p>"
+            }
+        }
     }
 ]
