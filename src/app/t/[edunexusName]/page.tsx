@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useCallback, ReactNode } from 'react';
@@ -58,10 +57,10 @@ interface TeacherAdRecord extends RecordModel {
 interface TeacherAdPageData {
   teacherData: TeacherDataRecord;
   adData: TeacherAdRecord | null;
-  featuredPlans: TeacherPlanType[];
+  featuredPlans: TeacherPlanType[]; // Keep for featured plans if any
   teacherAvatarUrl: string;
   adSpecificAvatarUrl?: string | null;
-  hasAnyContentPlans?: boolean;
+  hasAnyContentPlans?: boolean; // Still useful to know, even if not directly gating the link
 }
 
 interface SocialLinkProps {
@@ -196,9 +195,9 @@ export default function TeacherPublicAdPage() {
   }, [fetchData, edunexusName, pageData?.teacherData?.id]);
 
 
-  if (isLoading) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> {/* No Navbar */} <main className="flex-1 container mx-auto px-2 sm:px-4 py-6 md:py-8 max-w-4xl"> <Skeleton className="h-12 w-3/4 mb-4" /> <Card className="shadow-xl"><CardHeader className="p-4 sm:p-6 text-center border-b"> <Skeleton className="h-24 w-24 rounded-full mx-auto mb-3" /> <Skeleton className="h-8 w-1/2 mx-auto" /> <Skeleton className="h-5 w-1/3 mx-auto mt-1" /> </CardHeader> <CardContent className="p-4 sm:p-6 space-y-6"> <Skeleton className="h-20 w-full" /> <Skeleton className="h-32 w-full" /> </CardContent> </Card> </main> </div> ); }
-  if (error) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> {/* No Navbar */} <main className="flex-1 container mx-auto px-4 py-8 max-w-2xl"> <Card className="text-center shadow-lg border-destructive bg-destructive/10"><CardHeader><AlertCircle className="mx-auto h-12 w-12 text-destructive mb-3" /><CardTitle className="text-destructive">Error Loading Profile</CardTitle></CardHeader><CardContent><p className="text-destructive/90 whitespace-pre-wrap">{error}</p></CardContent><CardFooter><Button onClick={() => router.push(Routes.home)} variant="outline" className="mx-auto">Go to Homepage</Button></CardFooter></Card> </main> </div> ); }
-  if (!pageData || !pageData.teacherData) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> {/* No Navbar */} <main className="flex-1 container mx-auto px-4 py-8 max-w-2xl"> <Card className="text-center shadow-lg"><CardHeader><AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-3" /><CardTitle>Profile Not Found</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">The teacher profile does not exist or is unavailable.</p></CardContent><CardFooter><Button onClick={() => router.push(Routes.home)} variant="outline" className="mx-auto">Go to Homepage</Button></CardFooter></Card> </main> </div> ); }
+  if (isLoading) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> <main className="flex-1 container mx-auto px-2 sm:px-4 py-6 md:py-8 max-w-4xl"> <Skeleton className="h-12 w-3/4 mb-4" /> <Card className="shadow-xl"><CardHeader className="p-4 sm:p-6 text-center border-b"> <Skeleton className="h-24 w-24 rounded-full mx-auto mb-3" /> <Skeleton className="h-8 w-1/2 mx-auto" /> <Skeleton className="h-5 w-1/3 mx-auto mt-1" /> </CardHeader> <CardContent className="p-4 sm:p-6 space-y-6"> <Skeleton className="h-20 w-full" /> <Skeleton className="h-32 w-full" /> </CardContent> </Card> </main> </div> ); }
+  if (error) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> <main className="flex-1 container mx-auto px-4 py-8 max-w-2xl"> <Card className="text-center shadow-lg border-destructive bg-destructive/10"><CardHeader><AlertCircle className="mx-auto h-12 w-12 text-destructive mb-3" /><CardTitle className="text-destructive">Error Loading Profile</CardTitle></CardHeader><CardContent><p className="text-destructive/90 whitespace-pre-wrap">{error}</p></CardContent><CardFooter><Button onClick={() => router.push(Routes.home)} variant="outline" className="mx-auto">Go to Homepage</Button></CardFooter></Card> </main> </div> ); }
+  if (!pageData || !pageData.teacherData) { return ( <div className="flex flex-col min-h-screen bg-muted/30"> <main className="flex-1 container mx-auto px-4 py-8 max-w-2xl"> <Card className="text-center shadow-lg"><CardHeader><AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-3" /><CardTitle>Profile Not Found</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">The teacher profile does not exist or is unavailable.</p></CardContent><CardFooter><Button onClick={() => router.push(Routes.home)} variant="outline" className="mx-auto">Go to Homepage</Button></CardFooter></Card> </main> </div> ); }
 
   const { teacherData, adData, featuredPlans, teacherAvatarUrl, adSpecificAvatarUrl, hasAnyContentPlans } = pageData;
   const finalAbout = adData?.about || teacherData?.about || "No detailed information provided by the teacher yet.";
@@ -216,7 +215,6 @@ export default function TeacherPublicAdPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-muted/30 dark:bg-slate-950">
-      {/* Navbar removed */}
       <main className="flex-1 container mx-auto px-2 sm:px-4 py-6 md:py-8 max-w-4xl">
         <Card className="shadow-xl border-t-4 border-primary rounded-xl overflow-hidden">
           <CardHeader className="p-4 sm:p-6 text-center bg-gradient-to-br from-primary/10 via-background to-background border-b"> <Avatar className="h-28 w-28 sm:h-32 sm:w-32 text-4xl border-4 border-card shadow-lg mx-auto mb-3 bg-muted"> {finalAvatar ? <AvatarImage src={finalAvatar} alt={teacherData.name} data-ai-hint="teacher profile picture"/> : null} <AvatarFallback className="bg-primary/20 text-primary">{teacherData.name?.charAt(0).toUpperCase() || 'T'}</AvatarFallback> </Avatar> <CardTitle className="text-2xl sm:text-3xl font-bold text-foreground">{teacherData.name}</CardTitle> {teacherData.institute_name && <p className="text-md text-muted-foreground">{teacherData.institute_name}</p>} {teacherData.EduNexus_Name && <p className="text-sm text-accent font-mono">@{teacherData.EduNexus_Name}</p>} <div className="mt-3 flex flex-wrap justify-center gap-2"> {teacherData.level && <Badge variant="secondary">{teacherData.level}</Badge>} {teacherData.subjects_offered && teacherData.subjects_offered.map(sub => <Badge key={sub} variant="outline">{sub}</Badge>)} {teacherData.favExam && teacherData.favExam.map(exam => <Badge key={exam} variant="outline" className="border-primary/50 text-primary/90 bg-primary/5">{exam}</Badge>)} </div> </CardHeader>
@@ -225,7 +223,8 @@ export default function TeacherPublicAdPage() {
             {socialLinksList.length > 0 && ( <section> <h2 className="text-xl font-semibold text-primary mb-4">Connect With Me</h2> <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"> {socialLinksList.map(link => <SocialLink key={link.label} {...link} />)} </div> </section> )}
             {adData && (Object.values(adData).some(val => typeof val === 'number' && val > 0) || (adData.total_student_trained || adData.total_edunexus_subscription_offered)) && ( <section> <h2 className="text-xl font-semibold text-primary mb-4">My Achievements & Reach</h2> <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4"> {getStatCard(<Users className="h-6 w-6" />, "Students Trained", adData.total_student_trained)} {getStatCard(<Star className="h-6 w-6" />, "100 Percentilers", adData.students_of_100_percentile_if_any)} {getStatCard(<TrendingUp className="h-6 w-6" />, "99+ Percentilers", adData.students_above_99_percentile_if_any)} {getStatCard(<BarChart2 className="h-6 w-6" />, "98+ Percentilers", adData.students_above_98_percentile_if_any)} {getStatCard(<GraduationCap className="h-6 w-6" />, "90+ Percentilers", adData.students_above_90_percentile_if_any)} {getStatCard(<ShieldCheck className="h-6 w-6" />, `${AppConfig.appName} Plans Sold`, adData.total_edunexus_subscription_offered)} </div> </section> )}
             
-            {hasAnyContentPlans && teacherData.EduNexus_Name && (
+            {/* Always show the "Explore Content Plans" section if EduNexus_Name exists */}
+            {teacherData.EduNexus_Name && (
               <section className="mt-8 pt-6 border-t text-center">
                 <h2 className="text-xl font-semibold text-primary mb-3">Explore My Content Plans</h2>
                 <p className="text-muted-foreground mb-4 max-w-md mx-auto">
@@ -238,6 +237,7 @@ export default function TeacherPublicAdPage() {
                 </Button>
               </section>
             )}
+
           </CardContent>
           <CardFooter className="p-4 sm:p-6 bg-muted/30 border-t text-center"> <p className="text-xs text-muted-foreground"> To enroll in {teacherData.name}'s courses or for inquiries, please use the contact links provided or subscribe to a plan. </p> </CardFooter>
         </Card>
