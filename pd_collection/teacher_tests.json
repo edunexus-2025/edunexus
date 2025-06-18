@@ -9,6 +9,7 @@
         "deleteRule": "@request.auth.id != \"\" && teacherId = @request.auth.id",
         "name": "teacher_tests",
         "type": "base",
+        "system": false,
         "fields": [
             {
                 "autogeneratePattern": "[a-z0-9]{15}",
@@ -318,3 +319,4 @@
         "system": false
     }
 ]
+    
