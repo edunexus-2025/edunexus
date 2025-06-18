@@ -14,7 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AppConfig, Routes, escapeForPbFilter, APP_BASE_URL } from '@/lib/constants'; // Added APP_BASE_URL
+import { AppConfig, Routes, escapeForPbFilter, APP_BASE_URL } from '@/lib/constants';
 import {
   AlertCircle, GraduationCap, BarChart2, Users, Link as LinkIcon, Instagram, Facebook, Youtube, Twitter, Send as TelegramIcon, Globe as WebsiteIcon, ExternalLink, ShieldCheck, Star, TrendingUp, ListChecks, BookOpenCheck
 } from 'lucide-react';
@@ -38,7 +38,7 @@ interface TeacherAdRecord extends RecordModel {
   user: string; // Teacher ID
   instagram_page?: string;
   facebook_page?: string;
-  edunexus_profile?: string; // This might become less relevant for the direct link
+  edunexus_profile?: string;
   youtube_channel?: string;
   x_page?: string;
   telegram_channel_username?: string;
@@ -58,7 +58,7 @@ interface TeacherAdRecord extends RecordModel {
 interface TeacherAdPageData {
   teacherData: TeacherDataRecord;
   adData: TeacherAdRecord | null;
-  featuredPlans: TeacherPlanType[];
+  featuredPlans: TeacherPlanType[]; // Keep for displaying featured plans if any
   teacherAvatarUrl: string;
   adSpecificAvatarUrl?: string | null;
   hasAnyContentPlans?: boolean;
@@ -129,6 +129,7 @@ export default function TeacherPublicAdPage() {
         if (adRecords.length > 0) {
           adData = adRecords[0];
           adSpecificAvatarUrl = getPbFileUrl(adData, 'profile_pic_if_not_edunexus_pic');
+          // Fetch only featured plans if specified in adData.plan
           if (adData.plan && Array.isArray(adData.plan) && adData.plan.length > 0) {
             const planFilter = adData.plan.map(id => `id = "${escapeForPbFilter(id)}"`).join(' || ');
             if (planFilter) featuredPlans = await pb.collection('teachers_upgrade_plan').getFullList<TeacherPlanType>({ filter: planFilter, sort: '-created' });
@@ -137,6 +138,7 @@ export default function TeacherPublicAdPage() {
       } catch (adError: any) { if (isMountedGetter()) console.warn("Ad data not found or error fetching, proceeding with teacher data only:", adError.data || adError.message); }
 
       if (!isMountedGetter()) return;
+      // Check if the teacher has *any* content plans at all
       if (teacherData.id) {
         const allTeacherPlans = await pb.collection('teachers_upgrade_plan').getList(1, 1, { filter: `teacher = "${teacherData.id}"`, count: true });
         if (isMountedGetter()) hasAnyContentPlans = allTeacherPlans.totalItems > 0;
@@ -184,6 +186,7 @@ export default function TeacherPublicAdPage() {
         }
     };
     
+    // Call setupSubscriptions after the initial data fetch that sets pageData
     if (pageData?.teacherData?.id) {
         setupSubscriptions();
     }
@@ -204,10 +207,8 @@ export default function TeacherPublicAdPage() {
   const finalAbout = adData?.about || teacherData?.about || "No detailed information provided by the teacher yet.";
   const finalAvatar = adSpecificAvatarUrl || teacherAvatarUrl;
 
-  const appBaseUrl = APP_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:9002'); // Fallback if APP_BASE_URL is undefined
-
   const socialLinksList: SocialLinkProps[] = [
-    { href: teacherData.EduNexus_Name ? `${appBaseUrl}${Routes.teacherPublicAdPage(teacherData.EduNexus_Name)}` : undefined, icon: <GraduationCap size={18}/>, label: `${AppConfig.appName} Profile`},
+    { href: teacherData.EduNexus_Name ? `${APP_BASE_URL}${Routes.teacherPublicAdPage(teacherData.EduNexus_Name)}` : undefined, icon: <GraduationCap size={18}/>, label: `${AppConfig.appName} Profile`},
     { href: adData?.instagram_page, icon: <Instagram size={18} />, label: "Instagram" },
     { href: adData?.facebook_page, icon: <Facebook size={18} />, label: "Facebook" },
     { href: adData?.youtube_channel, icon: <Youtube size={18} />, label: "YouTube" },
@@ -217,7 +218,7 @@ export default function TeacherPublicAdPage() {
   ].filter(link => link.href && link.href.trim() !== '');
 
   return (
-    <div className="flex flex-col min-h-screen bg-muted/30">
+    <div className="flex flex-col min-h-screen bg-muted/30 dark:bg-slate-950">
       <Navbar />
       <main className="flex-1 container mx-auto px-2 sm:px-4 py-6 md:py-8 max-w-4xl">
         <Card className="shadow-xl border-t-4 border-primary rounded-xl overflow-hidden">
@@ -229,13 +230,13 @@ export default function TeacherPublicAdPage() {
             
             {hasAnyContentPlans && teacherData.EduNexus_Name && (
               <section className="mt-8 pt-6 border-t text-center">
-                <h2 className="text-xl font-semibold text-primary mb-4">Explore My Content Plans</h2>
-                <p className="text-muted-foreground mb-4">
-                  Check out the detailed subscription plans I offer to help you excel.
+                <h2 className="text-xl font-semibold text-primary mb-3">Explore My Content Plans</h2>
+                <p className="text-muted-foreground mb-4 max-w-md mx-auto">
+                  Discover the specialized subscription plans I offer to help students achieve their academic goals.
                 </p>
                 <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
                   <Link href={Routes.teacherPublicPlansPage(teacherData.EduNexus_Name)}>
-                    View All Plans <BookOpenCheck className="ml-2 h-5 w-5" />
+                    View All Content Plans <BookOpenCheck className="ml-2 h-5 w-5" />
                   </Link>
                 </Button>
               </section>
@@ -244,7 +245,7 @@ export default function TeacherPublicAdPage() {
           <CardFooter className="p-4 sm:p-6 bg-muted/30 border-t text-center"> <p className="text-xs text-muted-foreground"> To enroll in {teacherData.name}'s courses or for inquiries, please use the contact links provided or subscribe to a plan. </p> </CardFooter>
         </Card>
       </main>
-      <footer className="py-6 text-center text-xs text-muted-foreground border-t bg-background"> © {new Date().getFullYear()} {AppConfig.appName} </footer>
+      <footer className="py-6 text-center text-xs text-muted-foreground border-t bg-background dark:bg-slate-900"> © {new Date().getFullYear()} {AppConfig.appName} </footer>
     </div>
   );
 }
