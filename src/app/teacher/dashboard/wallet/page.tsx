@@ -19,26 +19,26 @@ import { Routes } from '@/lib/constants';
 interface TeacherWalletTransaction extends RecordModel {
   id: string;
   teacher: string;
-  student_histroy?: string; // ID of students_teachers_upgrade_plan record
-  total_amount_recieved: number; // Amount received by teacher AFTER EduNexus commission
-  by_which_plan_recieved?: string; // ID of teachers_upgrade_plan record
+  student_histroy?: string; 
+  total_amount_recieved: number; 
+  by_which_plan_revieved?: string; // Corrected field name from by_which_plan_recieved
   transaction_date: string;
   transaction_details?: string;
   created: string;
   expand?: {
-    student_histroy?: { // This record is from students_teachers_upgrade_plan
+    student_histroy?: {
       id: string;
-      student: string; // student ID
-      teachers_plan_id: string; // teacher's content plan ID
-      amount_paid_to_edunexus: number; // Actual total paid by student for this transaction
-      amount_recieved_to_teacher: number; // Should match total_amount_recieved in wallet
+      student: string; 
+      teachers_plan_id: string; 
+      amount_paid_to_edunexus: number; 
+      amount_recieved_to_teacher: number; 
       created: string;
       expand?: {
-        student?: { name: string; id: string; }; // Student's name from users collection
-        teachers_plan_id?: { Plan_name: string; id: string; }; // Teacher's content plan name
+        student?: { name: string; id: string; }; 
+        teachers_plan_id?: { Plan_name: string; id: string; }; 
       }
     };
-    by_which_plan_recieved?: { // This is the teacher's content plan
+    by_which_plan_revieved?: { // Corrected field name here as well for expand
       Plan_name: string;
       id: string;
     }
@@ -63,10 +63,11 @@ export default function TeacherWalletPage() {
     setError(null);
 
     try {
+      // Corrected the expand string here: by_which_plan_recieved -> by_which_plan_revieved
       const records = await pb.collection('teacher_wallet').getFullList<TeacherWalletTransaction>({
         filter: `teacher = "${teacher.id}"`,
         sort: '-transaction_date', 
-        expand: 'student_histroy.student,student_histroy.teachers_plan_id,by_which_plan_recieved',
+        expand: 'student_histroy.student,student_histroy.teachers_plan_id,by_which_plan_revieved', // Corrected field name
         '$autoCancel': false,
       });
       
@@ -92,7 +93,8 @@ export default function TeacherWalletPage() {
           setError(errorMsg);
           toast({ title: "Error", description: errorMsg, variant: "destructive" });
         }
-        console.error("TeacherWalletPage: Failed to fetch wallet data:", clientError.data || clientError);
+        // Enhanced logging
+        console.error("TeacherWalletPage: Failed to fetch wallet data. Status:", clientError.status, "Response Data:", clientError.data, "Full Error Object:", clientError);
       }
     } finally {
       if (isMountedGetter()) setIsLoading(false);
@@ -198,11 +200,12 @@ export default function TeacherWalletPage() {
                   {transactions.map((tx) => {
                     const studentName = tx.expand?.student_histroy?.expand?.student?.name || 'Unknown Student';
                     const studentId = tx.expand?.student_histroy?.expand?.student?.id;
-                    const planNameFromWallet = tx.expand?.by_which_plan_recieved?.Plan_name;
+                    // Corrected plan name access for wallet display
+                    const planNameFromWallet = tx.expand?.by_which_plan_revieved?.Plan_name;
                     const planNameFromStudentHistory = tx.expand?.student_histroy?.expand?.teachers_plan_id?.Plan_name;
                     const planName = planNameFromWallet || planNameFromStudentHistory || 'Unknown Plan';
                     const amountNet = tx.total_amount_recieved;
-                    const originalPaymentAmount = tx.expand?.student_histroy?.amount_paid_to_edunexus; // This now means total amount paid by student
+                    const originalPaymentAmount = tx.expand?.student_histroy?.amount_paid_to_edunexus; 
 
                     return (
                       <TableRow key={tx.id}>
@@ -215,7 +218,7 @@ export default function TeacherWalletPage() {
                           </p>
                           <p className="text-xs text-muted-foreground">
                             Student: {studentId ? studentId.substring(0,8) : 'N/A'}...
-                            {originalPaymentAmount !== undefined && ` (Original: ₹${originalPaymentAmount.toFixed(2)})`}
+                            {originalPaymentAmount !== undefined && ` (Original Payment: ₹${originalPaymentAmount.toFixed(2)})`}
                           </p>
                         </TableCell>
                         <TableCell className="text-right font-semibold text-green-600">
@@ -233,5 +236,3 @@ export default function TeacherWalletPage() {
     </div>
   );
 }
-
-    
