@@ -1,4 +1,3 @@
-
 [
     {
         "id": "pbc_2863365490",
@@ -41,7 +40,7 @@
                 "autogeneratePattern": "",
                 "hidden": false,
                 "id": "text3389461509",
-                "max": null,
+                "max": 150,
                 "min": 1,
                 "name": "testName",
                 "pattern": "",
@@ -95,7 +94,8 @@
                     "maxSelect": 1,
                     "values": [
                         "Free",
-                        "Premium"
+                        "Premium",
+                        "Free & Premium"
                     ]
                 }
             },
@@ -119,7 +119,7 @@
             },
             {
                 "cascadeDelete": false,
-                "collectionId": "pbc_3669383003",
+                "collectionId": "pbc_1874489316",
                 "hidden": false,
                 "id": "relation2329695445",
                 "maxSelect": 999,
@@ -133,178 +133,156 @@
             {
                 "hidden": false,
                 "id": "number3496344499",
-                "max": null,
-                "min": 0,
                 "name": "totalScore",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "number",
                 "options": {
                     "min": 0,
                     "max": null,
                     "noDecimal": false
-                },
-                "presentable": false,
-                "required": false,
-                "system": false,
-                "type": "number"
+                }
             },
             {
                 "hidden": false,
                 "id": "number1847253182",
-                "max": null,
-                "min": null,
                 "name": "PerNegativeScore",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "number",
                  "options": {
                     "min": null,
                     "max": null,
                     "noDecimal": false
-                },
-                "presentable": false,
-                "required": false,
-                "system": false,
-                "type": "number"
+                }
             },
             {
                 "hidden": false,
                 "id": "number1707412729",
-                "max": null,
-                "min": 0,
                 "name": "PhysicsQuestions",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "number",
                 "options": {
                     "min": 0,
                     "max": null,
                     "noDecimal": true
-                },
-                "presentable": false,
-                "required": false,
-                "system": false,
-                "type": "number"
+                }
             },
             {
                 "hidden": false,
                 "id": "number520241329",
-                "max": null,
-                "min": 0,
                 "name": "ChemistryQuestions",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "number",
                 "options": {
                     "min": 0,
                     "max": null,
                     "noDecimal": true
-                },
-                "presentable": false,
-                "required": false,
-                "system": false,
-                "type": "number"
+                }
             },
             {
                 "hidden": false,
                 "id": "number3399273475",
-                "max": null,
-                "min": 0,
                 "name": "MathsQuestions",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "number",
                 "options": {
                     "min": 0,
                     "max": null,
                     "noDecimal": true
-                },
-                "presentable": false,
-                "required": false,
-                "system": false,
-                "type": "number"
+                }
             },
             {
                 "hidden": false,
                 "id": "number4168650354",
-                "max": null,
-                "min": 0,
                 "name": "BiologyQuestions",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "number",
                  "options": {
                     "min": 0,
                     "max": null,
                     "noDecimal": true
-                },
-                "presentable": false,
-                "required": false,
-                "system": false,
-                "type": "number"
+                }
             },
             {
                 "hidden": false,
                 "id": "number2751317907",
-                "max": null,
-                "min": 0,
                 "name": "PhysicsScore",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "number",
                  "options": {
                     "min": 0,
                     "max": null,
                     "noDecimal": false
-                },
-                "presentable": false,
-                "required": false,
-                "system": false,
-                "type": "number"
+                }
             },
             {
                 "hidden": false,
                 "id": "number1027891066",
-                "max": null,
-                "min": 0,
                 "name": "ChemistryScore",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "number",
                  "options": {
                     "min": 0,
                     "max": null,
                     "noDecimal": false
-                },
-                "presentable": false,
-                "required": false,
-                "system": false,
-                "type": "number"
+                }
             },
             {
                 "hidden": false,
                 "id": "number3948510286",
-                "max": null,
-                "min": 0,
                 "name": "MathsScore",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "number",
                 "options": {
                     "min": 0,
                     "max": null,
                     "noDecimal": false
-                },
-                "presentable": false,
-                "required": false,
-                "system": false,
-                "type": "number"
+                }
             },
             {
                 "hidden": false,
                 "id": "number1210194381",
-                "max": null,
-                "min": 0,
                 "name": "BiologyScore",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "number",
                 "options": {
                     "min": 0,
                     "max": null,
                     "noDecimal": false
-                },
-                "presentable": false,
-                "required": false,
-                "system": false,
-                "type": "number"
+                }
             },
             {
                 "hidden": false,
                 "id": "number2507168605",
-                "max": 999999,
-                "min": 1000,
                 "name": "Admin_Password",
+                "presentable": false,
+                "required": true,
+                "system": false,
+                "type": "number",
                  "options": {
                     "min": 1000,
                     "max": 999999,
                     "noDecimal": true
-                },
-                "presentable": false,
-                "required": true,
-                "system": false,
-                "type": "number"
+                }
             },
             {
                 "hidden": false,
@@ -337,18 +315,16 @@
             {
                 "hidden": false,
                 "id": "number1102202353",
-                "max": 10,
-                "min": 1,
                 "name": "How_many_times_can_students_take_the_test",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "number",
                 "options": {
                     "min": 1,
                     "max": 10,
                     "noDecimal": true
-                },
-                "presentable": false,
-                "required": false,
-                "system": false,
-                "type": "number"
+                }
             },
             {
                 "hidden": false,
@@ -431,3 +407,5 @@
         "system": false
     }
 ]
+
+    

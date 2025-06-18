@@ -4,13 +4,13 @@
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, ClipboardCheck, Activity } from 'lucide-react';
+import { ArrowLeft, ClipboardCheck, Activity, Loader2 } from 'lucide-react';
 import { Routes } from '@/lib/constants';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import pb from '@/lib/pocketbase';
 import type { RecordModel } from 'pocketbase';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useToast } from '@/hooks/use-toast'; // Assuming you have a toast hook
+import { useToast } from '@/hooks/use-toast';
 
 interface TestStatusData extends RecordModel {
   testName: string;
@@ -27,61 +27,56 @@ export default function TestStatusPage() {
   const [testData, setTestData] = useState<TestStatusData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+  const fetchTestStatus = useCallback(async (isMountedGetter: () => boolean = () => true) => {
+    if (!testId) {
+      if (isMountedGetter()) { setError("Test ID not found."); setIsLoading(false); }
+      return;
+    }
+    if (isMountedGetter()) { setIsLoading(true); setError(null); }
+    try {
+      const record = await pb.collection('teacher_tests').getOne<TestStatusData>(testId, {
+        fields: 'id,testName,status' // Fetch only necessary fields
+      });
+      if (isMountedGetter()) setTestData(record);
+    } catch (err: any) {
+      if (isMountedGetter()) {
+        if (err.isAbort || (err.name === 'ClientResponseError' && err.status === 0)) {
+          console.warn('Fetch test status request was cancelled.');
+        } else {
+          console.error("Failed to fetch test status:", err);
+          setError("Could not load test status. Please ensure the test exists.");
+        }
+      }
+    } finally {
+      if (isMountedGetter()) setIsLoading(false);
+    }
+  }, [testId]);
+
 
   useEffect(() => {
     let isMounted = true;
-    if (!testId) {
-      if (isMounted) {
-        setError("Test ID not found.");
-        setIsLoading(false);
-      }
-      return;
-    }
-
-    const fetchTestStatus = async () => {
-      if (!isMounted) return;
-      setIsLoading(true);
-      setError(null);
-      try {
-        const record = await pb.collection('teacher_tests').getOne<TestStatusData>(testId, {
-          fields: 'id,testName,status' // Fetch only necessary fields
-        });
-        if (isMounted) {
-          setTestData(record);
-        }
-      } catch (err: any) {
-        if (isMounted) {
-          if (err.isAbort || (err.name === 'ClientResponseError' && err.status === 0)) {
-            console.warn('Fetch test status request was cancelled.');
-          } else {
-            console.error("Failed to fetch test status:", err);
-            setError("Could not load test status. Please ensure the test exists.");
-          }
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    fetchTestStatus();
+    fetchTestStatus(() => isMounted);
     return () => { isMounted = false; };
-  }, [testId]);
+  }, [fetchTestStatus]);
 
-  // Placeholder for status update logic
+
   const handleUpdateStatus = async (newStatus: TestStatusData['status']) => {
-    if (!testData) return;
-    // Implement API call to update test status here
-    // For example:
-    // try {
-    //   await pb.collection('teacher_tests').update(testData.id, { status: newStatus });
-    //   setTestData(prev => prev ? { ...prev, status: newStatus } : null);
-    //   toast({ title: "Status Updated", description: `Test is now ${newStatus}.` });
-    // } catch (err) {
-    //   toast({ title: "Error", description: "Could not update status.", variant: "destructive" });
-    // }
-    toast({ title: "Action Demo", description: `Status would be changed to ${newStatus}. (Functionality pending)` });
+    if (!testData || isUpdatingStatus) return;
+    setIsUpdatingStatus(true);
+    try {
+      await pb.collection('teacher_tests').update(testData.id, { status: newStatus });
+      setTestData(prev => prev ? { ...prev, status: newStatus } : null);
+      toast({ title: "Status Updated", description: `Test "${testData.testName}" is now ${newStatus}.` });
+      // Optionally, re-fetch to ensure data consistency, though optimistic update is done.
+      // fetchTestStatus(); 
+    } catch (err: any) {
+      toast({ title: "Error Updating Status", description: `Could not update status: ${err.data?.message || err.message}`, variant: "destructive" });
+      console.error("Failed to update test status:", err.data || err);
+    } finally {
+      setIsUpdatingStatus(false);
+    }
   };
 
   if (isLoading) {
@@ -120,15 +115,15 @@ export default function TestStatusPage() {
               <p className="text-lg">
                 Current Status: <span className="font-semibold text-primary">{testData.status}</span>
               </p>
-              <div className="flex gap-2">
-                <Button onClick={() => handleUpdateStatus('Published')} disabled={testData.status === 'Published'}>
-                  Publish Test
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={() => handleUpdateStatus('Published')} disabled={testData.status === 'Published' || isUpdatingStatus} className="bg-green-500 hover:bg-green-600 text-white">
+                  {isUpdatingStatus && testData.status !== 'Published' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Publish Test
                 </Button>
-                <Button onClick={() => handleUpdateStatus('Draft')} variant="outline" disabled={testData.status === 'Draft'}>
-                  Set to Draft
+                <Button onClick={() => handleUpdateStatus('Draft')} variant="outline" disabled={testData.status === 'Draft' || isUpdatingStatus}>
+                  {isUpdatingStatus && testData.status !== 'Draft' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Set to Draft
                 </Button>
-                <Button onClick={() => handleUpdateStatus('Archived')} variant="secondary" disabled={testData.status === 'Archived'}>
-                  Archive Test
+                <Button onClick={() => handleUpdateStatus('Archived')} variant="secondary" disabled={testData.status === 'Archived' || isUpdatingStatus}>
+                  {isUpdatingStatus && testData.status !== 'Archived' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Archive Test
                 </Button>
               </div>
               <p className="text-sm text-muted-foreground mt-4 flex items-center gap-1">
@@ -145,3 +140,4 @@ export default function TestStatusPage() {
     </div>
   );
 }
+
