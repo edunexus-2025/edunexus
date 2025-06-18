@@ -1,3 +1,4 @@
+
 [
     {
         "id": "pbc_3669383003",
@@ -31,7 +32,7 @@
                 "name": "teacher",
                 "type": "relation",
                 "required": true,
-                "presentable": false,
+                "presentable": true,
                 "unique": false,
                 "options": {
                     "collectionId": "pbc_2504364897",
@@ -138,7 +139,7 @@
                 "presentable": true,
                 "unique": false,
                 "options": {
-                    "collectionId": "pbc_2863365490",
+                    "collectionId": "pbc_2863365490", 
                     "cascadeDelete": false,
                     "minSelect": 1,
                     "maxSelect": 1,
@@ -253,11 +254,29 @@
             },
             {
                 "system": false,
+                "id": "number_tqd_marks",
+                "name": "marks",
+                "type": "number",
+                "required": false,
+                "presentable": true,
+                "options": {"min": 0, "noDecimal": false }
+            },
+            {
+                "system": false,
+                "id": "text_tqd_subject",
+                "name": "subject",
+                "type": "text",
+                "required": false,
+                "presentable": true,
+                "options": { "min": null, "max": 100, "pattern": "" }
+            },
+            {
+                "system": false,
                 "id": "autodate2990389176",
                 "name": "created",
                 "type": "autodate",
                 "required": false,
-                "presentable": false,
+                "presentable": true,
                 "unique": false,
                 "options": {
                     "onCreate": true,
@@ -270,7 +289,7 @@
                 "name": "updated",
                 "type": "autodate",
                 "required": false,
-                "presentable": false,
+                "presentable": true,
                 "unique": false,
                 "options": {
                     "onCreate": true,

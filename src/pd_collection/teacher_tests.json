@@ -10,7 +10,7 @@
         "name": "teacher_tests",
         "type": "base",
         "system": false,
-        "fields": [
+        "schema": [
             {
                 "system": true,
                 "id": "text3208210256",
@@ -18,13 +18,7 @@
                 "type": "text",
                 "required": true,
                 "presentable": false,
-                "unique": false,
-                "options": {
-                    "min": 15,
-                    "max": 15,
-                    "pattern": "^[a-z0-9]+$",
-                    "autogeneratePattern": "[a-z0-9]{15}"
-                }
+                "options": { "min": 15, "max": 15, "pattern": "^[a-z0-9]+$", "autogeneratePattern": "[a-z0-9]{15}" }
             },
             {
                 "system": false,
@@ -33,14 +27,7 @@
                 "type": "relation",
                 "required": true,
                 "presentable": true,
-                "unique": false,
-                "options": {
-                    "collectionId": "pbc_2504364897",
-                    "cascadeDelete": true,
-                    "minSelect": 1,
-                    "maxSelect": 1,
-                    "displayFields": ["name", "EduNexus_Name"]
-                }
+                "options": { "collectionId": "pbc_2504364897", "cascadeDelete": true, "minSelect": 1, "maxSelect": 1, "displayFields": ["name", "EduNexus_Name"] }
             },
             {
                 "system": false,
@@ -49,12 +36,7 @@
                 "type": "text",
                 "required": true,
                 "presentable": true,
-                "unique": false,
-                "options": {
-                    "min": 1,
-                    "max": 150,
-                    "pattern": ""
-                }
+                "options": { "min": 1, "max": 150, "pattern": "" }
             },
             {
                 "system": false,
@@ -63,12 +45,7 @@
                 "type": "text",
                 "required": true,
                 "presentable": true,
-                "unique": false,
-                "options": {
-                    "min": 1,
-                    "max": null,
-                    "pattern": "^[0-9]+$"
-                }
+                "options": { "min": 1, "max": null, "pattern": "^[0-9]+$" }
             },
             {
                 "system": false,
@@ -77,14 +54,7 @@
                 "type": "select",
                 "required": true,
                 "presentable": true,
-                "unique": false,
-                "options": {
-                    "maxSelect": 1,
-                    "values": [
-                        "Chapterwise",
-                        "Full Length"
-                    ]
-                }
+                "options": { "maxSelect": 1, "values": ["Chapterwise", "Full Length"] }
             },
             {
                 "system": false,
@@ -93,14 +63,7 @@
                 "type": "select",
                 "required": true,
                 "presentable": true,
-                "unique": false,
-                "options": {
-                    "maxSelect": 1,
-                    "values": [
-                        "Free",
-                        "Premium"
-                    ]
-                }
+                "options": { "maxSelect": 1, "values": ["Free", "Premium"] }
             },
             {
                 "system": false,
@@ -109,15 +72,7 @@
                 "type": "select",
                 "required": true,
                 "presentable": true,
-                "unique": false,
-                 "options": {
-                    "maxSelect": 1,
-                    "values": [
-                        "Draft",
-                        "Published",
-                        "Archived"
-                    ]
-                }
+                 "options": { "maxSelect": 1, "values": ["Draft", "Published", "Archived"] }
             },
             {
                 "system": false,
@@ -126,14 +81,7 @@
                 "type": "relation",
                 "required": false,
                 "presentable": false,
-                "unique": false,
-                "options": {
-                    "collectionId": "pbc_1874489316",
-                    "cascadeDelete": false,
-                    "minSelect": 0,
-                    "maxSelect": 200,
-                    "displayFields": ["id", "questionText", "subject", "lessonName"]
-                }
+                "options": { "collectionId": "pbc_1874489316", "cascadeDelete": false, "minSelect": 0, "maxSelect": 200, "displayFields": ["id", "questionText", "subject", "lessonName"] }
             },
              {
                 "system": false,
@@ -142,74 +90,22 @@
                 "type": "relation",
                 "required": false,
                 "presentable": false,
-                "unique": false,
-                "options": {
-                    "collectionId": "pbc_3669383003",
-                    "cascadeDelete": false,
-                    "minSelect": 0,
-                    "maxSelect": 200,
-                    "displayFields": ["id", "QuestionText", "QBExam"]
-                }
+                "options": { "collectionId": "pbc_3669383003", "cascadeDelete": false, "minSelect": 0, "maxSelect": 200, "displayFields": ["id", "QuestionText", "QBExam"] }
             },
-            {
-                "system": false,
-                "id": "number3496344499",
-                "name": "totalScore",
-                "type": "number",
-                "required": false,
-                "presentable": true,
-                "unique": false,
-                "options": {
-                    "min": 0,
-                    "max": null,
-                    "noDecimal": false
-                }
-            },
-            {
-                "system": false,
-                "id": "number1847253182",
-                "name": "PerNegativeScore",
-                "type": "number",
-                "required": false,
-                "presentable": true,
-                "unique": false,
-                 "options": {
-                    "min": null,
-                    "max": null,
-                    "noDecimal": false
-                }
-            },
-            { "system": false, "id": "number2507168605", "name": "Admin_Password", "type": "number", "required": false, "presentable": false, "unique": false, "options": { "min": 1000, "max": 999999, "noDecimal": true }},
-            {
-                "system": false,
-                "id": "select3991840572",
-                "name": "QBExam",
-                "type": "select",
-                "required": true,
-                "presentable": true,
-                "unique": false,
-                 "options": {
-                    "maxSelect": 1,
-                    "values": [
-                        "MHT CET",
-                        "JEE MAIN",
-                        "NEET"
-                    ]
-                }
-            },
-            { "system": false, "id": "bool1375632720", "name": "Students_can_view_their_results_after_the_test", "type": "bool", "required": false, "presentable": false, "unique": false, "options": {} },
-            { "system": false, "id": "number1102202353", "name": "How_many_times_can_students_take_the_test", "type": "number", "required": false, "presentable": false, "unique": false, "options": { "min": 1, "max": 10, "noDecimal": true }},
-            { "system": false, "id": "bool3741509037", "name": "Shuffle_Questions", "type": "bool", "required": false, "presentable": false, "unique": false, "options": {} },
-            { "system": false, "id": "select1660153532", "name": "Who_can_take_your_test", "type": "select", "required": false, "presentable": false, "unique": false, "options": { "maxSelect": 1, "values": [ "EveryOne", "Group 1", "Group 2", "Group 3", "Group 4", "Group 5", "Group 6" ]}},
-            { "system": false, "id": "bool860012282", "name": "Would_you_like_to_get_admin_access_through_link", "type": "bool", "required": false, "presentable": false, "unique": false, "options": {} },
-            { "system": false, "id": "text2738425650", "name": "Test_Description", "type": "text", "required": false, "presentable": true, "unique": false, "options": { "min": null, "max": 500, "pattern": "" }},
-            { "system": true, "id": "autodate2990389176", "name": "created", "type": "autodate", "required": false, "presentable": false, "unique": false, "options": { "onCreate": true, "onUpdate": false }},
-            { "system": true, "id": "autodate3332085495", "name": "updated", "type": "autodate", "required": false, "presentable": false, "unique": false, "options": { "onCreate": true, "onUpdate": true }}
+            { "system": false, "id": "number3496344499", "name": "totalScore", "type": "number", "required": false, "presentable": true, "options": { "min": 0, "max": null, "noDecimal": false }},
+            { "system": false, "id": "number1847253182", "name": "PerNegativeScore", "type": "number", "required": false, "presentable": true, "options": { "min": null, "max": null, "noDecimal": false }},
+            { "system": false, "id": "number2507168605", "name": "Admin_Password", "type": "number", "required": false, "presentable": false, "options": { "min": 1000, "max": 999999, "noDecimal": true }},
+            { "system": false, "id": "select3991840572", "name": "QBExam", "type": "select", "required": true, "presentable": true, "options": { "maxSelect": 1, "values": ["MHT CET", "JEE MAIN", "NEET"] }},
+            { "system": false, "id": "bool1375632720", "name": "Students_can_view_their_results_after_the_test", "type": "bool", "required": false, "presentable": false, "options": {} },
+            { "system": false, "id": "number1102202353", "name": "How_many_times_can_students_take_the_test", "type": "number", "required": false, "presentable": false, "options": { "min": 1, "max": 10, "noDecimal": true }},
+            { "system": false, "id": "bool3741509037", "name": "Shuffle_Questions", "type": "bool", "required": false, "presentable": false, "options": {} },
+            { "system": false, "id": "select1660153532", "name": "Who_can_take_your_test", "type": "select", "required": false, "presentable": false, "options": { "maxSelect": 1, "values": [ "EveryOne", "Group 1", "Group 2", "Group 3", "Group 4", "Group 5", "Group 6" ]}},
+            { "system": false, "id": "bool860012282", "name": "Would_you_like_to_get_admin_access_through_link", "type": "bool", "required": false, "presentable": false, "options": {} },
+            { "system": false, "id": "text2738425650", "name": "Test_Description", "type": "text", "required": false, "presentable": true, "options": { "min": null, "max": 500, "pattern": "" }},
+            { "system": true, "id": "autodate2990389176", "name": "created", "type": "autodate", "required": false, "presentable": false, "options": { "onCreate": true, "onUpdate": false }},
+            { "system": true, "id": "autodate3332085495", "name": "updated", "type": "autodate", "required": false, "presentable": false, "options": { "onCreate": true, "onUpdate": true }}
         ],
-        "indexes": [
-            "CREATE INDEX idx_teacher_tests_teacherId ON teacher_tests (teacherId)"
-        ],
+        "indexes": [ "CREATE INDEX idx_teacher_tests_teacherId ON teacher_tests (teacherId)" ],
         "system": false
     }
 ]
-    
