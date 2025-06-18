@@ -13,6 +13,10 @@ import { Loader2, Star, CheckCircle, ArrowLeft, Zap, ShieldCheck, Crown } from '
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Plan } from '@/lib/types'; 
 import { cn } from '@/lib/utils';
+// crypto-js is not needed on the client for standard PayU hash generation (done backend)
+
+// PayU requires a unique transaction ID for each attempt
+const generateTransactionId = () => `EDUNEXUS_TEACHER_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
 export default function TeacherUpgradePlatformPlanPage() {
   const { teacher, isLoadingTeacher, authRefresh } = useAuth();
@@ -22,41 +26,88 @@ export default function TeacherUpgradePlatformPlanPage() {
 
   const currentTeacherTier = teacher?.teacherSubscriptionTier || 'Free';
 
-  const handleUpgrade = async (planId: Plan['id']) => {
-    if (!teacher?.id || typeof planId !== 'string') {
-      toast({ title: "Error", description: "Teacher not found or invalid plan. Please log in again.", variant: "destructive" });
+  const handleUpgrade = async (plan: Plan) => {
+    if (!teacher?.id || !teacher.email || !teacher.name || !teacher.phoneNumber) {
+      toast({ title: "Error", description: "Teacher details missing (name, email, phone). Please complete your profile.", variant: "destructive" });
       return;
     }
 
-    if (planId === currentTeacherTier) {
+    if (plan.id === currentTeacherTier) {
       toast({ title: "No Change", description: "This is already your current plan.", variant: "default" });
       return;
     }
 
-    setIsProcessingUpgrade(planId);
+    setIsProcessingUpgrade(plan.id);
 
-    const targetPlan = teacherPlatformPlansData.find(p => p.id === planId);
-    if (!targetPlan) {
-      toast({ title: "Error", description: "Selected plan details not found.", variant: "destructive" });
+    const payUKey = process.env.NEXT_PUBLIC_PAYU_KEY;
+    // PAYU_PAYMENT_URL is not prefixed with NEXT_PUBLIC_ because form submission happens server-side (or should)
+    // For client-side JS submission (like Razorpay SDK), it might be needed.
+    // However, for a standard HTML form post, the action URL is what matters.
+    // The backend API `/api/payu/initiate-teacher-plan-payment` will receive this if needed, or use its own env var.
+    const payUPaymentUrlFromServer = process.env.PAYU_PAYMENT_URL || 'https://secure.payu.in/_payment'; // Fallback for server
+    const appBaseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL || window.location.origin;
+
+    if (!payUKey || !appBaseUrl) {
+      toast({ title: "Configuration Error", description: "PayU settings are missing. Contact support.", variant: "destructive" });
       setIsProcessingUpgrade(null);
       return;
     }
+    
+    const amount = String(plan.priceValue.toFixed(2));
+    const productinfo = `${AppConfig.appName} Teacher Plan - ${plan.name}`;
+    const firstname = teacher.name.split(' ')[0] || 'Teacher';
+    const email = teacher.email;
+    const phone = teacher.phoneNumber.replace(/\D/g, ''); // Remove non-digits
+    const txnid = generateTransactionId();
+    // These URLs point to our backend API route that will handle the PayU response
+    const surl = `${appBaseUrl}/api/payu/handle-teacher-plan-response`;
+    const furl = `${appBaseUrl}/api/payu/handle-teacher-plan-response`;
+    
+    const paymentDataForBackend = {
+      txnid,
+      amount,
+      productinfo,
+      firstname,
+      email,
+      phone,
+      surl,
+      furl,
+      planId: plan.id, // To identify which plan was chosen
+      teacherId: teacher.id, // To identify the teacher
+    };
 
     try {
-      // Simulate payment or direct upgrade for now
-      // In a real app, this would involve a payment gateway integration
-      await pb.collection('teacher_data').update(teacher.id, {
-        teacherSubscriptionTier: planId, 
-        max_content_plans_allowed: targetPlan.maxContentPlans,
-        // max_students_per_content_plan: targetPlan.maxStudentsPerContentPlan === 'Unlimited' ? 999999 : targetPlan.maxStudentsPerContentPlan, // Removed
+      const response = await fetch('/api/payu/initiate-teacher-plan-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(paymentDataForBackend),
       });
-      
-      toast({ title: "Plan Upgraded!", description: `You are now on the ${targetPlan.name} plan.` });
-      await authRefresh(); 
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Failed to parse error response from server." }));
+        throw new Error(errorData.error || `Failed to initiate payment (status: ${response.status})`);
+      }
+
+      const payuFormData = await response.json(); // This should contain key, hash, and other params
+
+      // Create a dynamic form and submit it
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = payUPaymentUrlFromServer; // Use the PayU URL
+
+      for (const key in payuFormData) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = payuFormData[key];
+        form.appendChild(input);
+      }
+      document.body.appendChild(form);
+      form.submit();
+      // The page will redirect to PayU. No need to set isProcessingUpgrade to null here.
     } catch (error: any) {
-      console.error("Failed to upgrade teacher plan:", error);
-      toast({ title: "Upgrade Failed", description: error.data?.message || error.message, variant: "destructive" });
-    } finally {
+      console.error("Failed to initiate PayU payment:", error);
+      toast({ title: "Payment Initiation Failed", description: error.message || "Could not start the payment process.", variant: "destructive" });
       setIsProcessingUpgrade(null);
     }
   };
@@ -133,7 +184,6 @@ export default function TeacherUpgradePlatformPlanPage() {
                     </li>
                   ))}
                   {plan.maxContentPlans !== undefined && <li><ShieldCheck className="inline h-5 w-5 mr-1.5 text-primary/70" /> Max {plan.maxContentPlans} Content Plans</li>}
-                  {/* Max students per content plan display removed */}
                   <li><Zap className="inline h-5 w-5 mr-1.5 text-primary/70" /> QB Access: {plan.qbAccess ? 'Full EduNexus QB' : 'Limited/Own QB'}</li>
 
                 </ul>
@@ -146,7 +196,7 @@ export default function TeacherUpgradePlatformPlanPage() {
                 ) : (
                   <Button
                     className={cn("w-full text-base py-3", plan.isRecommended && "bg-primary hover:bg-primary/90 text-primary-foreground")}
-                    onClick={() => handleUpgrade(plan.id)}
+                    onClick={() => handleUpgrade(plan)}
                     variant={plan.isRecommended ? "default" : "secondary"}
                     disabled={isProcessingUpgrade === plan.id || isLoadingTeacher}
                   >

@@ -114,7 +114,10 @@ export const Routes = {
   teacherUpgradeAds: '/teacher/dashboard/upgrade-ads',
   teacherPublicAdPage: (edunexusName: string): string => `/t/${edunexusName}`,
   teacherManageDiscussion: '/teacher/dashboard/manage-discussion',
-  teacherWallet: '/teacher/dashboard/wallet', // New Wallet Route
+  teacherWallet: '/teacher/dashboard/wallet',
+
+  // Payment Routes
+  teacherPaymentStatus: '/teacher/payment-status', // New route for PayU teacher payment status
 };
 
 // Helper to convert display names to URL-friendly slugs
