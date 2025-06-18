@@ -62,14 +62,17 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
   let teacherSubTier: UserSubscriptionTierTeacher | undefined = undefined;
   let canCreateAdsTeacher: boolean | undefined = false;
   let adsSubscriptionTeacher: User['ads_subscription'] = 'Free';
+  let phoneNumberMapped: string | undefined = undefined;
 
 
   if (record.collectionName === 'users') {
     studentSubTier = record.model as UserSubscriptionTierStudent;
+    phoneNumberMapped = record.phone as User['phoneNumber'];
   } else if (record.collectionName === 'teacher_data') {
-    teacherSubTier = (record.teacherSubscriptionTier || 'Free') as UserSubscriptionTierTeacher; // Default to 'Free' if not set
+    teacherSubTier = (record.teacherSubscriptionTier || 'Free') as UserSubscriptionTierTeacher;
     canCreateAdsTeacher = record.can_create_ads === true;
-    adsSubscriptionTeacher = (record.ads_subscription || 'Free') as User['ads_subscription']; // Default to 'Free'
+    adsSubscriptionTeacher = (record.ads_subscription || 'Free') as User['ads_subscription'];
+    phoneNumberMapped = record.phone_number as User['phoneNumber']; // Corrected mapping
   }
   
   const name = record.name || record.meta?.name;
@@ -82,8 +85,8 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
       avatarUrl = pb.files.getUrl(record, record.avatar as string);
     }
   }
-  if (!avatarUrl) { 
-    avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name?.charAt(0) || 'U')}&background=random&color=fff&size=128`;
+  if (!avatarUrl && name) { 
+    avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name.charAt(0) || 'U')}&background=random&color=fff&size=128`;
   }
 
 
@@ -95,7 +98,7 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
     verified: record.verified ?? record.meta?.emailVerification, 
     emailVisibility: record.emailVisibility ?? true,
     grade: record.class as User['grade'],
-    phoneNumber: record.phone as User['phoneNumber'],
+    phoneNumber: phoneNumberMapped, // Use the mapped phone number
     studentSubscriptionTier: studentSubTier,
     teacherSubscriptionTier: teacherSubTier,
     role: record.role as User['role'],
@@ -127,8 +130,8 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
     subscription_by_teacher: record.subscription_by_teacher,
   };
   
-  if (mappedUser.collectionName === 'users' && record.token) { 
-      if (!mappedUser.favExam || !mappedUser.grade || !mappedUser.targetYear) {
+  if (mappedUser.collectionName === 'users' && (record.token || record.meta?.token) ) {  // Check both record.token and meta.token
+      if (!mappedUser.favExam || !mappedUser.grade || !mappedUser.targetYear || !mappedUser.password) { // Added check for password
           mappedUser.needsProfileCompletion = true;
       }
   }
@@ -465,14 +468,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         passwordConfirm: details.confirmPassword,
         name: details.name,
         institute_name: details.institute_name || null,
-        phone_number: details.phone_number,
+        phone_number: details.phone_number, // Use phone_number as per schema
         total_students: details.total_students,
         level: details.level,
         EduNexus_Name: details.EduNexus_Name,
         favExam: details.favExam && details.favExam.length > 0 ? details.favExam : null, 
         about: details.about || null,
         subjects_offered: details.subjects_offered && details.subjects_offered.length > 0 ? details.subjects_offered : null,
-        teacherSubscriptionTier: "Free" as UserSubscriptionTierTeacher, // Default to Free
+        teacherSubscriptionTier: "Free" as UserSubscriptionTierTeacher,
         used_free_trial: false,
         emailVisibility: true,
         can_create_ads: false, 
