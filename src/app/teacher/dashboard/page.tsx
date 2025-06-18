@@ -4,7 +4,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowRight, ShieldCheck, Zap, ListChecks, TrendingUp, Loader2, Search, Users, Library, AlertCircle, BookOpenCheck, Target as TargetIcon, Megaphone, ChevronLeft, ChevronRight as ChevronRightIcon, Brain, MessageSquare, Activity, CalendarDays, Swords, FileText, BookHeart, NotebookText, DollarSign, Award, Crown, Wallet } from 'lucide-react'; // Added Crown
+import { ArrowRight, ShieldCheck, Zap, ListChecks, TrendingUp, Loader2, Search, Users, Library, AlertCircle, BookOpenCheck, Target as TargetIcon, Megaphone, ChevronLeft, ChevronRight as ChevronRightIcon, Brain, MessageSquare, Activity, CalendarDays, Swords, FileText, BookHeart, NotebookText, DollarSign, Award, Crown, Wallet, Settings as SettingsIcon, BarChart3 } from 'lucide-react'; // Added BarChart3
 import { useAuth } from '@/contexts/AuthContext';
 import { Routes, AppConfig } from '@/lib/constants';
 import { Skeleton } from '@/components/ui/skeleton';
