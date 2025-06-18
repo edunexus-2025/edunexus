@@ -1,4 +1,3 @@
-
 import type { Metadata } from 'next'; 
 import { Geist } from 'next/font/google';
 import './globals.css';
@@ -38,13 +37,17 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>{/* Ensure no leading whitespace */}
         {/* Favicon and Apple touch icon links are now handled by Next.js metadata.icons */}
+        
+        {/* Razorpay Checkout Script */}
+        <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
         {/*
-        Standard HTML script tag for AdSense */}
+        Standard HTML script tag for AdSense - Retained as it's unrelated to payment gateway */}
         <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9210790199921207"
           crossOrigin="anonymous"
-        ></script>{/* Razorpay script removed */}
+        ></script>
       </head>
       <body className={`${geist.variable} font-sans antialiased`}>
         <ThemeProvider
@@ -63,4 +66,3 @@ export default function RootLayout({
     </html>
   );
 }
-

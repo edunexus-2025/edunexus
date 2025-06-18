@@ -7,37 +7,37 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-// pb import is not directly used here for plan updates, it's handled by API
+import pb from '@/lib/pocketbase'; // Keep for authRefresh potential, but not direct plan update
 import { Routes, AppConfig, teacherPlatformPlansData } from '@/lib/constants';
 import { Loader2, Star, CheckCircle, ArrowLeft, Zap, ShieldCheck, Crown } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Plan } from '@/lib/types'; 
+import type { Plan, UserSubscriptionTierTeacher } from '@/lib/types'; 
 import { cn } from '@/lib/utils';
 
-// PayU requires a unique transaction ID for each attempt
-const generateTransactionId = () => `EDUNEXUS_TEACHER_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+// Razorpay window augmentation
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
 
 export default function TeacherUpgradePlatformPlanPage() {
   const { teacher, isLoadingTeacher, authRefresh } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const [isProcessingUpgrade, setIsProcessingUpgrade] = useState<string | null>(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState<string | null>(null);
 
   const currentTeacherTier = teacher?.teacherSubscriptionTier || 'Free';
 
   const handleUpgrade = async (plan: Plan) => {
-    // Robust check for required teacher details
-    if (!teacher?.id || 
-        !teacher.email || teacher.email.trim() === '' ||
-        !teacher.name || teacher.name.trim() === '' ||
-        !teacher.phoneNumber || teacher.phoneNumber.trim() === '') {
+    if (!teacher || !teacher.id || !teacher.email || !teacher.name || !teacher.phoneNumber) {
       toast({ 
         title: "Profile Incomplete", 
-        description: "Your teacher profile (name, email, or phone number) is incomplete. Please update it in your settings before upgrading.", 
+        description: "Your teacher profile (name, email, or phone) is incomplete. Please update it in settings before upgrading.", 
         variant: "destructive",
         duration: 7000 
       });
-      setIsProcessingUpgrade(null);
+      setIsProcessingPayment(null);
       return;
     }
 
@@ -45,86 +45,111 @@ export default function TeacherUpgradePlatformPlanPage() {
       toast({ title: "No Change", description: "This is already your current plan.", variant: "default" });
       return;
     }
+    if (plan.id === 'Free') {
+        toast({title: "Free Plan", description: "No payment needed for the free plan. If you wish to downgrade, contact support.", variant: "default"});
+        return;
+    }
 
-    setIsProcessingUpgrade(plan.id);
+    setIsProcessingPayment(plan.id);
 
-    const payUPaymentUrlFromServer = process.env.PAYU_PAYMENT_URL || 'https://secure.payu.in/_payment'; 
-    const appBaseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL || window.location.origin;
-
-    if (!process.env.NEXT_PUBLIC_PAYU_CLIENT_ID || !appBaseUrl) { 
-      console.error("[UpgradePage Teacher] CRITICAL ERROR: PayU Client ID (NEXT_PUBLIC_PAYU_CLIENT_ID) or App Base URL (NEXT_PUBLIC_APP_BASE_URL) is not configured in client-side environment variables.");
-      toast({ title: "Configuration Error", description: "Payment gateway client key or application URL is missing. Contact support.", variant: "destructive" });
-      setIsProcessingUpgrade(null);
+    const razorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+    if (!razorpayKeyId) {
+      console.error("[TeacherUpgradePage] CRITICAL ERROR: Razorpay Key ID is not configured.");
+      toast({ title: "Payment Error", description: "Payment gateway client key is not configured. Contact support.", variant: "destructive" });
+      setIsProcessingPayment(null);
       return;
     }
-    
-    const amount = String(plan.priceValue.toFixed(2));
-    const productinfo = `${AppConfig.appName} Teacher Plan - ${plan.name}`;
-    const firstname = teacher.name.split(' ')[0] || 'Teacher';
-    const email = teacher.email;
-    const phone = teacher.phoneNumber.replace(/\D/g, ''); 
-    const txnid = generateTransactionId();
-    
-    const paymentDataForBackend = {
-      txnid,
-      amount,
-      productinfo,
-      firstname,
-      email,
-      phone, 
-      planId: plan.id, 
-      teacherId: teacher.id,
-      teacherEmail: teacher.email,
-      teacherName: teacher.name,
-      teacherPhone: teacher.phoneNumber,
-    };
+
+    const amountForApi = parseFloat(plan.priceValue.toFixed(2));
+    if (isNaN(amountForApi) || amountForApi <= 0) {
+        toast({ title: "Payment Error", description: `Invalid amount for payment: ${plan.priceValue}.`, variant: "destructive" });
+        setIsProcessingPayment(null);
+        return;
+    }
 
     try {
-      console.log(`[UpgradePage Teacher] INFO: Sending request to /api/payu/initiate-teacher-plan-payment. Payload:`, paymentDataForBackend);
-      const response = await fetch('/api/payu/initiate-teacher-plan-payment', {
+      const orderResponse = await fetch('/api/razorpay/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(paymentDataForBackend),
+        body: JSON.stringify({ 
+          amount: amountForApi, 
+          currency: 'INR', 
+          planId: plan.id, 
+          userId: teacher.id,
+          userType: 'teacher_platform_plan', // Differentiates from student platform plan
+          productDescription: `${AppConfig.appName} Teacher Plan - ${plan.name}`
+        }),
       });
 
-      const responseText = await response.text();
-      console.log(`[UpgradePage Teacher] INFO: Raw response from /api/payu/initiate-teacher-plan-payment (${response.status}):`, responseText);
-
-      if (!response.ok) {
-        let errorData = { error: `Server error (${response.status}): ${responseText || 'Failed to create PayU order.'}` };
+      const responseText = await orderResponse.text();
+      if (!orderResponse.ok) {
+        let errorData = { error: `Server error (${orderResponse.status}): ${responseText || 'Failed to create Razorpay order.'}` };
         try { errorData = JSON.parse(responseText); } catch (e) { /* Keep errorData as is */ }
-        console.error(`[UpgradePage Teacher] ERROR: API response not OK (${response.status}). Error data/text:`, errorData);
-        throw new Error(errorData.error || `Failed to initiate payment (status: ${response.status})`);
+        throw new Error(errorData.error || `Failed to create Razorpay order (status: ${orderResponse.status})`);
       }
 
-      const payuFormData = JSON.parse(responseText); 
-      console.log('[UpgradePage Teacher] INFO: Successfully parsed PayU form data from API:', payuFormData);
+      const order = JSON.parse(responseText);
 
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = payUPaymentUrlFromServer; 
-
-      for (const key in payuFormData) {
-        if (payuFormData.hasOwnProperty(key)) {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = key;
-            input.value = payuFormData[key];
-            form.appendChild(input);
-        }
-      }
-      document.body.appendChild(form);
-      form.submit();
-      // User will be redirected to PayU. setIsProcessingUpgrade(null) will be handled by ondismiss or if the page reloads.
+      const options = {
+        key: razorpayKeyId,
+        amount: order.amount, // Amount from Razorpay order (in paisa)
+        currency: order.currency,
+        name: AppConfig.appName,
+        description: `Upgrade to ${plan.name} Teacher Plan`,
+        order_id: order.id,
+        handler: async (response: any) => {
+          toast({ title: "Payment Initiated", description: "Verifying your payment..." });
+          try {
+            const verificationResponse = await fetch('/api/razorpay/verify-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: order.id, // Use order.id obtained from create-order
+                razorpay_signature: response.razorpay_signature,
+                // Pass notes back to verification
+                planId: plan.id,
+                userId: teacher.id,
+                userType: 'teacher_platform_plan',
+                productDescription: `${AppConfig.appName} Teacher Plan - ${plan.name}`
+              }),
+            });
+            const verificationData = await verificationResponse.json();
+            if (verificationResponse.ok && verificationData.verified) {
+              toast({ title: "Payment Successful!", description: "Processing your upgrade..." });
+              await authRefresh(); // Refresh auth context to get updated teacher details
+              router.push(Routes.teacherDashboard); // Redirect to teacher dashboard
+            } else {
+              toast({ title: "Payment Verification Failed", description: verificationData.error || "Please contact support.", variant: "destructive" });
+            }
+          } catch (verifyError: any) {
+            toast({ title: "Verification Error", description: verifyError.message || "An error occurred.", variant: "destructive" });
+          }
+          setIsProcessingPayment(null);
+        },
+        prefill: {
+          name: teacher.name || "",
+          email: teacher.email || "",
+          contact: teacher.phoneNumber || "",
+        },
+        notes: {
+          plan_id: plan.id,
+          user_id: teacher.id,
+          user_type: 'teacher_platform_plan',
+          app_name: AppConfig.appName,
+        },
+        theme: { color: "#3F51B5" },
+        modal: { ondismiss: () => { toast({ title: "Payment Cancelled", variant: "default" }); setIsProcessingPayment(null); } }
+      };
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', (response: any) => {
+        toast({ title: "Payment Failed", description: `Error: ${response.error.description} (Code: ${response.error.code})`, variant: "destructive" });
+        setIsProcessingPayment(null);
+      });
+      rzp.open();
     } catch (error: any) {
-      console.error("[UpgradePage Teacher] CRITICAL: Error in payment process (client-side fetch or form submission):", error);
-      if (error.name === 'TypeError' && error.message.toLowerCase().includes('failed to fetch')) {
-            console.error("[UpgradePage Teacher] ERROR: 'Failed to fetch'. This usually means the API endpoint (/api/payu/initiate-teacher-plan-payment) is unreachable or crashing. CHECK SERVER LOGS.");
-            toast({ title: "Network Error or Server Issue", description: "Could not connect to the payment server. Ensure API endpoint is live.", variant: "destructive", duration: 10000 });
-        } else {
-            toast({ title: "Payment Setup Error", description: error.message || "Could not initiate payment.", variant: "destructive", duration: 7000 });
-        }
-      setIsProcessingUpgrade(null);
+      toast({ title: "Payment Setup Error", description: error.message || "Could not initiate payment.", variant: "destructive" });
+      setIsProcessingPayment(null);
     }
   };
   
@@ -148,9 +173,9 @@ export default function TeacherUpgradePlatformPlanPage() {
       <Card className="shadow-lg">
         <CardHeader className="text-center">
           <Zap className="mx-auto h-12 w-12 text-primary mb-3" />
-          <CardTitle className="text-3xl font-bold text-primary">Upgrade Your Teacher Platform Plan</CardTitle>
+          <CardTitle className="text-3xl font-bold text-primary">Teacher Platform Plans</CardTitle>
           <CardDescription className="text-lg text-muted-foreground">
-            Unlock more features, reach more students, and grow with {AppConfig.appName}.
+            Choose a plan that best suits your teaching needs on {AppConfig.appName}.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -213,10 +238,10 @@ export default function TeacherUpgradePlatformPlanPage() {
                     className={cn("w-full text-base py-3", plan.isRecommended && "bg-primary hover:bg-primary/90 text-primary-foreground")}
                     onClick={() => handleUpgrade(plan)}
                     variant={plan.isRecommended ? "default" : "secondary"}
-                    disabled={isProcessingUpgrade === plan.id || isLoadingTeacher}
+                    disabled={isProcessingPayment === plan.id || isLoadingTeacher}
                   >
-                    {isProcessingUpgrade === plan.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    {isProcessingUpgrade === plan.id ? 'Processing...' : plan.ctaText || 'Upgrade Plan'}
+                    {isProcessingPayment === plan.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    {isProcessingPayment === plan.id ? 'Processing...' : plan.ctaText || 'Upgrade Plan'}
                   </Button>
                 )}
               </CardFooter>
@@ -228,4 +253,4 @@ export default function TeacherUpgradePlatformPlanPage() {
   );
 }
 
-    
+```

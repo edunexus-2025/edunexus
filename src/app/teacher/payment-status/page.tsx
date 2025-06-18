@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
@@ -16,21 +15,13 @@ function PaymentStatusContent() {
   const [status, setStatus] = useState<'loading' | 'success' | 'failure' | 'error' | 'info'>('loading');
   const [message, setMessage] = useState<string | null>(null);
   const [transactionId, setTransactionId] = useState<string | null>(null);
-  const [payuId, setPayuId] = useState<string | null>(null);
-  const [planName, setPlanName] = useState<string | null>(null);
-  const [amount, setAmount] = useState<string | null>(null);
-  const [productInfo, setProductInfo] = useState<string | null>(null);
-
+  // Removed PayU specific params like payuId, planName, amount, productInfo as Razorpay flow doesn't use this page directly for success/failure.
+  // This page can now act as a generic status display if redirected to after client-side verification.
 
   useEffect(() => {
     const paymentStatus = searchParams.get('status') as typeof status | null;
     const paymentMessage = searchParams.get('message');
-    const txnid = searchParams.get('txnid');
-    const puid = searchParams.get('payuId');
-    const plan = searchParams.get('planName');
-    const amt = searchParams.get('amount');
-    const pInfo = searchParams.get('productInfo');
-
+    const txnid = searchParams.get('txnid'); // Could be Razorpay order ID or payment ID if passed
 
     if (paymentStatus) {
       setStatus(paymentStatus);
@@ -39,10 +30,6 @@ function PaymentStatusContent() {
     }
     setMessage(paymentMessage || null);
     setTransactionId(txnid || null);
-    setPayuId(puid || null);
-    setPlanName(plan || null);
-    setAmount(amt || null);
-    setProductInfo(pInfo || null);
 
   }, [searchParams]);
 
@@ -58,21 +45,21 @@ function PaymentStatusContent() {
 
   const renderTitle = () => {
     switch (status) {
-      case 'success': return "Payment Successful!";
+      case 'success': return "Payment Processed Successfully!";
       case 'failure': return "Payment Failed";
       case 'error': return "Payment Processing Error";
       case 'info': return "Payment Information";
-      default: return "Processing Payment...";
+      default: return "Processing...";
     }
   };
 
   const renderDescription = () => {
     switch (status) {
-      case 'success': return `Your upgrade to the ${planName || 'selected'} plan was successful. Your account has been updated.`;
-      case 'failure': return message || "Your payment could not be processed. Please try again or contact support if the issue persists.";
-      case 'error': return message || "An error occurred while processing your payment. Please contact support with your transaction ID if available.";
-      case 'info': return message || "There was an issue with the payment process or some information is missing.";
-      default: return "Please wait while we confirm your payment status.";
+      case 'success': return message || `Your payment was successful. Your plan should be updated shortly.`;
+      case 'failure': return message || "Your payment could not be processed. Please try again or contact support.";
+      case 'error': return message || "An error occurred while processing your payment. Please contact support.";
+      case 'info': return message || "Payment process information.";
+      default: return "Please wait.";
     }
   };
 
@@ -83,31 +70,19 @@ function PaymentStatusContent() {
           <div className="mx-auto mb-4">{renderIcon()}</div>
           <CardTitle className="text-2xl">{renderTitle()}</CardTitle>
           <CardDescription className="text-sm text-muted-foreground">
-            {AppConfig.appName} - Teacher Plan Upgrade
+            {AppConfig.appName} - Payment Status
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-foreground/90 whitespace-pre-wrap">{renderDescription()}</p>
           {transactionId && transactionId !== 'N/A' && (
             <p className="text-xs text-muted-foreground">
-              Your Transaction ID: {transactionId}
+              Reference ID: {transactionId}
             </p>
-          )}
-           {payuId && payuId !== 'N/A' && (
-            <p className="text-xs text-muted-foreground">
-              PayU Transaction ID: {payuId}
-            </p>
-          )}
-          {status === 'success' && planName && amount && parseFloat(amount) > 0 && productInfo && (
-            <div className="mt-3 text-xs text-muted-foreground border-t pt-3">
-                <p><strong>Plan:</strong> {planName}</p>
-                <p><strong>Amount Paid:</strong> ₹{parseFloat(amount).toFixed(2)}</p>
-                <p><strong>Details:</strong> {productInfo}</p>
-            </div>
           )}
           {status === 'error' && (
             <p className="mt-2 text-xs text-muted-foreground">
-              If you believe this is an error, please contact support with your transaction ID.
+              If you believe this is an error, please contact support.
             </p>
           )}
         </CardContent>
