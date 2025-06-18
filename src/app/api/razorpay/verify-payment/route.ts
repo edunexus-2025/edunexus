@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       userId, 
       userType, 
       teacherIdForPlan, 
-      referralCodeUsed, // This is the actual code string used, e.g., "TEACHER10"
+      referralCodeUsed,
       productDescription,
     } = body;
 
@@ -112,23 +112,23 @@ export async function POST(request: NextRequest) {
       console.log(`[Razorpay Verify Payment INFO] Attempting to update student ${studentIdToUpdate} platform plan to ${newPlanIdForStudent}. Expiry: ${expiryDateISO}.`);
       try {
         await pbAdmin.collection('users').update(studentIdToUpdate, { 
-          model: newPlanIdForStudent, 
+          model: newPlanIdForStudent, // 'model' field in 'users' collection for student's plan
           expiry_date: expiryDateISO 
         });
         console.log(`[Razorpay Verify Payment SUCCESS] Student ${studentIdToUpdate} platform plan updated in DB to ${newPlanIdForStudent}.`);
       } catch (dbUpdateError: any) {
         console.error(`[Razorpay Verify Payment CRITICAL ERROR] Failed to update student ${studentIdToUpdate} plan to ${newPlanIdForStudent} in 'users' collection. Error:`, dbUpdateError.data || dbUpdateError.message, "Full Error:", dbUpdateError);
         return NextResponse.json({ 
-          verified: true, 
+          verified: true, // Signature was valid, payment likely captured by Razorpay
           error: `Payment successful, but failed to update your plan in our system. Please contact support with Order ID ${razorpay_order_id}. DB Error: ${dbUpdateError.data?.message || dbUpdateError.message}`,
           message: `Payment successful, but failed to update your plan. Contact support with Order ID: ${razorpay_order_id}. Error Ref: DB_UPDATE_USR_PLAN`
-        }, { status: 200 }); 
+        }, { status: 200 }); // Return 200 because payment was fine, but DB update failed.
       }
     } else if (userType === 'teacher_platform_plan') {
       const teacherIdToUpdate = String(userId);
       const newPlanIdForTeacher = planId as UserSubscriptionTierTeacher;
       const planDetails = teacherPlatformPlansData.find(p => p.id === newPlanIdForTeacher);
-      const maxPlans = planDetails?.maxContentPlans ?? teacherPlatformPlansData.find(p => p.id === 'Free')?.maxContentPlans ?? 0; // Fallback to Free plan's limit
+      const maxPlans = planDetails?.maxContentPlans ?? teacherPlatformPlansData.find(p => p.id === 'Free')?.maxContentPlans ?? 0;
       console.log(`[Razorpay Verify Payment INFO] Attempting to update teacher ${teacherIdToUpdate} platform plan to ${newPlanIdForTeacher}. Max plans: ${maxPlans}.`);
       try {
         await pbAdmin.collection('teacher_data').update(teacherIdToUpdate, { 
@@ -163,7 +163,6 @@ export async function POST(request: NextRequest) {
         const edunexusCommissionAmount = totalAmountPaidByStudent * commissionRate;
         const teacherNetShare = totalAmountPaidByStudent - edunexusCommissionAmount;
         
-        // Fetch the teacher's content plan to get its name
         const teacherContentPlanRecord = await pbAdmin.collection('teachers_upgrade_plan').getOne(teacherContentPlanId);
         const teacherContentPlanNameCache = teacherContentPlanRecord.Plan_name || 'Subscribed Plan';
 
@@ -233,4 +232,4 @@ export async function OPTIONS() {
     }
   });
 }
-
+    
