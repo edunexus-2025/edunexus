@@ -4,10 +4,11 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowRight, ShieldCheck, Zap, ListChecks, TrendingUp, Loader2, Search, Users, Library, AlertCircle, BookOpenCheck, Target as TargetIcon, Megaphone, ChevronLeft, ChevronRight as ChevronRightIcon, Brain, MessageSquare, Activity, CalendarDays, Swords, FileText, BookHeart, NotebookText, DollarSign, Award, Crown, Wallet, Settings as SettingsIcon, BarChart3 } from 'lucide-react'; // Added BarChart3
+import { ArrowRight, ShieldCheck, Zap, ListChecks, TrendingUp, Loader2, Search, Users, Library, AlertCircle, BookOpenCheck, Target as TargetIcon, Megaphone, ChevronLeft, ChevronRight as ChevronRightIcon, Brain, MessageSquare, Activity, CalendarDays, Swords, FileText, BookHeart, NotebookText, DollarSign, Award, Crown, Wallet, Settings as SettingsIcon, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Routes, AppConfig } from '@/lib/constants';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge'; // Added Badge import
 
 interface QuickLink {
   href: string;
@@ -72,10 +73,11 @@ export default function TeacherDashboardPage() {
           <CardHeader>
             <Skeleton className="h-8 w-3/4" />
             <Skeleton className="h-6 w-1/2 mt-2" />
-             {/* Skeleton for badges */}
+            {/* Skeleton for badges */}
             <div className="mt-4 flex flex-col sm:flex-row gap-2">
               <Skeleton className="h-10 w-40 rounded-lg" />
               <Skeleton className="h-10 w-48 rounded-lg" />
+              <Skeleton className="h-10 w-52 rounded-lg" />
             </div>
           </CardHeader>
           {/* CardContent might not be needed for this welcome card if badges are in header */}
@@ -101,29 +103,27 @@ export default function TeacherDashboardPage() {
           <CardDescription className="text-lg text-primary-foreground/80 mb-4">
             Manage your teaching activities and engage with your students.
           </CardDescription>
-          {/* Badges section moved here */}
           {teacher && (
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-              <div className="flex items-center gap-2 p-2 px-3 rounded-lg bg-primary-foreground/20 text-primary-foreground shadow-sm w-fit">
-                <ShieldCheck className="h-5 w-5 text-green-300" />
-                <span className="text-sm">
-                  <span className="font-medium opacity-90">Account Type: </span>
-                  <span className="font-semibold">Teacher</span>
-                </span>
-              </div>
+              <Badge variant="secondary" className="text-sm py-1.5 px-3 shadow-sm bg-primary-foreground/20 text-primary-foreground">
+                <ShieldCheck className="h-4 w-4 mr-1.5 text-green-300" />
+                Account Type: Teacher
+              </Badge>
               {teacher.teacherSubscriptionTier && (
-                <div className="flex items-center gap-2 p-2 px-3 rounded-lg bg-primary-foreground/20 text-primary-foreground shadow-sm w-fit">
-                  <Crown className="h-5 w-5 text-yellow-300" />
-                  <span className="text-sm">
-                    <span className="font-medium opacity-90">Subscription Tier: </span>
-                    <span className="font-semibold">{teacher.teacherSubscriptionTier}</span>
-                  </span>
-                </div>
+                <Badge variant="secondary" className="text-sm py-1.5 px-3 shadow-sm bg-primary-foreground/20 text-primary-foreground">
+                  <Crown className="h-4 w-4 mr-1.5 text-yellow-300" />
+                  Platform Tier: {teacher.teacherSubscriptionTier}
+                </Badge>
+              )}
+              {teacher.ads_subscription && (
+                 <Badge variant="secondary" className="text-sm py-1.5 px-3 shadow-sm bg-primary-foreground/20 text-primary-foreground">
+                  <Megaphone className="h-4 w-4 mr-1.5 text-blue-300" />
+                  Ad Plan: {teacher.ads_subscription}
+                </Badge>
               )}
             </div>
           )}
         </CardHeader>
-        {/* This card is primarily a welcome banner, content for links is separate */}
       </Card>
 
       <div className="grid md:grid-cols-2 gap-6">
