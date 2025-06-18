@@ -3,7 +3,7 @@ import { NextResponse, NextRequest } from 'next/server';
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
 import PocketBase from 'pocketbase';
-import { AppConfig, teacherPlatformPlansData } from '@/lib/constants';
+import { AppConfig, Routes, teacherPlatformPlansData, slugify } from '@/lib/constants'; // Added slugify
 import type { UserSubscriptionTierStudent, UserSubscriptionTierTeacher } from '@/lib/types';
 
 const RAZORPAY_KEY_ID = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
@@ -11,12 +11,13 @@ const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 const POCKETBASE_URL_SERVER = process.env.NEXT_PUBLIC_POCKETBASE_URL;
 const POCKETBASE_ADMIN_EMAIL_SERVER = process.env.POCKETBASE_ADMIN_EMAIL;
 const POCKETBASE_ADMIN_PASSWORD_SERVER = process.env.POCKETBASE_ADMIN_PASSWORD;
+const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_BASE_URL || 'http://localhost:9002'; // Fallback for APP_BASE_URL
 
 if (!RAZORPAY_KEY_SECRET) {
-  console.error("[Razorpay Verify Payment CRITICAL ENV ERROR] RAZORPAY_KEY_SECRET is not configured on the server.");
+  console.error("[Razorpay Verify Payment CRITICAL ENV ERROR] RAZORPAY_KEY_SECRET is not configured.");
 }
 if (!POCKETBASE_URL_SERVER || !POCKETBASE_ADMIN_EMAIL_SERVER || !POCKETBASE_ADMIN_PASSWORD_SERVER) {
-  console.error("[Razorpay Verify Payment CRITICAL ENV ERROR] PocketBase Admin credentials or URL not fully configured for server-side updates. POCKETBASE_URL_SERVER, POCKETBASE_ADMIN_EMAIL_SERVER, POCKETBASE_ADMIN_PASSWORD_SERVER must be set.");
+  console.error("[Razorpay Verify Payment CRITICAL ENV ERROR] PocketBase Admin credentials or URL not fully configured.");
 }
 
 const instance = new Razorpay({
@@ -25,10 +26,7 @@ const instance = new Razorpay({
 });
 
 async function getAdminPbInstance(): Promise<PocketBase | null> {
-  console.log(`[Razorpay Verify Payment INFO] Attempting to connect to PocketBase URL: ${POCKETBASE_URL_SERVER || 'NOT SET'}`);
-  console.log(`[Razorpay Verify Payment INFO] Using PocketBase Admin Email: ${POCKETBASE_ADMIN_EMAIL_SERVER ? POCKETBASE_ADMIN_EMAIL_SERVER.substring(0,3) + '***' : 'NOT SET'}`);
-  // Do NOT log the admin password
-
+  console.log(`[Razorpay Verify Payment INFO] Attempting to connect to PocketBase URL for admin actions: ${POCKETBASE_URL_SERVER || 'NOT SET'}`);
   if (POCKETBASE_URL_SERVER && POCKETBASE_ADMIN_EMAIL_SERVER && POCKETBASE_ADMIN_PASSWORD_SERVER) {
     const adminPb = new PocketBase(POCKETBASE_URL_SERVER);
     try {
@@ -36,197 +34,108 @@ async function getAdminPbInstance(): Promise<PocketBase | null> {
       console.log("[Razorpay Verify Payment INFO] Successfully authenticated PocketBase admin client.");
       return adminPb;
     } catch (authError: any) {
-      // Log detailed error if admin auth fails
-      console.error("[Razorpay Verify Payment ERROR] CRITICAL: Failed to authenticate PocketBase admin client. This is likely due to incorrect POCKETBASE_ADMIN_EMAIL_SERVER or POCKETBASE_ADMIN_PASSWORD_SERVER, OR POCKETBASE_URL_SERVER pointing to a wrong address/path (hence the 404 on /api/admins/auth-with-password). Error details:", authError.data || authError.message, "Full Error:", authError);
+      console.error("[Razorpay Verify Payment ERROR] CRITICAL: Failed to authenticate PocketBase admin client. Error details:", authError.data || authError.message, "Full Error:", authError);
       return null;
     }
   }
-  console.warn("[Razorpay Verify Payment WARN] PocketBase admin credentials (URL, email, or password) are not fully configured in environment variables. Database updates will likely fail if collection rules are restrictive.");
+  console.warn("[Razorpay Verify Payment WARN] PocketBase admin credentials not fully configured. Operations requiring admin rights will fail.");
   return null;
 }
 
 export async function POST(request: NextRequest) {
   if (!RAZORPAY_KEY_SECRET) {
-    return NextResponse.json({ verified: false, error: "Payment gateway server secret not configured. Critical server configuration error." }, { status: 500 });
+    return NextResponse.json({ error: "Payment gateway server secret not configured." }, { status: 500 });
   }
 
-  let pbAdmin: PocketBase | null = null;
+  let pbAdmin: PocketBase | null = null; 
   try {
-    pbAdmin = await getAdminPbInstance();
-    if (!pbAdmin) {
-      console.error("[Razorpay Verify Payment ERROR] Failed to initialize PocketBase admin client during POST. Cannot proceed with DB updates. THIS IS THE CRITICAL FAILURE POINT.");
-      return NextResponse.json({ 
-        verified: false, // Payment verification hasn't happened yet, but the system can't proceed.
-        error: "Critical server error: Database admin client could not be initialized. Plan update failed. Contact support. (Error Code: PB_ADMIN_INIT_FAIL)" 
-      }, { status: 500 });
-    }
+    pbAdmin = await getAdminPbInstance(); // Attempt to get admin client early
 
     const body = await request.json();
     const {
       razorpay_payment_id,
       razorpay_order_id,
       razorpay_signature,
-      planId, 
-      userId, 
-      userType, 
-      teacherIdForPlan, 
-      referralCodeUsed,
-      productDescription,
+      planId, // The plan ID the user intended to purchase
+      userId, // The user ID
+      userType, // 'student_platform_plan', 'teacher_platform_plan', 'student_teacher_plan'
+      // other notes like teacherIdForPlan, referralCodeUsed, productDescription might be here
     } = body;
 
-    console.log("[Razorpay Verify Payment INFO] Received verification request. Body:", JSON.stringify(body, null, 2));
+    console.log("[Razorpay Verify Payment INFO] Received verification request. Body (excluding sensitive details):", { razorpay_order_id, planId, userId, userType });
 
     if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature || !planId || !userId || !userType) {
-      console.error("[Razorpay Verify Payment ERROR] Missing required payment verification details in request body.");
-      return NextResponse.json({ verified: false, error: "Missing required payment verification details." }, { status: 400 });
+      return NextResponse.json({ error: "Missing required payment verification details." }, { status: 400 });
     }
 
     const textToHash = `${razorpay_order_id}|${razorpay_payment_id}`;
-    const generated_signature = crypto
-      .createHmac('sha256', RAZORPAY_KEY_SECRET)
-      .update(textToHash)
-      .digest('hex');
+    const generated_signature = crypto.createHmac('sha256', RAZORPAY_KEY_SECRET).update(textToHash).digest('hex');
 
     if (generated_signature !== razorpay_signature) {
-      console.warn(`[Razorpay Verify Payment WARN] Signature mismatch. Generated: ${generated_signature}, Received: ${razorpay_signature}`);
-      return NextResponse.json({ verified: false, error: "Invalid payment signature. Payment verification failed." }, { status: 400 });
+      console.warn(`[Razorpay Verify Payment WARN] Signature mismatch. Redirecting to failure status.`);
+      return NextResponse.redirect(Routes.paymentStatusPage(razorpay_order_id, 'failure', planId, "Payment verification failed (signature mismatch)."), 302);
     }
 
     console.log(`[Razorpay Verify Payment INFO] Signature verified. Fetching order details from Razorpay for order_id: ${razorpay_order_id}`);
     const orderDetailsFromRazorpay = await instance.orders.fetch(razorpay_order_id);
     console.log("[Razorpay Verify Payment INFO] Order details from Razorpay:", orderDetailsFromRazorpay);
 
-    // Validate order details from Razorpay against client-sent details
     if (String(orderDetailsFromRazorpay.notes.userId) !== String(userId) ||
         String(orderDetailsFromRazorpay.notes.planId) !== String(planId) ||
-        String(orderDetailsFromRazorpay.notes.userType) !== String(userType) ||
-        (userType === 'student_teacher_plan' && String(orderDetailsFromRazorpay.notes.teacherIdForPlan) !== String(teacherIdForPlan))) {
-      console.error("[Razorpay Verify Payment ERROR] Mismatch between client notes and Razorpay order notes.", { clientNotes: body, razorpayNotes: orderDetailsFromRazorpay.notes });
-      return NextResponse.json({ verified: false, error: "Order details mismatch. Verification failed." }, { status: 400 });
+        String(orderDetailsFromRazorpay.notes.userType) !== String(userType)) {
+      console.error("[Razorpay Verify Payment ERROR] Mismatch between client notes and Razorpay order notes.");
+       return NextResponse.redirect(Routes.paymentStatusPage(razorpay_order_id, 'error', planId, "Order details mismatch. Verification failed."), 302);
     }
     if (orderDetailsFromRazorpay.status !== 'paid') {
       console.warn(`[Razorpay Verify Payment WARN] Razorpay order status is not 'paid'. Status: ${orderDetailsFromRazorpay.status}`);
-      return NextResponse.json({ verified: false, error: `Payment not completed successfully according to Razorpay. Status: ${orderDetailsFromRazorpay.status}` }, { status: 400 });
+      return NextResponse.redirect(Routes.paymentStatusPage(razorpay_order_id, 'failure', planId, `Payment not completed successfully. Status: ${orderDetailsFromRazorpay.status}`), 302);
     }
 
-    const today = new Date();
-    const expiryDateISO = new Date(today.setFullYear(today.getFullYear() + 1)).toISOString(); 
+    // Payment is authentic and paid
+    console.log(`[Razorpay Verify Payment INFO] Payment for order ${razorpay_order_id} is authentic and paid.`);
 
-    if (userType === 'student_platform_plan') {
-      const studentIdToUpdate = String(userId);
-      const newPlanIdForStudent = planId as UserSubscriptionTierStudent;
-      console.log(`[Razorpay Verify Payment INFO] Attempting to update student ${studentIdToUpdate} platform plan to ${newPlanIdForStudent}. Expiry: ${expiryDateISO}.`);
-      try {
-        await pbAdmin.collection('users').update(studentIdToUpdate, { 
-          model: newPlanIdForStudent, 
-          expiry_date: expiryDateISO 
-        });
-        console.log(`[Razorpay Verify Payment SUCCESS] Student ${studentIdToUpdate} platform plan updated in DB to ${newPlanIdForStudent}.`);
-      } catch (dbUpdateError: any) {
-        console.error(`[Razorpay Verify Payment CRITICAL ERROR] Failed to update student ${studentIdToUpdate} plan to ${newPlanIdForStudent} in 'users' collection. Error:`, dbUpdateError.data || dbUpdateError.message, "Full Error:", dbUpdateError);
-        return NextResponse.json({ 
-          verified: true, 
-          error: `Payment successful, but failed to update your plan in our system. Please contact support with Order ID ${razorpay_order_id}. DB Error: ${dbUpdateError.data?.message || dbUpdateError.message}`,
-          message: `Payment successful, but failed to update your plan. Contact support with Order ID: ${razorpay_order_id}. Error Ref: DB_UPDATE_USR_PLAN_S`
-        }, { status: 200 }); 
-      }
-    } else if (userType === 'teacher_platform_plan') {
-      const teacherIdToUpdate = String(userId);
-      const newPlanIdForTeacher = planId as UserSubscriptionTierTeacher;
-      const planDetails = teacherPlatformPlansData.find(p => p.id === newPlanIdForTeacher);
-      const maxPlans = planDetails?.maxContentPlans ?? teacherPlatformPlansData.find(p => p.id === 'Free')?.maxContentPlans ?? 0;
-      console.log(`[Razorpay Verify Payment INFO] Attempting to update teacher ${teacherIdToUpdate} platform plan to ${newPlanIdForTeacher}. Max plans: ${maxPlans}.`);
-      try {
-        await pbAdmin.collection('teacher_data').update(teacherIdToUpdate, { 
-          teacherSubscriptionTier: newPlanIdForTeacher,
-          max_content_plans_allowed: maxPlans,
-        });
-        console.log(`[Razorpay Verify Payment SUCCESS] Teacher ${teacherIdToUpdate} platform plan updated in DB to ${newPlanIdForTeacher}.`);
-      } catch (dbUpdateError: any) {
-        console.error(`[Razorpay Verify Payment CRITICAL ERROR] Failed to update teacher ${teacherIdToUpdate} plan to ${newPlanIdForTeacher}. Error:`, dbUpdateError.data || dbUpdateError.message, "Full Error:", dbUpdateError);
-        return NextResponse.json({ 
-          verified: true,
-          error: `Payment successful, but failed to update teacher platform plan. Contact support with Order ID ${razorpay_order_id}. DB Error: ${dbUpdateError.data?.message || dbUpdateError.message}`,
-          message: `Payment successful, but failed to update teacher platform plan. Contact support with Order ID: ${razorpay_order_id}. Error Ref: DB_UPDATE_TCH_PLAN_S`
-        }, { status: 200 });
-      }
-    } else if (userType === 'student_teacher_plan') {
-      if (!teacherIdForPlan) { 
-        console.error("[Razorpay Verify Payment ERROR] teacherIdForPlan missing for student_teacher_plan type.");
-        return NextResponse.json({ verified: false, error: "teacherIdForPlan missing for student_teacher_plan type." }, { status: 400 });
-      }
-      const studentIdForTeacherPlan = String(userId);
-      const teacherContentPlanId = String(planId);
-      const targetTeacherId = String(teacherIdForPlan);
-      console.log(`[Razorpay Verify Payment INFO] Processing 'student_teacher_plan' for student ${studentIdForTeacherPlan}, teacher ${targetTeacherId}, plan ${teacherContentPlanId}.`);
+    if (!pbAdmin) {
+        console.error("[Razorpay Verify Payment ERROR] Database admin client not initialized. Cannot create activation token.");
+        return NextResponse.redirect(Routes.paymentStatusPage(razorpay_order_id, 'error', planId, "Server configuration error (DB_ADMIN_TOKEN_FAIL). Plan update pending. Contact support."), 302);
+    }
+
+    // Generate activation token
+    const activationToken = crypto.randomBytes(32).toString('hex');
+    const expiryDate = new Date();
+    expiryDate.setHours(expiryDate.getHours() + 1); // Token valid for 1 hour
+
+    try {
+      await pbAdmin.collection('plan_activation_tokens').create({
+        token: activationToken,
+        user_id: userId,
+        plan_id_to_activate: planId,
+        order_id: razorpay_order_id,
+        used: false,
+        expires_at: expiryDate.toISOString(),
+      });
+      console.log(`[Razorpay Verify Payment INFO] Activation token created for order ${razorpay_order_id}, user ${userId}, plan ${planId}.`);
+
+      // Redirect to the new activation page with the token and planSlug
+      const planSlug = slugify(planId); // Assuming planId is like "Full_length" or "Combo"
+      const activationUrl = Routes.activatePlan(activationToken, planSlug);
       
-      try {
-        const teacherRecord = await pbAdmin.collection('teacher_data').getOne(targetTeacherId);
-        const teacherPlatformTier = teacherRecord.teacherSubscriptionTier as UserSubscriptionTierTeacher || 'Free';
-        const platformPlanDetails = teacherPlatformPlansData.find(p => p.id === teacherPlatformTier);
-        const commissionRate = platformPlanDetails?.commissionRate !== undefined ? platformPlanDetails.commissionRate / 100 : 0.10; 
-        const totalAmountPaidByStudent = orderDetailsFromRazorpay.amount / 100; 
-        const edunexusCommissionAmount = totalAmountPaidByStudent * commissionRate;
-        const teacherNetShare = totalAmountPaidByStudent - edunexusCommissionAmount;
-        
-        const teacherContentPlanRecord = await pbAdmin.collection('teachers_upgrade_plan').getOne(teacherContentPlanId);
-        const teacherContentPlanNameCache = teacherContentPlanRecord.Plan_name || 'Subscribed Plan';
+      console.log(`[Razorpay Verify Payment INFO] Redirecting to activation URL: ${APP_BASE_URL}${activationUrl}`);
+      return NextResponse.redirect(`${APP_BASE_URL}${activationUrl}`, 302);
 
-        console.log(`[Razorpay Verify Payment INFO] Creating record in 'students_teachers_upgrade_plan'... Plan name cache: ${teacherContentPlanNameCache}`);
-        await pbAdmin.collection('students_teachers_upgrade_plan').create({
-          student: studentIdForTeacherPlan, teacher: targetTeacherId, teachers_plan_id: teacherContentPlanId, teachers_plan_name_cache: teacherContentPlanNameCache,
-          payment_id_razorpay: razorpay_payment_id, order_id_razorpay: razorpay_order_id, payment_status: 'successful',
-          starting_date: new Date().toISOString(), expiry_date: expiryDateISO,
-          amount_paid_to_edunexus: edunexusCommissionAmount, amount_recieved_to_teacher: teacherNetShare, 
-          referral_code_used: (typeof referralCodeUsed === 'string' && referralCodeUsed.trim()) ? referralCodeUsed.trim() : null,
-        });
-        console.log(`[Razorpay Verify Payment SUCCESS] Record created in 'students_teachers_upgrade_plan'.`);
-
-        console.log(`[Razorpay Verify Payment INFO] Updating student ${studentIdForTeacherPlan}'s 'subscription_by_teacher' field by adding teacher ${targetTeacherId}...`);
-        await pbAdmin.collection('users').update(studentIdForTeacherPlan, { "subscription_by_teacher+": targetTeacherId });
-        console.log(`[Razorpay Verify Payment SUCCESS] Student ${studentIdForTeacherPlan}'s 'subscription_by_teacher' updated.`);
-
-        console.log(`[Razorpay Verify Payment INFO] Updating teacher plan ${teacherContentPlanId}'s 'enrolled_students' field by adding student ${studentIdForTeacherPlan}...`);
-        await pbAdmin.collection('teachers_upgrade_plan').update(teacherContentPlanId, { "enrolled_students+": studentIdForTeacherPlan });
-        console.log(`[Razorpay Verify Payment SUCCESS] Teacher plan ${teacherContentPlanId}'s 'enrolled_students' updated.`);
-        
-        console.log(`[Razorpay Verify Payment INFO] Updating teacher ${targetTeacherId}'s 'wallet_money'...`);
-        const currentTeacherData = await pbAdmin.collection('teacher_data').getOne(targetTeacherId);
-        const currentWalletMoney = Number(currentTeacherData.wallet_money) || 0;
-        const newWalletMoney = currentWalletMoney + teacherNetShare;
-        await pbAdmin.collection('teacher_data').update(targetTeacherId, { wallet_money: newWalletMoney });
-        console.log(`[Razorpay Verify Payment SUCCESS] Teacher ${targetTeacherId}'s wallet_money updated to ${newWalletMoney}. Net share for this transaction: ${teacherNetShare}`);
-
-      } catch(studentTeacherPlanError: any) {
-        console.error(`[Razorpay Verify Payment CRITICAL ERROR] Failed during 'student_teacher_plan' processing for student ${studentIdForTeacherPlan}, teacher ${targetTeacherId}, plan ${teacherContentPlanId}. Error:`, studentTeacherPlanError.data || studentTeacherPlanError.message, "Full Error:", studentTeacherPlanError);
-        return NextResponse.json({ 
-          verified: true,
-          error: `Payment successful, but failed to enroll in teacher's plan. Contact support with Order ID ${razorpay_order_id}. DB Error: ${studentTeacherPlanError.data?.message || studentTeacherPlanError.message}`,
-          message: `Payment successful, but failed to enroll in teacher's plan. Contact support with Order ID: ${razorpay_order_id}. Error Ref: DB_UPDATE_STP_PLAN_S`
-        }, { status: 200 });
-      }
-    } else {
-      console.error(`[Razorpay Verify Payment ERROR] Invalid userType: ${userType}`);
-      return NextResponse.json({ verified: false, error: "Invalid userType for payment." }, { status: 400 });
+    } catch (tokenError: any) {
+      console.error("[Razorpay Verify Payment ERROR] Failed to create activation token in DB:", tokenError.data || tokenError.message, "Full Error:", tokenError);
+      return NextResponse.redirect(Routes.paymentStatusPage(razorpay_order_id, 'error', planId, "Failed to generate activation link. Please contact support. (TOKEN_DB_FAIL)"), 302);
     }
-
-    return NextResponse.json({ verified: true, message: "Payment successfully verified and processed." }, { status: 200 });
 
   } catch (error: any) {
     console.error("[Razorpay Verify Payment CRITICAL ERROR] (Outer Try-Catch):", error.response ? error.response.data : error.message, "Full Error:", error);
     let errorMessage = "Payment verification failed due to a server error.";
-    if (error.response && error.response.data && error.response.data.error && error.response.data.error.description) { 
-      errorMessage = error.response.data.error.description;
-    } else if (error.data && error.data.message) { 
-       errorMessage = error.data.message;
-       if(error.data.data && typeof error.data.data === 'object') {
-           const fieldErrors = Object.entries(error.data.data).map(([key, val]: [string, any]) => `${key}: ${val.message}`).join('; ');
-           if (fieldErrors) errorMessage += ` Details: ${fieldErrors}`;
-       }
-    } else if (error.message) {
-      errorMessage = error.message;
-    }
-    return NextResponse.json({ verified: false, error: errorMessage }, { status: 500 });
+    if (error.response?.data?.error?.description) errorMessage = error.response.data.error.description;
+    else if (error.data?.message) errorMessage = error.data.message;
+    else if (error.message) errorMessage = error.message;
+    // Use a generic order_id if not available in error context
+    const orderIdFromError = error.response?.data?.metadata?.order_id || 'N/A_VERIFY_ERROR';
+    return NextResponse.redirect(Routes.paymentStatusPage(orderIdFromError, 'error', 'UnknownPlan', errorMessage), 302);
   }
 }
 
@@ -239,3 +148,4 @@ export async function OPTIONS() {
     }
   });
 }
+    

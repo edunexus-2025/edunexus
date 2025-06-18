@@ -237,7 +237,7 @@ export const allPlansData: Plan[] = [
     ctaText: 'Choose Focus',
   },
   {
-    id: 'Full_length', // Corrected to Full_length
+    id: 'Full_length', 
     name: 'Prime',
     description: "Full potential; complete preparation. Access full-length mock tests for exam simulation.",
     price: '₹499',
@@ -270,7 +270,7 @@ export const allPlansData: Plan[] = [
   },
 ];
 
-const studentTierValues: UserSubscriptionTierStudent[] = ['Free', 'Dpp', 'Chapterwise', 'Full_length', 'Combo']; // Corrected Full_length
+const studentTierValues: UserSubscriptionTierStudent[] = ['Free', 'Dpp', 'Chapterwise', 'Full_length', 'Combo']; 
 export const studentPlansData: Plan[] = allPlansData.filter(plan =>
   studentTierValues.includes(plan.id as UserSubscriptionTierStudent)
 );
@@ -330,3 +330,5 @@ export const teacherPlatformPlansData: Plan[] = [
     qbAccess: true,
   },
 ];
+
+    
