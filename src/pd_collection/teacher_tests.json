@@ -1,4 +1,3 @@
-
 [
     {
         "id": "pbc_2863365490",
@@ -39,7 +38,7 @@
                     "cascadeDelete": false,
                     "minSelect": 1,
                     "maxSelect": 1,
-                    "displayFields": null
+                    "displayFields": ["name", "EduNexus_Name"]
                 }
             },
             {
@@ -196,5 +195,3 @@
         "system": false
     }
 ]
-
-        

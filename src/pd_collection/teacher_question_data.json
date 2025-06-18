@@ -132,7 +132,7 @@
             },
             {
                 "system": false,
-                "id": "relation3239013921",
+                "id": "relation3239013921", 
                 "name": "LessonName",
                 "type": "relation",
                 "required": true,
@@ -286,5 +286,5 @@
         "system": false
     }
 ]
-
-        
+      
+    
