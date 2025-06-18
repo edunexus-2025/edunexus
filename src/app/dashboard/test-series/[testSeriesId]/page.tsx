@@ -49,18 +49,23 @@ export default function TestSeriesDetailPage() {
       let record: RecordModel;
       let collectionName: 'test_pages' | 'teacher_tests' = 'test_pages';
       
+      // Try fetching from 'test_pages' first (platform tests)
       try {
         record = await pb.collection('test_pages').getOne<RecordModel>(testSeriesId);
       } catch (testPagesError: any) {
         if (testPagesError.status === 404) {
+          // If not found in 'test_pages', try 'teacher_tests'
           try {
             record = await pb.collection('teacher_tests').getOne<RecordModel>(testSeriesId);
             collectionName = 'teacher_tests';
           } catch (teacherTestsError: any) {
-            throw teacherTestsError; // Re-throw if not found in teacher_tests either
+            if (teacherTestsError.status === 404) {
+              throw new Error(`Test not found in platform or teacher collections (ID: ${testSeriesId}).`);
+            }
+            throw teacherTestsError; // Re-throw other errors from teacher_tests
           }
         } else {
-          throw testPagesError; // Re-throw original error
+          throw testPagesError; // Re-throw other errors from test_pages
         }
       }
       
@@ -161,8 +166,14 @@ export default function TestSeriesDetailPage() {
 
   const isFreeTest = testData.Type.includes("Free");
   const isTeacherTest = testData.collectionName === 'teacher_tests';
-  const startButtonText = isTeacherTest ? "Enter PIN & View Instructions" : "View Instructions & Start";
-  const startButtonLink = isTeacherTest ? Routes.studentTestEnterPin(testData.id) : Routes.studentTestInstructions(testData.id);
+  
+  // If it's a teacher test, it will go to the new /live page which handles PIN, then instructions, then test.
+  // If it's a platform test, it goes to the old instructions page.
+  const startButtonLink = isTeacherTest 
+    ? Routes.studentTakeTeacherTestLive(testData.id) 
+    : Routes.studentTestInstructions(testData.id);
+  // Button text remains the same as the /live page handles the context of PIN vs Instructions
+  const startButtonText = "View Instructions & Start";
 
 
   return (
@@ -212,3 +223,8 @@ export default function TestSeriesDetailPage() {
 }
 
     
+
+```
+  </change>
+  <change>
+    <file>/

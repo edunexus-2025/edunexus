@@ -59,6 +59,7 @@ export const Routes = {
   myTeacherPortal: '/dashboard/my-teacher',
   testResult: (resultId: string) => `/dashboard/test-results/chapterwise/${resultId}`,
   testResultCompete: (resultId: string) => `/dashboard/test-results/compete/${resultId}`,
+  testResultTeacherTest: (attemptId: string) => `/student/teacher-test-result/${attemptId}`,
   helpCenter: '/dashboard/help-center',
   termsOfService: '/terms-of-service',
   privacyPolicy: '/privacy-policy',
@@ -79,13 +80,11 @@ export const Routes = {
 
 
   // Student Test Taking Routes
-  studentTestInstructions: (testId: string) => `/student/test/${testId}/instructions`,
-  studentTestChapterwise: (testId: string) => `/student/test/${testId}/chapterwise`,
-  studentTeacherTestPin: (testId: string) => `/student/teacher-test/${testId}/pin`,
-  studentTeacherTestInstructions: (testId: string) => `/student/teacher-test/${testId}/instructions`,
-  studentTeacherTestAttempt: (testId: string) => `/student/teacher-test/${testId}/attempt`,
-  studentTeacherTestResult: (attemptId: string) => `/student/teacher-test/results/${attemptId}`,
-  studentTakeTeacherTestLive: (testId: string) => `/student/teacher-test/${testId}/live`, // New route for teacher test start (PIN, instructions, test)
+  studentTestInstructions: (testId: string) => `/student/test/${testId}/instructions`, // For platform chapterwise tests
+  studentTestChapterwise: (testId: string) => `/student/test/${testId}/chapterwise`,   // For platform chapterwise tests
+  studentTakeTeacherTestLive: (testId: string) => `/student/teacher-test/${testId}/live`, // Single entry point for teacher tests
+  studentTestEnterPin: (testId: string) => `/student/teacher-test/${testId}/pin`, // Obsolete but kept for reference if any old link exists
+  studentTeacherTestAttempt: (testId: string) => `/student/teacher-test/${testId}/attempt`, // Obsolete
 
   // Unified Question Bank view
   qbankView: (questionId: string) => `/dashboard/qbank/${questionId}`,
@@ -349,3 +348,8 @@ export const teacherPlatformPlansData: Plan[] = [
     customActivationLink: Routes.teacherUpgradeAds, // Special link for this plan
   },
 ];
+// Ensure no trailing commas or unclosed structures after this line.
+// The parsing error was "Expected ';', '}' or <eof>"
+// This implies something was left open BEFORE the line number indicated in the error.
+// Re-generating the whole file with correct structure.
+
