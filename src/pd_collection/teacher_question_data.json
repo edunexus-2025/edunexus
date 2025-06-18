@@ -1,5 +1,4 @@
 
-      
 [
     {
         "id": "pbc_3669383003",
@@ -112,13 +111,12 @@
             {
                 "hidden": false,
                 "id": "select3176711591",
-                "maxSelect": 1,
                 "name": "CorrectOption",
-                "presentable": true,
-                "required": true,
-                "system": false,
                 "type": "select",
-                "options": { 
+                "system": false,
+                "required": true,
+                "presentable": true,
+                "options": {
                     "maxSelect": 1,
                     "values": [
                         "Option A",
@@ -135,9 +133,9 @@
                 "id": "relation3239013921",
                 "maxSelect": 1,
                 "minSelect": 1,
-                "name": "lessonName", 
+                "name": "LessonName",
                 "presentable": true,
-                "required": true, 
+                "required": true,
                 "system": false,
                 "type": "relation",
                 "options": {
@@ -145,7 +143,7 @@
                     "cascadeDelete": false,
                     "minSelect": 1,
                     "maxSelect": 1,
-                    "displayFields": ["testName"] 
+                    "displayFields": ["testName"]
                 }
             },
             {
@@ -265,10 +263,8 @@
         ],
         "indexes": [
             "CREATE INDEX idx_teacher_q_data_teacher ON teacher_question_data (teacher)",
-            "CREATE INDEX idx_teacher_q_data_lesson_exam ON teacher_question_data (lessonName, QBExam)"
+            "CREATE INDEX idx_teacher_q_data_lesson_exam ON teacher_question_data (LessonName, QBExam)"
         ],
         "system": false
     }
 ]
-
-    

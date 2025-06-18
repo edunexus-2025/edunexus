@@ -1,5 +1,4 @@
 
-      
 [
     {
         "id": "pbc_2863365490",
@@ -57,7 +56,7 @@
                 "autogeneratePattern": "",
                 "hidden": false,
                 "id": "text2254405824",
-                "max": null, 
+                "max": null,
                 "min": 1,
                 "name": "duration",
                 "pattern": "^[0-9]+$",
@@ -70,12 +69,11 @@
             {
                 "hidden": false,
                 "id": "select3616895705",
-                "maxSelect": 1,
                 "name": "model",
-                "presentable": true,
-                "required": true,
-                "system": false,
                 "type": "select",
+                "system": false,
+                "required": true,
+                "presentable": true,
                 "options": {
                     "maxSelect": 1,
                     "values": [
@@ -87,12 +85,11 @@
             {
                 "hidden": false,
                 "id": "select2363381545",
-                "maxSelect": 1,
                 "name": "type",
-                "presentable": true,
-                "required": true,
-                "system": false,
                 "type": "select",
+                "system": false,
+                "required": true,
+                "presentable": true,
                 "options": {
                     "maxSelect": 1,
                     "values": [
@@ -104,12 +101,11 @@
             {
                 "hidden": false,
                 "id": "select2063623452",
-                "maxSelect": 1,
                 "name": "status",
-                "presentable": true,
-                "required": true,
-                "system": false,
                 "type": "select",
+                "system": false,
+                "required": true,
+                "presentable": true,
                  "options": {
                     "maxSelect": 1,
                     "values": [
@@ -124,7 +120,7 @@
                 "collectionId": "pbc_3669383003",
                 "hidden": false,
                 "id": "relation2329695445",
-                "maxSelect": 200, 
+                "maxSelect": 200,
                 "minSelect": 0,
                 "name": "questions",
                 "presentable": true,
@@ -196,7 +192,7 @@
                 "id": "number2507168605",
                 "name": "Admin_Password",
                 "presentable": false,
-                "required": false,
+                "required": false, 
                 "system": false,
                 "type": "number",
                  "options": {
@@ -208,12 +204,11 @@
             {
                 "hidden": false,
                 "id": "select3991840572",
-                "maxSelect": 1,
                 "name": "QBExam",
-                "presentable": true,
-                "required": true,
-                "system": false,
                 "type": "select",
+                "system": false,
+                "required": true,
+                "presentable": true,
                  "options": {
                     "maxSelect": 1,
                     "values": [
@@ -258,12 +253,11 @@
             {
                 "hidden": false,
                 "id": "select1660153532",
-                "maxSelect": 1,
                 "name": "Who_can_take_your_test",
-                "presentable": false,
-                "required": false,
-                "system": false,
                 "type": "select",
+                "system": false,
+                "required": false,
+                "presentable": false,
                 "options": {
                     "maxSelect": 1,
                     "values": [
