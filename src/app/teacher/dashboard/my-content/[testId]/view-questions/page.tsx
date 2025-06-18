@@ -23,7 +23,7 @@ interface ParentTest extends RecordModel {
   testName: string;
 }
 
-// Assuming these fields in add_questions now store direct URLs
+// Assuming these fields in teacher_question_data now store direct URLs
 interface QuestionRecord extends RecordModel {
   id: string;
   QuestionText?: string;
@@ -163,12 +163,12 @@ export default function ViewTestQuestionsPage() {
 
       if (fetchedParentTestName && teacher.id) {
         const questionFilter = `LessonName = "${fetchedParentTestName.replace(/"/g, '""')}" && teacher = "${teacher.id}"`;
-        console.log("ViewTestQuestionsPage: Fetching questions from 'add_questions' with filter:", questionFilter);
+        console.log("ViewTestQuestionsPage: Fetching questions from 'teacher_question_data' with filter:", questionFilter);
         
         try {
           if (!isMounted) return;
           // Fetch questions directly. URLs are assumed to be in these records.
-          const fetchedQuestions = await pb.collection('add_questions').getFullList<DisplayableQuestion>({
+          const fetchedQuestions = await pb.collection('teacher_question_data').getFullList<DisplayableQuestion>({
             filter: questionFilter,
             sort: 'created',
           });
@@ -185,7 +185,7 @@ export default function ViewTestQuestionsPage() {
             if (err?.name === 'ClientResponseError' && err?.status === 0) {
               console.warn('ViewTestQuestionsPage: Fetch questions request was cancelled. Filter:', questionFilter);
             } else {
-              console.error("ViewTestQuestionsPage: Failed to fetch questions from 'add_questions':", err.data || err, "Filter:", questionFilter);
+              console.error("ViewTestQuestionsPage: Failed to fetch questions from 'teacher_question_data':", err.data || err, "Filter:", questionFilter);
               setError(`Could not load questions for the test. Error: ${err.data?.message || err.message}`);
             }
           }
@@ -246,7 +246,7 @@ export default function ViewTestQuestionsPage() {
     }
     setIsSavingCorrectOption(true);
     try {
-      await pb.collection('add_questions').update(currentQuestion.id, { CorrectOption: editableCorrectOption });
+      await pb.collection('teacher_question_data').update(currentQuestion.id, { CorrectOption: editableCorrectOption });
       toast({ title: "Success", description: "Correct option updated." });
       const updatedQuestions = questions.map((q, index) =>
         index === currentQuestionIndex ? { ...q, CorrectOption: editableCorrectOption } : q
@@ -462,3 +462,4 @@ export default function ViewTestQuestionsPage() {
     </div>
   );
 }
+

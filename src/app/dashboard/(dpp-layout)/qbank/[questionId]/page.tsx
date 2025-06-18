@@ -13,6 +13,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Sheet, SheetContent, SheetHeader as ShadcnSheetHeader, SheetTitle as ShadcnSheetTitle, SheetDescription as ShadcnSheetDescription, SheetTrigger, SheetClose, SheetFooter as ShadcnSheetFooter } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog"; // Corrected import
 import { AlertCircle, ArrowLeft, Bookmark as BookmarkIconLucide, Check, CheckCircle, RefreshCw, XCircle, CalendarDays, PlusCircle, Loader2, Image as ImageIconLucide, Clock, ShieldAlert, Zap, ChevronLeft, ChevronRight, BookOpen } from 'lucide-react';
 import NextImage from 'next/image';
 import 'katex/dist/katex.min.css';
@@ -21,9 +23,7 @@ import { Routes, escapeForPbFilter, AppConfig, DPP_EXAM_OPTIONS, slugify } from 
 import Link from 'next/link';
 import { useDppNavigation } from '@/contexts/DppNavigationContext';
 
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Checkbox } from "@/components/ui/checkbox";
 import type { StudentBookmark, User, UserSubscriptionTierStudent } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -65,7 +65,7 @@ interface LoadedQuestion extends RecordModel {
   pyqYear?: number;
   pyqDate?: string;
   pyqShift?: string;
-  originalCollectionName?: 'question_bank' | 'add_questions';
+  originalCollectionName?: 'question_bank' | 'teacher_question_data';
   marks?: number;
   displayQuestionImageUrl?: string | null;
   displayOptionAImageUrl?: string | null;
@@ -232,14 +232,14 @@ export default function DppQuestionViewPage() {
 
     try {
       let record: LoadedQuestion;
-      let sourceCollection: 'question_bank' | 'add_questions' = 'question_bank';
+      let sourceCollection: 'question_bank' | 'teacher_question_data' = 'question_bank';
       try {
         record = await pb.collection('question_bank').getOne<LoadedQuestion>(qId);
       } catch (qbError: any) {
         if (qbError.status === 404) {
           try {
-            record = await pb.collection('add_questions').getOne<LoadedQuestion>(qId);
-            sourceCollection = 'add_questions';
+            record = await pb.collection('teacher_question_data').getOne<LoadedQuestion>(qId);
+            sourceCollection = 'teacher_question_data';
           } catch (aqError: any) { throw aqError; }
         } else { throw qbError; }
       }
@@ -258,7 +258,7 @@ export default function DppQuestionViewPage() {
         displayExplanationImageUrl: getPbFileUrlIfName(record, 'explanationImage') || record.ExplanationImage,
         originalCollectionName: sourceCollection,
         marks: record.marks,
-        ExamDpp: record.ExamDpp || (sourceCollection === 'add_questions' ? record.QBExam : undefined),
+        ExamDpp: record.ExamDpp || (sourceCollection === 'teacher_question_data' ? record.QBExam : undefined),
         subject: record.subject,
       };
       setQuestions([finalRecord]); // Set as an array with one question
@@ -435,7 +435,7 @@ export default function DppQuestionViewPage() {
       dppContextLesson: currentQuestion.lessonName || currentQuestion.LessonName,
     };
     if (currentQuestion.originalCollectionName === 'question_bank') dailyLogData.question_bank_ref = currentQuestion.id;
-    else if (currentQuestion.originalCollectionName === 'add_questions') dailyLogData.add_questions_ref = currentQuestion.id;
+    else if (currentQuestion.originalCollectionName === 'teacher_question_data') dailyLogData.add_questions_ref = currentQuestion.id;
 
     try {
       await pb.collection('daily_dpp_question_logs').create(dailyLogData);
@@ -524,16 +524,7 @@ export default function DppQuestionViewPage() {
     );
   };
 
-  const fetchUserNotebooks = useCallback(async () => {
-    if (!currentUser?.id) { setUserNotebooks([]); setIsLoadingUserNotebooks(false); return; }
-    setIsLoadingUserNotebooks(true);
-    try {
-      const records = await pb.collection('student_bookmarks').getFullList<StudentBookmark>({ filter: `user = "${currentUser.id}" && archived = false`, sort: '-updated', $autoCancel: false });
-      setUserNotebooks(records.map(r => ({ ...r, questionCount: Array.isArray(r.questions) ? r.questions.length : 0 })));
-    } catch (err) { toast({ title: "Error Fetching Notebooks", variant: "destructive" }); setUserNotebooks([]); }
-    finally { setIsLoadingUserNotebooks(false); }
-  }, [currentUser?.id, toast]);
-
+  const fetchUserNotebooks = useCallback(async () => { if (!currentUser?.id) { setUserNotebooks([]); setIsLoadingUserNotebooks(false); return; } setIsLoadingUserNotebooks(true); try { const records = await pb.collection('student_bookmarks').getFullList<StudentBookmark>({ filter: `user = "${currentUser.id}" && archived = false`, sort: '-updated', $autoCancel: false }); setUserNotebooks(records.map(r => ({ ...r, questionCount: Array.isArray(r.questions) ? r.questions.length : 0 }))); } catch (err) { toast({ title: "Error Fetching Notebooks", variant: "destructive" }); setUserNotebooks([]); } finally { setIsLoadingUserNotebooks(false); } }, [currentUser?.id, toast]);
   const handleOpenBookmarkModal = () => { if (currentQuestion) { fetchUserNotebooks(); setSelectedNotebookIdsInModal(new Set()); setSelectedModalTags([]); setIsBookmarkModalOpen(true); } };
   const handleToggleNotebookSelection = (notebookId: string) => setSelectedNotebookIdsInModal(prev => { const newSet = new Set(prev); if (newSet.has(notebookId)) newSet.delete(notebookId); else newSet.add(notebookId); return newSet; });
   const handleToggleTagSelection = (tag: string) => setSelectedModalTags(prev => { const newTags = new Set(prev); if (newTags.has(tag)) newTags.delete(tag); else if (newTags.size < 5) newTags.add(tag); else toast({ title: "Tag Limit Reached", description: "Max 5 tags."}); return Array.from(newTags); });
@@ -736,10 +727,7 @@ export default function DppQuestionViewPage() {
         <DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle>Add to Notebooks</DialogTitle><DialogDescription>Select notebook(s).</DialogDescription></DialogHeader>
           {isLoadingUserNotebooks ? (<div className="flex justify-center items-center h-32"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>)
           : userNotebooks.length === 0 ? (<p className="text-sm text-muted-foreground text-center py-4">No notebooks. <Link href={Routes.notebooks} className="text-primary hover:underline">Create one!</Link></p>)
-          : (<ScrollArea className="max-h-60 my-4"><div className="space-y-2 pr-2">{userNotebooks.map(nb => (<div key={nb.id} className="flex items-center space-x-2 p-2 border rounded-md hover:bg-muted/50">
-                <Checkbox id={`bm-nb-${nb.id}`} checked={selectedNotebookIdsInModal.has(nb.id)} onCheckedChange={() => handleToggleNotebookSelection(nb.id)}/>
-                <label htmlFor={`bm-nb-${nb.id}`} className="text-sm font-medium leading-none flex-1 cursor-pointer">{nb.notebook_name}</label><Badge variant="outline" className="text-xs">{nb.questionCount || 0} Qs</Badge>
-            </div>))}</div></ScrollArea>
+          : (<ScrollArea className="max-h-60 my-4"><div className="space-y-2 pr-2">{userNotebooks.map(nb => (<div key={nb.id} className="flex items-center space-x-2 p-2 border rounded-md hover:bg-muted/50"> <Checkbox id={`bm-nb-${nb.id}`} checked={selectedNotebookIdsInModal.has(nb.id)} onCheckedChange={() => handleToggleNotebookSelection(nb.id)}/> <label htmlFor={`bm-nb-${nb.id}`} className="text-sm font-medium leading-none flex-1 cursor-pointer">{nb.notebook_name}</label><Badge variant="outline" className="text-xs">{nb.questionCount || 0} Qs</Badge> </div>))}</div></ScrollArea>
           )}
           <Button type="button" variant="outline" size="sm" className="w-full justify-start text-primary hover:text-primary/90" onClick={() => router.push(Routes.notebooks)} ><PlusCircle className="mr-2 h-4 w-4"/>Create New Notebook</Button>
           <div className="mt-4 pt-4 border-t"><p className="text-sm font-medium mb-2 text-muted-foreground">Add tags (optional):</p><div className="flex flex-wrap gap-2">{PREDEFINED_TAGS.map(tag => (<Button key={tag} variant={selectedModalTags.includes(tag) ? "default" : "outline"} size="sm" className="text-xs" onClick={() => handleToggleTagSelection(tag)}>{selectedModalTags.includes(tag) && <Check className="mr-1.5 h-3.5 w-3.5"/>}{tag}</Button>))}</div><p className="text-xs text-muted-foreground mt-2">Tags apply to this question in selected notebooks.</p></div>
@@ -749,3 +737,4 @@ export default function DppQuestionViewPage() {
     </div>
   );
 }
+

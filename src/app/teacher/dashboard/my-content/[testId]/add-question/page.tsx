@@ -145,7 +145,7 @@ export default function TeacherAddQuestionToTestPage() {
       return;
     }
     
-    const dataForAddQuestions: Record<string, any> = {
+    const dataForTeacherQuestionData: Record<string, any> = {
       teacher: teacher.id,
       LessonName: data.LessonName,
       QBExam: data.QBExam,
@@ -164,16 +164,16 @@ export default function TeacherAddQuestionToTestPage() {
       explanationImage: data.explanationImage || null,
     };
     
-    Object.keys(dataForAddQuestions).forEach(key => {
-      if (dataForAddQuestions[key] === undefined) { 
-        dataForAddQuestions[key] = null; 
+    Object.keys(dataForTeacherQuestionData).forEach(key => {
+      if (dataForTeacherQuestionData[key] === undefined) { 
+        dataForTeacherQuestionData[key] = null; 
       }
     });
 
-    console.log("Final data payload for add_questions (with image URLs):", dataForAddQuestions);
+    console.log("Final data payload for teacher_question_data (with image URLs):", dataForTeacherQuestionData);
 
     try {
-      const createdQuestionRecord = await pb.collection('add_questions').create(dataForAddQuestions);
+      const createdQuestionRecord = await pb.collection('teacher_question_data').create(dataForTeacherQuestionData);
       toast({
         title: 'Question Added!',
         description: `Question (ID: ${createdQuestionRecord.id.substring(0,8)}...) added to ${parentTestData.testName}.`,
@@ -195,7 +195,7 @@ export default function TeacherAddQuestionToTestPage() {
       });
       setImagePreviews({});
     } catch (error: any) {
-      console.error("Failed to save question to add_questions:", error.data?.data || error.message, "Full error:", error);
+      console.error("Failed to save question to teacher_question_data:", error.data?.data || error.message, "Full error:", error);
       let errorMsg = "Could not save question. Please ensure all required fields are filled and image URLs are valid if provided.";
       if (error.data?.data) {
         errorMsg = Object.entries(error.data.data).map(([key, val]: [string, any]) => `${key}: ${val.message}`).join('; ');

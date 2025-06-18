@@ -73,7 +73,7 @@ interface ChapterwiseResultRecord extends RecordModel {
   percentage: number;
   answers_log: string | AnswerLogItem[];
   status: 'completed' | 'in_progress' | 'terminated_proctoring' | 'terminated_tab_switches' | 'terminated_time_up';
-  proctoring_flags?: string;
+  proctoring_flags: string;
   mark_for_review_not_answered?: number; 
   mark_for_review_answered?: number; 
 }
@@ -125,6 +125,7 @@ interface QuestionBankRecord extends RecordModel {
   CorrectOption?: "Option A" | "Option B" | "Option C" | "Option D"; 
   ExplanationText?: string; 
   ExplanationImage?: string | null; 
+  originalCollectionName?: 'question_bank' | 'teacher_question_data'; // Added
 }
 
 
@@ -309,11 +310,17 @@ export default function ChapterwiseTestResultPage() {
       if (allQuestionIds.length > 0) {
         const questionPromises = allQuestionIds.map(id =>
           pb.collection('question_bank').getOne<QuestionBankRecord>(id, { $autoCancel: false }).catch(err => {
-            console.warn(`Failed to fetch question ${id} from question_bank, trying add_questions:`, err.data);
-            return pb.collection('add_questions').getOne<QuestionBankRecord>(id, { $autoCancel: false }).catch(addQErr => {
-              console.error(`Failed to fetch question ${id} from both question_bank and add_questions:`, addQErr.data);
+            console.warn(`Failed to fetch question ${id} from question_bank, trying teacher_question_data:`, err.data);
+            return pb.collection('teacher_question_data').getOne<QuestionBankRecord>(id, { $autoCancel: false }).catch(addQErr => {
+              console.error(`Failed to fetch question ${id} from both question_bank and teacher_question_data:`, addQErr.data);
               return null;
+            }).then(record => {
+              if (record) record.originalCollectionName = 'teacher_question_data';
+              return record;
             });
+          }).then(record => {
+            if (record && !record.originalCollectionName) record.originalCollectionName = 'question_bank';
+            return record;
           })
         );
         const fetchedQuestionsRaw = (await Promise.all(questionPromises)).filter(q => q !== null) as QuestionBankRecord[];
@@ -489,6 +496,7 @@ export default function ChapterwiseTestResultPage() {
         </div>
         {activeTab === "summary" && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
               <div className="lg:col-span-1 grid grid-cols-1 gap-6">
                 <Card className="shadow-md"><CardHeader className="items-center text-center pb-2"><CardTitle className="text-md font-medium">Overview</CardTitle><CardDescription className="text-xs">Question Breakdown</CardDescription></CardHeader>
                     <CardContent className="h-[200px] flex items-center justify-center p-0">
