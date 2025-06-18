@@ -20,24 +20,27 @@ interface TeacherWalletTransaction extends RecordModel {
   id: string;
   teacher: string;
   student_histroy?: string; // ID of students_teachers_upgrade_plan record
-  total_amount_recieved: number;
+  total_amount_recieved: number; // Amount received by teacher AFTER EduNexus commission
   by_which_plan_recieved?: string; // ID of teachers_upgrade_plan record
   transaction_date: string;
   transaction_details?: string;
   created: string;
   expand?: {
-    student_histroy?: {
-      student: string;
-      teachers_plan_id: string;
-      amount_recieved_to_teacher: number; // Use this for display
+    student_histroy?: { // This record is from students_teachers_upgrade_plan
+      id: string;
+      student: string; // student ID
+      teachers_plan_id: string; // teacher's content plan ID
+      amount_paid_to_edunexus: number; // Actual total paid by student for this transaction
+      amount_recieved_to_teacher: number; // Should match total_amount_recieved in wallet
       created: string;
       expand?: {
-        student?: { name: string };
-        teachers_plan_id?: { Plan_name: string };
+        student?: { name: string; id: string; }; // Student's name from users collection
+        teachers_plan_id?: { Plan_name: string; id: string; }; // Teacher's content plan name
       }
     };
-    by_which_plan_recieved?: {
+    by_which_plan_recieved?: { // This is the teacher's content plan
       Plan_name: string;
+      id: string;
     }
   }
 }
@@ -62,8 +65,9 @@ export default function TeacherWalletPage() {
     try {
       const records = await pb.collection('teacher_wallet').getFullList<TeacherWalletTransaction>({
         filter: `teacher = "${teacher.id}"`,
-        sort: '-transaction_date', // Show newest first
+        sort: '-transaction_date', 
         expand: 'student_histroy.student,student_histroy.teachers_plan_id,by_which_plan_recieved',
+        '$autoCancel': false,
       });
       
       if (isMountedGetter()) {
@@ -78,10 +82,12 @@ export default function TeacherWalletPage() {
         let errorMsg = `Could not load wallet data. Error: ${clientError.data?.message || clientError.message || 'Unknown error'}.`;
         if (clientError.status === 404) {
           errorMsg = "No wallet data found. It seems you haven't received any payments yet.";
-          // Set to empty state rather than error if 404
           setTransactions([]);
           setTotalEarnings(0);
-          setError(null); // Clear previous errors if any
+          setError(null); 
+        } else if (clientError.isAbort || (clientError.name === 'ClientResponseError' && clientError.status === 0)) {
+            errorMsg = "Request cancelled. Please try refreshing.";
+            console.warn("TeacherWalletPage: Fetch wallet data request was cancelled.");
         } else {
           setError(errorMsg);
           toast({ title: "Error", description: errorMsg, variant: "destructive" });
@@ -123,7 +129,7 @@ export default function TeacherWalletPage() {
             <WalletIcon className="h-8 w-8" /> My Wallet
           </CardTitle>
           <CardDescription className="text-primary-foreground/80">
-            Track your earnings from student subscriptions to your content plans.
+            Track your earnings from student subscriptions to your content plans, after EduNexus commissions.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -139,7 +145,7 @@ export default function TeacherWalletPage() {
             ₹{totalEarnings.toFixed(2)}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            This is the sum of all 'Amount Received to Teacher' from student plan purchases.
+            This is your net earning after EduNexus platform fees.
           </p>
         </CardContent>
         <CardFooter>
@@ -156,7 +162,7 @@ export default function TeacherWalletPage() {
               <TrendingUp className="h-6 w-6 text-primary" /> Transaction History
             </CardTitle>
             <CardDescription>
-              Detailed list of payments received from student subscriptions.
+              Detailed list of payments received.
             </CardDescription>
           </div>
            <Button variant="ghost" size="icon" onClick={() => fetchWalletData(() => true)} disabled={isLoading}>
@@ -185,38 +191,35 @@ export default function TeacherWalletPage() {
                   <TableRow>
                     <TableHead>Date</TableHead>
                     <TableHead>Details</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="text-right">Amount (Net)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {transactions.map((tx) => {
                     const studentName = tx.expand?.student_histroy?.expand?.student?.name || 'Unknown Student';
+                    const studentId = tx.expand?.student_histroy?.expand?.student?.id;
                     const planNameFromWallet = tx.expand?.by_which_plan_recieved?.Plan_name;
                     const planNameFromStudentHistory = tx.expand?.student_histroy?.expand?.teachers_plan_id?.Plan_name;
                     const planName = planNameFromWallet || planNameFromStudentHistory || 'Unknown Plan';
-                    const amount = tx.total_amount_recieved;
+                    const amountNet = tx.total_amount_recieved;
+                    const originalPaymentAmount = tx.expand?.student_histroy?.amount_paid_to_edunexus; // This now means total amount paid by student
 
                     return (
                       <TableRow key={tx.id}>
                         <TableCell className="text-xs">
-                          {format(new Date(tx.transaction_date || tx.created), "dd MMM yyyy, HH:mm")}
+                          {format(new Date(tx.transaction_date || tx.created), "dd MMM yy, HH:mm")}
                         </TableCell>
                         <TableCell>
                           <p className="text-sm font-medium text-foreground">
-                            {tx.transaction_details || `Payment from ${studentName} for "${planName}"`}
+                            {tx.transaction_details || `From ${studentName} for "${planName}"`}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Ref: {tx.expand?.student_histroy?.id ? (
-                               <Link href={Routes.teacherStudentPerformance + `?studentId=${tx.expand.student_histroy.expand?.student?.id || ''}&transactionId=${tx.expand.student_histroy.id}`} 
-                                     className="hover:underline text-blue-500"
-                                     title="View transaction details (Coming Soon)">
-                                 {tx.expand.student_histroy.id.substring(0, 8)}... <ExternalLink className="inline h-3 w-3 opacity-70"/>
-                               </Link>
-                            ) : tx.id.substring(0,8)}...
+                            Student: {studentId ? studentId.substring(0,8) : 'N/A'}...
+                            {originalPaymentAmount !== undefined && ` (Original: ₹${originalPaymentAmount.toFixed(2)})`}
                           </p>
                         </TableCell>
                         <TableCell className="text-right font-semibold text-green-600">
-                          ₹{amount?.toFixed(2) || '0.00'}
+                          ₹{amountNet?.toFixed(2) || '0.00'}
                         </TableCell>
                       </TableRow>
                     );
@@ -230,3 +233,5 @@ export default function TeacherWalletPage() {
     </div>
   );
 }
+
+    

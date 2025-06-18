@@ -116,8 +116,8 @@ export const Routes = {
   teacherManageDiscussion: '/teacher/dashboard/manage-discussion',
   teacherWallet: '/teacher/dashboard/wallet',
 
-  // Payment Routes
-  teacherPaymentStatus: '/teacher/payment-status', // New route for PayU teacher payment status
+  // Payment Routes (Razorpay doesn't use explicit status pages like PayU)
+  // teacherPaymentStatus: '/teacher/payment-status', // Removed for Razorpay
 };
 
 // Helper to convert display names to URL-friendly slugs
@@ -277,7 +277,7 @@ export const teacherPlatformPlansData: Plan[] = [
       "Limited access to EduNexus Question Bank features",
     ],
     ctaText: 'Current Plan',
-    commissionRate: 10,
+    commissionRate: 10, // EduNexus takes 10%
     maxContentPlans: 2, 
     qbAccess: false,
   },
@@ -294,7 +294,7 @@ export const teacherPlatformPlansData: Plan[] = [
       "Standard access to EduNexus Question Bank features",
     ],
     ctaText: 'Upgrade to Starter',
-    commissionRate: 3,
+    commissionRate: 7.5, // EduNexus takes 7.5%
     maxContentPlans: 5,
     qbAccess: false, 
   },
@@ -306,15 +306,15 @@ export const teacherPlatformPlansData: Plan[] = [
     priceSuffix: '/year',
     priceValue: 599,
     features: [
-      "Create up to 5 content plans", 
+      "Create up to 10 content plans", // Example: Increased limit
       "Full access to EduNexus Question Bank (if applicable)",
       "Advanced analytics and reporting tools",
       "Priority support",
     ],
     isRecommended: true,
     ctaText: 'Upgrade to Pro',
-    commissionRate: 1.5,
-    maxContentPlans: 5,
+    commissionRate: 5, // EduNexus takes 5%
+    maxContentPlans: 10, // Example: Increased limit
     qbAccess: true,
   },
 ];
