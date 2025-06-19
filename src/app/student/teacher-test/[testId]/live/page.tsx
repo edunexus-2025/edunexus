@@ -328,22 +328,46 @@ export default function StudentTeacherTestLivePage() {
     const percentage = maxScorePossible > 0 ? (pointsEarnedFromTest / maxScorePossible) * 100 : 0;
     const finalTestStatus: TeacherTestAttempt['status'] = terminationReason === 'time_up' ? 'terminated_time_up' : (terminationReason === 'manual' ? 'terminated_manual' : 'completed');
     const durationTakenSecs = testDetails?.duration ? parseInt(testDetails.duration, 10) * 60 - (timeLeft || 0) : 0;
+    
     const resultDataToSave: Partial<TeacherTestAttempt> = {
-      student: user.id, teacher_test: testDetails.id, teacher: testDetails.teacherId, test_name_cache: testDetails.testName,
-      plan_type_cache: testDetails.model || 'N/A', score: pointsEarnedFromTest, max_score: maxScorePossible,
-      percentage: parseFloat(percentage.toFixed(2)), status: finalTestStatus,
-      started_at: new Date(Date.now() - durationTakenSecs * 1000).toISOString(), completed_at: new Date().toISOString(),
-      duration_taken_seconds: durationTakenSecs, answers_log: JSON.stringify(answersLogForDb),
-      total_questions_in_test_cache: questions.length, attempted_questions_count: attemptedCount,
-      correct_answers_count: correctCount, incorrect_answers_count: attemptedCount - correctCount,
+      student: user.id, 
+      teacher_test: testDetails.id, 
+      teacher: testDetails.teacherId, 
+      test_name_cache: testDetails.testName,
+      score: pointsEarnedFromTest, 
+      max_score: maxScorePossible,
+      percentage: parseFloat(percentage.toFixed(2)), 
+      status: finalTestStatus,
+      start_time: new Date(Date.now() - durationTakenSecs * 1000).toISOString(),
+      end_time: new Date().toISOString(),
+      duration_taken_seconds: durationTakenSecs, 
+      answers_log: JSON.stringify(answersLogForDb),
+      total_questions_in_test_cache: questions.length, 
+      attempted_questions_count: attemptedCount,
+      correct_answers_count: correctCount, 
+      incorrect_answers_count: attemptedCount - correctCount,
       unattempted_questions_count: questions.length - attemptedCount,
     };
+
+    console.log("Submitting teacher test attempt with data:", JSON.stringify(resultDataToSave, null, 2));
+
     try {
       const createdResultRecord = await pb.collection('teacher_test_attempts').create(resultDataToSave);
       setTestSessionState(finalTestStatus === 'completed' ? 'completed' : 'terminated'); setTimeLeft(0);
       toast({ title: autoSubmit ? (terminationReason ? "Test Terminated" : "Test Auto-Submitted") : "Test Submitted Successfully!", description: `Your results for "${testDetails.testName}" have been recorded. ${terminationReason ? `Reason: ${terminationReason.replace(/_/g, ' ')}.` : ''}` });
       router.push(Routes.testResultTeacherTest(createdResultRecord.id));
-    } catch (err: any) { console.error("Failed to submit teacher test results:", err); toast({ title: "Submission Failed", description: `Could not save results: ${err.data?.message || err.message}`, variant: "destructive" }); }
+    } catch (err: any) { 
+        console.error("Failed to submit teacher test results:", err.data || err.message, "Full Error:", err); 
+        let errorMessage = "Could not save results.";
+        if (err.data && err.data.data) {
+          errorMessage += " Details: " + JSON.stringify(err.data.data);
+        } else if (err.data && err.data.message) {
+          errorMessage += " " + err.data.message;
+        } else if (err.message) {
+          errorMessage += " " + err.message;
+        }
+        toast({ title: "Submission Failed", description: errorMessage, variant: "destructive", duration: 9000 }); 
+    }
     finally { setIsSubmittingTest(false); }
   }, [user, testDetails, questions, userAnswers, timeLeft, router, toast, isSubmittingTest, testSessionState, currentQuestion]);
 
@@ -398,7 +422,7 @@ export default function StudentTeacherTestLivePage() {
   const formatTime = (seconds: number | null): string => { if (seconds === null || seconds < 0) seconds = 0; const h = Math.floor(seconds / 3600); const m = Math.floor((seconds % 3600) / 60); const s = seconds % 60; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`; };
   const getQuestionStatusForPalette = (questionId: string): 'answered' | 'notAnswered' | 'markedForReview' | 'markedAndAnswered' | 'notVisited' => { const answer = userAnswers[questionId]; if (!answer || (answer.selectedOption === null && !answer.markedForReview)) return 'notVisited'; if (answer.selectedOption) { return answer.markedForReview ? 'markedAndAnswered' : 'answered'; } else { return answer.markedForReview ? 'markedForReview' : 'notAnswered'; }};
   const questionPaletteButtonClass = (status: ReturnType<typeof getQuestionStatusForPalette>, isActive: boolean) => { if (isActive) return "bg-primary text-primary-foreground border-primary ring-2 ring-offset-1 ring-primary"; switch (status) { case 'answered': return "bg-green-500 hover:bg-green-600 text-white border-green-500"; case 'notAnswered': return "bg-red-500 hover:bg-red-600 text-white border-red-500"; case 'markedForReview': return "bg-purple-500 hover:bg-purple-600 text-white border-purple-500"; case 'markedAndAnswered': return "bg-orange-500 hover:bg-orange-600 text-white border-orange-500"; case 'notVisited': default: return "bg-card hover:bg-muted/80 text-muted-foreground border-border"; }};
-  const renderOption = (optionKey: "A" | "B" | "C" | "D"): React.ReactNode => { if(!currentQuestion) return null; const optionData = currentQuestion.displayOptions.find(opt => opt.label === optionKey); if (!optionData) return null; const optionValue = `Option ${optionKey}`; return ( <Label htmlFor={`option-${currentQuestion.id}-${optionKey}`} className={cn("flex items-start space-x-3 rounded-lg border p-3 cursor-pointer transition-all hover:shadow-md", userAnswers[currentQuestion.id]?.selectedOption === optionValue ? 'bg-primary/10 border-primary ring-1 ring-primary' : 'bg-card border-border hover:border-primary/50')}> <RadioGroupItem value={optionValue} id={`option-${currentQuestion.id}-${optionKey}`} className="mt-1 border-muted-foreground data-[state=checked]:border-primary shrink-0" /> <div className="flex-1 text-sm"> <div className="font-semibold">{optionKey}.</div> {optionData.text && <div className="prose prose-sm dark:prose-invert max-w-none mt-0.5">{renderLatex(optionData.text)}</div>} {optionData.imageUrl && isValidHttpUrl(optionData.imageUrl) && (<div className="mt-1.5"><NextImage src={optionData.imageUrl} alt={`Option ${optionKey}`} width={200} height={100} className="rounded object-contain border" data-ai-hint="option diagram"/></div>)} {!(optionData.text || (optionData.imageUrl && isValidHttpUrl(optionData.imageUrl))) && <p className="text-muted-foreground italic">Option {optionKey} content not available.</p>} </div> </Label> ); };
+  const renderOption = (optionKey: "A" | "B" | "C" | "D"): React.ReactNode => { if(!currentQuestion) return null; const textKey = `Option${optionKey}Text` as keyof QuestionRecord; const imageKey = `Option${optionKey}Image` as keyof QuestionRecord; const optionText = currentQuestion[textKey]; const imageUrl = currentQuestion[imageKey] as string | null; const optionValue = `Option ${optionKey}`; return ( <Label htmlFor={`option-${currentQuestion.id}-${optionKey}`} className={cn("flex items-start space-x-3 rounded-lg border p-3 cursor-pointer transition-all hover:shadow-md", userAnswers[currentQuestion.id]?.selectedOption === optionValue ? 'bg-primary/10 border-primary ring-1 ring-primary' : 'bg-card border-border hover:border-primary/50')}> <RadioGroupItem value={optionValue} id={`option-${currentQuestion.id}-${optionKey}`} className="mt-1 border-muted-foreground data-[state=checked]:border-primary shrink-0" /> <div className="flex-1 text-sm"> <div className="font-semibold">{optionKey}.</div> {optionText && <div className="prose prose-sm dark:prose-invert max-w-none mt-0.5">{renderLatex(optionText as string)}</div>} {imageUrl && isValidHttpUrl(imageUrl) && (<div className="mt-1.5"><NextImage src={imageUrl} alt={`Option ${optionKey}`} width={200} height={100} className="rounded object-contain border" data-ai-hint="option diagram"/></div>)} {!(optionText || imageUrl) && <p className="text-muted-foreground italic">Option {optionKey} content not available.</p>} </div> </Label> ); };
   
   const QuestionPaletteContent = () => (
     <>
@@ -528,7 +552,7 @@ export default function StudentTeacherTestLivePage() {
         <Card className="flex-1 flex flex-col bg-card shadow-xl rounded-lg border border-border overflow-hidden">
             <CardHeader className="p-3 sm:p-4 border-b border-border bg-muted/30"><div className="flex justify-between items-center"><p className="text-xs sm:text-sm font-medium text-muted-foreground">Question {currentQuestionIndex + 1} of {questions.length}</p><div className="flex items-center gap-1">{currentQuestion.difficulty && <Badge variant={currentQuestion.difficulty === 'Easy' ? 'secondary' : currentQuestion.difficulty === 'Medium' ? 'default' : 'destructive'} className="text-xs px-1.5 py-0.5">{currentQuestion.difficulty}</Badge>}{currentQuestion.marks && <Badge variant="outline" className="text-xs px-1.5 py-0.5">Marks: {currentQuestion.marks}</Badge>}</div></div></CardHeader>
             <ScrollArea className="flex-1 min-h-0"><CardContent className="p-3 sm:p-4 md:p-6 space-y-4">
-                <div className="p-2 border-b border-border/50 rounded-md bg-background min-h-[80px]">{currentQuestion.displayQuestionText && (<div className="prose prose-sm dark:prose-invert max-w-none mb-3 text-foreground leading-relaxed">{renderLatex(currentQuestion.displayQuestionText)}</div>)}{currentQuestion.displayQuestionImageUrl && isValidHttpUrl(currentQuestion.displayQuestionImageUrl) && (<div className="my-2 text-center"><NextImage src={currentQuestion.displayQuestionImageUrl} alt="Question Image" width={400} height={300} className="rounded object-contain inline-block border" data-ai-hint="question diagram"/></div>)}{!(currentQuestion.displayQuestionText || (currentQuestion.displayQuestionImageUrl && isValidHttpUrl(currentQuestion.displayQuestionImageUrl))) && (<p className="text-xs sm:text-sm text-muted-foreground italic py-3">Question content not provided.</p>)}</div>
+                <div className="p-2 border-b border-border/50 rounded-md bg-background min-h-[80px]">{currentQuestion.QuestionText && (<div className="prose prose-sm dark:prose-invert max-w-none mb-3 text-foreground leading-relaxed">{renderLatex(currentQuestion.QuestionText)}</div>)}{currentQuestion.QuestionImage && isValidHttpUrl(currentQuestion.QuestionImage) && (<div className="my-2 text-center"><NextImage src={currentQuestion.QuestionImage} alt="Question Image" width={400} height={300} className="rounded object-contain inline-block border" data-ai-hint="question diagram"/></div>)}{!(currentQuestion.QuestionText || (currentQuestion.QuestionImage && isValidHttpUrl(currentQuestion.QuestionImage))) && (<p className="text-xs sm:text-sm text-muted-foreground italic py-3">Question content not provided.</p>)}</div>
                 <RadioGroup value={userAnswers[currentQuestion.id]?.selectedOption || ""} onValueChange={handleOptionChange} className="space-y-2.5" disabled={testSessionState !== 'inProgress'}>{renderOption("A")} {renderOption("B")} {renderOption("C")} {renderOption("D")}</RadioGroup>
             </CardContent></ScrollArea>
             <CardFooter className="p-3 sm:p-4 border-t border-border bg-muted/30 flex-wrap justify-center sm:justify-between gap-2"><Button variant="outline" size="sm" onClick={handleClearResponse} disabled={testSessionState !== 'inProgress' || !userAnswers[currentQuestion.id]?.selectedOption}>Clear Response</Button><Button variant={userAnswers[currentQuestion.id]?.markedForReview ? "secondary" : "outline"} size="sm" onClick={handleMarkForReview} disabled={testSessionState !== 'inProgress'} className="border-purple-500 text-purple-600 data-[state=active]:bg-purple-500/10 data-[state=active]:text-purple-700 hover:bg-purple-500/10"><Flag className="mr-1.5 h-4 w-4" /> {userAnswers[currentQuestion.id]?.markedForReview ? "Unmark Review" : "Mark for Review"}</Button><Button size="sm" onClick={handleSaveAndNext} disabled={testSessionState !== 'inProgress' || currentQuestionIndex === questions.length - 1} className="bg-green-600 hover:bg-green-700 text-white">Save & Next <ChevronRight className="ml-1.5 h-4 w-4" /></Button></CardFooter>
@@ -538,3 +562,4 @@ export default function StudentTeacherTestLivePage() {
     </div>
   );
 }
+    
