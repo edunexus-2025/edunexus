@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams } from 'next/navigation';
@@ -17,9 +16,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TeacherTestSettingsSchema, type TeacherTestSettingsInput } from '@/lib/schemas';
+import { TeacherTestSettingsSchema, type TeacherTestSettingsInput, TeacherTestSubjectEnumOptions } from '@/lib/schemas'; // Import TeacherTestSubjectEnumOptions
 import { AlertCircle, Loader2, Save, Settings } from 'lucide-react';
-import { TeacherTestSubjectEnum } from '@/lib/schemas'; // Import the enum
 
 interface TeacherTestRecordForSettings extends RecordModel {
   testName?: string;
@@ -36,7 +34,7 @@ interface TeacherTestRecordForSettings extends RecordModel {
   Would_you_like_to_get_admin_access_through_link?: boolean;
   teacherId?: string;
   QBExam?: "MHT CET" | "JEE MAIN" | "NEET";
-  Test_Subject?: "Physics" | "Chemistry" | "Maths" | "Biology" | null; // Added Test_Subject
+  Test_Subject?: "Physics" | "Chemistry" | "Maths" | "Biology" | null;
   model?: "Chapterwise" | "Full Length";
   type?: "Free" | "Premium";
 }
@@ -45,7 +43,7 @@ const whoCanTakeTestOptions = ["EveryOne", "Group 1", "Group 2", "Group 3", "Gro
 const qbExamOptions: Array<NonNullable<TeacherTestSettingsInput['QBExam']>> = ["MHT CET", "JEE MAIN", "NEET"];
 const testModelOptions: Array<NonNullable<TeacherTestSettingsInput['model']>> = ["Chapterwise", "Full Length"];
 const testTypeOptions: Array<NonNullable<TeacherTestSettingsInput['type']>> = ["Free", "Premium"];
-const testSubjectOptionsForm: Array<NonNullable<TeacherTestSettingsInput['Test_Subject']>> = TeacherTestSubjectEnum.options;
+const testSubjectOptionsForm = TeacherTestSubjectEnumOptions; // Use the imported options
 
 
 export default function TestSettingsPage() {
@@ -93,7 +91,7 @@ export default function TestSettingsPage() {
         Who_can_take_your_test: record.Who_can_take_your_test as TeacherTestSettingsInput['Who_can_take_your_test'] || 'EveryOne',
         Would_you_like_to_get_admin_access_through_link: record.Would_you_like_to_get_admin_access_through_link === undefined ? false : record.Would_you_like_to_get_admin_access_through_link,
         QBExam: record.QBExam,
-        Test_Subject: record.Test_Subject || undefined, // Load Test_Subject
+        Test_Subject: record.Test_Subject || undefined,
         model: record.model,
         type: record.type,
       });
@@ -114,7 +112,7 @@ export default function TestSettingsPage() {
       totalScore: data.totalScore === null || data.totalScore === undefined ? null : Number(data.totalScore),
       PerNegativeScore: data.PerNegativeScore === null || data.PerNegativeScore === undefined ? null : Number(data.PerNegativeScore),
       status: data.status, QBExam: data.QBExam,
-      Test_Subject: data.Test_Subject || null, // Save Test_Subject
+      Test_Subject: data.Test_Subject || null,
       model: data.model, type: data.type,
       Students_can_view_their_results_after_the_test: data.Students_can_view_their_results_after_the_test,
       How_many_times_can_students_take_the_test: data.How_many_times_can_students_take_the_test === null || data.How_many_times_can_students_take_the_test === undefined ? null : Number(data.How_many_times_can_students_take_the_test),
@@ -204,3 +202,4 @@ export default function TestSettingsPage() {
     </div>
   );
 }
+

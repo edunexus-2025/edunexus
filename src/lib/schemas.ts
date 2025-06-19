@@ -1,4 +1,3 @@
-
 import { z } from 'zod';
 
 export const LoginSchema = z.object({
@@ -207,7 +206,10 @@ const TestExamEnum = z.enum(["MHT CET", "JEE MAIN", "NEET"], {
 const TestSubjectEnum = z.enum(['Physics', 'Chemistry', 'Mathematics', 'Biology'], {
   required_error: "Test Subject is required for Chapterwise tests.",
 });
-export const TeacherTestSubjectEnum = z.enum(['Physics', 'Chemistry', 'Maths', 'Biology']).optional().nullable();
+
+const BaseTeacherTestSubjectEnum = z.enum(['Physics', 'Chemistry', 'Maths', 'Biology']);
+export const TeacherTestSubjectEnumOptions = BaseTeacherTestSubjectEnum.options;
+export const TeacherTestSubjectEnum = BaseTeacherTestSubjectEnum.optional().nullable();
 
 
 export const CreateTestSchema = z.object({
@@ -376,8 +378,8 @@ export const TeacherTestSettingsSchema = z.object({
     Shuffle_Questions: z.boolean().default(false),
     Who_can_take_your_test: WhoCanTakeTestEnum.default("EveryOne"),
     Would_you_like_to_get_admin_access_through_link: z.boolean().default(false),
-    QBExam: TestModalQBExamEnum.optional(),
-    Test_Subject: TeacherTestSubjectEnum, // Added Test_Subject
+    QBExam: TestModalQBExamEnum.optional(), // Kept optional as per original intent for settings page
+    Test_Subject: TeacherTestSubjectEnum,
     model: z.enum(["Chapterwise", "Full Length"]).optional(),
     type: z.enum(["Free", "Premium"]).optional(),
 });
@@ -500,3 +502,4 @@ export const TeacherReferralCodeSchema = z.object({
   expiry_date: z.string().optional().nullable().refine(val => !val || !isNaN(Date.parse(val)), { message: "Invalid date format for expiry date." }),
 });
 export type TeacherReferralCodeInput = z.infer<typeof TeacherReferralCodeSchema>;
+
