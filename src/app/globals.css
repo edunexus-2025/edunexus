@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -108,5 +109,40 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .printable-content, .printable-content * {
+    visibility: visible;
+  }
+  .printable-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: auto;
+    padding: 20px; /* Add some padding for print */
+    margin: 0;
+    border: none !important; /* Remove borders for print */
+    box-shadow: none !important; /* Remove shadows for print */
+  }
+  .hide-on-print {
+    display: none !important;
+  }
+  /* Ensure prose styles are somewhat preserved or simplified */
+  .printable-content .prose {
+    font-size: 12pt;
+    line-height: 1.5;
+  }
+  .printable-content .prose img {
+    max-width: 100% !important; /* Ensure images fit */
+  }
+  /* Remove backgrounds from cards if they are part of printable content */
+  .printable-content .bg-card, .printable-content .bg-muted\/30 {
+    background-color: transparent !important;
   }
 }

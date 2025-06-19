@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, Eye as EyeIcon, Info, ListChecks, PlusCircle, Trash2, Edit2 as EditIcon, Loader2, MessageSquare, NotebookText, ListOrdered, ChevronLeft, ChevronRight, CheckCircle, XCircle } from 'lucide-react';
+import { AlertCircle, Eye as EyeIcon, Info, ListChecks, PlusCircle, Trash2, Edit2 as EditIcon, Loader2, MessageSquare, NotebookText, ListOrdered, ChevronLeft, ChevronRight, CheckCircle, XCircle, Printer } from 'lucide-react';
 import NextImage from 'next/image';
 import 'katex/dist/katex.min.css';
 import { InlineMath, BlockMath } from 'react-katex';
@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Routes, escapeForPbFilter } from '@/lib/constants';
-import Link from 'next/link'; // Added missing import
+import Link from 'next/link';
 import {
   Dialog,
   DialogContent,
@@ -72,16 +72,16 @@ const getPbFileUrlOrDirectUrl = (record: RecordModel | null | undefined, fieldNa
     const fieldValue = record[fieldName] as string | undefined | null;
     if (!fieldValue || typeof fieldValue !== 'string' || !fieldValue.trim()) return null;
 
-    if (isDirectUrlField) { 
+    if (isDirectUrlField) {
       if (isValidHttpUrl(fieldValue)) return fieldValue;
       console.warn(`ViewQuestionsDetailed: Field '${fieldName}' in teacher_question_data (ID: ${record.id}) is not a valid URL: ${fieldValue}`);
       return null;
-    } else { 
+    } else {
       if (record.id && (record.collectionId || sourceCollectionName) && (record.collectionName || sourceCollectionName)) {
         try {
           const minimalRecordForPb = {
             id: record.id,
-            collectionId: record.collectionId || (sourceCollectionName === 'question_bank' ? 'pbc_1874489316' : 'pbc_3669383003'), 
+            collectionId: record.collectionId || (sourceCollectionName === 'question_bank' ? 'pbc_1874489316' : 'pbc_3669383003'),
             collectionName: record.collectionName || sourceCollectionName,
             [fieldName]: fieldValue
           };
@@ -118,8 +118,8 @@ export default function ViewTestQuestionsDetailedPage() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true); 
+
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
 
   const [isEditCorrectOptionModalOpen, setIsEditCorrectOptionModalOpen] = useState(false);
@@ -137,7 +137,7 @@ export default function ViewTestQuestionsDetailedPage() {
     try {
       const fetchedTest = await pb.collection('teacher_tests').getOne(testId, {
         fields: 'id,testName,teacherId,questions_edunexus,questions_teachers,QBExam',
-        '$autoCancel': false, 
+        '$autoCancel': false,
       });
 
       if (!isMountedGetter()) return;
@@ -190,9 +190,9 @@ export default function ViewTestQuestionsDetailedPage() {
           });
         });
       }
-      
+
       if (isMountedGetter()) {
-        if (combinedQuestions.length === 0 && (eduNexusQuestionIds.length > 0 || teacherQuestionIds.length > 0) ) { 
+        if (combinedQuestions.length === 0 && (eduNexusQuestionIds.length > 0 || teacherQuestionIds.length > 0) ) {
           setError(`No questions could be fully loaded for "${fetchedTest.testName}", though some links exist. Check if linked questions were deleted or if there's a data mismatch.`);
         } else if (combinedQuestions.length === 0) {
           setError(`No questions are linked to "${fetchedTest.testName}". Please use the "Add Questions" tab.`);
@@ -227,14 +227,13 @@ export default function ViewTestQuestionsDetailedPage() {
     setIsUpdatingCorrectOption(true);
     try {
       const collectionToUpdate = editingQuestion.rawCollectionName;
-      // For 'teacher_question_data', the field is 'CorrectOption' and stores "Option A", "Option B", etc.
       const dataToUpdate = { CorrectOption: `Option ${newCorrectOption}` };
 
       await pb.collection(collectionToUpdate).update(editingQuestion.id, dataToUpdate);
       toast({ title: "Correct Option Updated", description: "The correct answer has been saved." });
       setIsEditCorrectOptionModalOpen(false);
       setEditingQuestion(null);
-      fetchTestAndQuestionsDetailed(() => true); 
+      fetchTestAndQuestionsDetailed(() => true);
     } catch (err: any) {
       console.error("Error updating correct option:", err);
       toast({ title: "Update Failed", description: `Could not save: ${err.data?.message || err.message}`, variant: "destructive" });
@@ -242,9 +241,13 @@ export default function ViewTestQuestionsDetailedPage() {
       setIsUpdatingCorrectOption(false);
     }
   };
+  
+  const handlePrint = () => {
+    window.print();
+  };
 
   const QuestionPaletteContent = () => (
-    <Card className="border-primary/30 bg-primary/5 flex-1 flex flex-col min-h-0 shadow-md rounded-lg md:mt-0">
+    <Card className="border-primary/30 bg-primary/5 flex-1 flex flex-col min-h-0 shadow-md rounded-lg md:mt-0 hide-on-print">
       <CardHeader className="p-2 text-center border-b border-primary/20"><CardTitle className="text-sm text-primary">QUESTIONS ({questions.length})</CardTitle></CardHeader>
       <CardContent className="p-2 flex-1 overflow-hidden">
         <ScrollArea className="h-full">
@@ -266,7 +269,7 @@ export default function ViewTestQuestionsDetailedPage() {
 
   return (
     <div className="p-2 sm:p-4 md:p-6 h-[calc(100vh-var(--header-height,0px)-var(--tabs-height,0px)-theme(space.12))] flex flex-col">
-      <CardHeader className="px-0 pb-3 flex-shrink-0">
+      <CardHeader className="px-0 pb-3 flex-shrink-0 hide-on-print">
         <CardTitle className="text-xl font-semibold flex items-center gap-2"><EyeIcon className="h-5 w-5 text-primary"/> Review Questions for: {testName}</CardTitle>
         <CardDescription>View full question details, options, and explanations. Total: {questions.length} question(s).</CardDescription>
       </CardHeader>
@@ -280,7 +283,7 @@ export default function ViewTestQuestionsDetailedPage() {
           </div>
         ) : (
         <div className="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden min-h-0">
-          <Card className="flex-1 flex flex-col bg-card shadow-md rounded-lg border border-border overflow-hidden">
+          <Card className="flex-1 flex flex-col bg-card shadow-md rounded-lg border border-border overflow-hidden printable-content">
             <CardHeader className="p-3 sm:p-4 border-b border-border bg-muted/30 flex-shrink-0">
               <div className="flex justify-between items-center">
                 <p className="text-xs sm:text-sm font-medium text-muted-foreground">Question {currentQuestionIndex + 1} of {questions.length}</p>
@@ -328,13 +331,14 @@ export default function ViewTestQuestionsDetailedPage() {
                 {!(currentQuestionForDisplay.explanationText || currentQuestionForDisplay.explanationImageUrl) && <p className="text-sm text-muted-foreground mt-4 text-center italic">No explanation available for this question.</p>}
               </CardContent>
             </ScrollArea>
-            <CardFooter className="p-3 sm:p-4 border-t border-border bg-muted/30 flex-wrap justify-between items-center gap-2">
+            <CardFooter className="p-3 sm:p-4 border-t border-border bg-muted/30 flex-wrap justify-between items-center gap-2 hide-on-print">
               <Button variant="outline" size="sm" onClick={() => navigateQuestion(currentQuestionIndex - 1)} disabled={currentQuestionIndex === 0}><ChevronLeft className="mr-1.5 h-4 w-4" /> Previous</Button>
+              <Button variant="outline" size="sm" onClick={handlePrint}><Printer className="mr-1.5 h-4 w-4" /> Print Question</Button>
               <Button variant="outline" size="sm" onClick={() => navigateQuestion(currentQuestionIndex + 1)} disabled={currentQuestionIndex === questions.length - 1}>Next <ChevronRight className="ml-1.5 h-4 w-4" /></Button>
             </CardFooter>
           </Card>
 
-          {isRightSidebarOpen && ( <div className="hidden md:flex w-64 lg:w-72 flex-shrink-0 flex-col space-y-0"> <QuestionPaletteContent /> </div> )}
+          {isRightSidebarOpen && ( <div className="hidden md:flex w-64 lg:w-72 flex-shrink-0 flex-col space-y-0 hide-on-print"> <QuestionPaletteContent /> </div> )}
         </div>
       )}
       <Dialog open={isEditCorrectOptionModalOpen} onOpenChange={setIsEditCorrectOptionModalOpen}>
@@ -371,3 +375,4 @@ export default function ViewTestQuestionsDetailedPage() {
     </div>
   );
 }
+
