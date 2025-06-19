@@ -51,9 +51,7 @@ export function Navbar({}: NavbarProps) {
           <AppLogo mainTextSize="text-xl" taglineTextSize="text-[10px]" iconSize={24} /> {/* Adjusted logo sizes */}
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
-          <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
-            <Link href={Routes.collegeCutoffs}>Cutoffs</Link>
-          </Button>
+          {/* Cutoffs Button Removed */}
           {effectiveLoading ? (
             <div className="h-9 w-20 animate-pulse rounded-md bg-muted"></div>
           ) : effectiveUser ? (
@@ -79,3 +77,4 @@ export function Navbar({}: NavbarProps) {
     </nav>
   );
 }
+
