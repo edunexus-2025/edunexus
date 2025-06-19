@@ -8,23 +8,61 @@ import type { RecordModel, ClientResponseError } from 'pocketbase';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, BarChart3, Users, Clock, CheckCircle, TrendingUp, ChevronRight, ListFilter } from 'lucide-react';
+import { AlertCircle, BarChart3, Users, Clock, Eye, TrendingUp, ChevronRight, ListFilter, Printer } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { format } from 'date-fns';
 import Link from 'next/link';
 import { Routes } from '@/lib/constants';
 import type { TeacherTestAttempt } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface TestResultDisplay extends TeacherTestAttempt {
     studentName?: string;
     studentEmail?: string;
+    avatarUrl?: string;
 }
+
+const formatDuration = (totalSeconds?: number): string => {
+    if (totalSeconds === undefined || totalSeconds === null || totalSeconds < 0) return 'N/A';
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}m ${seconds}s`;
+};
+
+const formatDateToIST = (dateString?: string): string => {
+    if (!dateString) return 'N/A';
+    try {
+        return new Date(dateString).toLocaleString('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: 'numeric',
+            hour12: true,
+        });
+    } catch (e) {
+        console.warn("Error formatting date to IST:", e);
+        try {
+            return new Date(dateString).toLocaleDateString('en-GB', {
+                year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true
+            });
+        } catch (fallbackError) {
+            return "Invalid Date";
+        }
+    }
+};
+
+const getAvatarFallback = (name?: string) => {
+  if (!name) return 'S';
+  const nameParts = name.split(' ');
+  return nameParts.length > 1 ? nameParts[0][0] + nameParts[nameParts.length - 1][0] : name.substring(0, 2).toUpperCase();
+};
 
 export default function TestResultsPage() {
   const params = useParams();
@@ -46,26 +84,56 @@ export default function TestResultsPage() {
     if(isMountedGetter()) setIsLoading(true);
 
     try {
-      const testRecord = await pb.collection('teacher_tests').getOne(testId, { fields: 'testName,teacherId' });
+      const testRecord = await pb.collection('teacher_tests').getOne(testId, { fields: 'testName,teacherId', '$autoCancel': false });
       if (!isMountedGetter()) return;
       if (testRecord.teacherId !== teacher.id) { if(isMountedGetter()) setError("Unauthorized."); return; }
       setTestName(testRecord.testName || 'Untitled Test');
 
-      const resultRecords = await pb.collection('teacher_test_attempts').getFullList<TestResultDisplay>({
+      const resultRecords = await pb.collection('teacher_test_history').getFullList<TeacherTestAttempt>({
         filter: `teacher_test = "${testId}" && teacher = "${teacher.id}"`,
-        sort: '-score', expand: 'student(id,name,email)',
+        sort: '-score', 
+        expand: 'student(id,name,email,avatar,avatarUrl,collectionId,collectionName)',
+        fields: 'id,student,score,max_score,duration_taken_seconds,submitted_at,status,test_name_cache,percentage,expand.student.id,expand.student.name,expand.student.email,expand.student.avatar,expand.student.avatarUrl,expand.student.collectionId,expand.student.collectionName,created',
+        '$autoCancel': false,
       });
       if (!isMountedGetter()) return;
 
-      const mappedResults = resultRecords.map(r => ({
-        ...r,
-        studentName: r.expand?.student?.name || 'Unknown Student',
-        studentEmail: r.expand?.student?.email || 'N/A',
-      }));
+      const mappedResults = resultRecords.map(r => {
+        let avatarUrlResult;
+        const studentData = r.expand?.student;
+        if (studentData?.avatarUrl && typeof studentData.avatarUrl === 'string' && studentData.avatarUrl.startsWith('http')) {
+          avatarUrlResult = studentData.avatarUrl;
+        } else if (studentData?.avatar && typeof studentData.avatar === 'string' && studentData.collectionId && studentData.collectionName) {
+          try {
+            avatarUrlResult = pb.files.getUrl(studentData as RecordModel, studentData.avatar);
+          } catch (e) { console.warn("Error getting avatar URL for results page:", e); avatarUrlResult = undefined; }
+        }
+        
+        if (!avatarUrlResult && studentData?.name && typeof studentData.name === 'string') {
+            avatarUrlResult = `https://ui-avatars.com/api/?name=${encodeURIComponent(studentData.name.charAt(0))}&background=random&color=fff`;
+        }
+
+        return {
+          ...r,
+          studentName: studentData?.name || 'Unknown Student',
+          studentEmail: studentData?.email || 'N/A',
+          avatarUrl: avatarUrlResult,
+          submitted_at: r.submitted_at || r.created,
+        };
+      });
       setAllResults(mappedResults);
       setFilteredResults(mappedResults); 
 
-    } catch (err: any) { if (isMountedGetter()) { console.error("Error fetching test results:", err); setError("Could not load test results."); }
+    } catch (err: any) { 
+      if (isMountedGetter()) { 
+        const clientError = err as ClientResponseError;
+        if (clientError?.isAbort || (clientError?.name === 'ClientResponseError' && clientError?.status === 0)) {
+          console.warn('TeacherTestResultsPage: Fetch results request was cancelled.');
+        } else {
+          console.error("Error fetching test results:", clientError); 
+          setError("Could not load test results."); 
+        }
+      }
     } finally { if (isMountedGetter()) setIsLoading(false); }
   }, [testId, teacher?.id]);
 
@@ -90,10 +158,17 @@ export default function TestResultsPage() {
   if (isLoading) { return (<Card><CardHeader><Skeleton className="h-8 w-3/4" /><Skeleton className="h-4 w-1/2 mt-1" /></CardHeader><CardContent><Skeleton className="h-10 w-full mb-4" /><Skeleton className="h-64 w-full" /></CardContent></Card>); }
   if (error) { return (<Card className="text-center border-destructive bg-destructive/10 p-6"><AlertCircle className="mx-auto h-10 w-10 text-destructive mb-3" /><CardTitle className="text-destructive">Error</CardTitle><CardDescription className="text-destructive/80">{error}</CardDescription></Card>); }
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="p-4 md:p-6">
       <CardHeader className="px-0 pb-4">
-        <CardTitle className="text-xl font-semibold flex items-center gap-2"><BarChart3 className="h-5 w-5 text-primary"/> Student Results for: {testName}</CardTitle>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <CardTitle className="text-xl font-semibold flex items-center gap-2"><BarChart3 className="h-5 w-5 text-primary"/> Student Results for: {testName}</CardTitle>
+            <Button onClick={handlePrint} variant="outline" size="sm"><Printer className="mr-2 h-4 w-4"/> Print Results</Button>
+        </div>
         <CardDescription>View performance of students. Total Attempts: {allResults.length}. Displaying: {filteredResults.length}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 px-0">
@@ -106,15 +181,15 @@ export default function TestResultsPage() {
                 className="flex-grow bg-card"
             />
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-full sm:w-[180px] bg-card">
+                <SelectTrigger className="w-full sm:w-[220px] bg-card">
                      <ListFilter className="mr-2 h-4 w-4 text-muted-foreground"/>
                     <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="all">All Statuses</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="terminated_time_up">Time Up</SelectItem>
-                    <SelectItem value="terminated_manual">Terminated Manually</SelectItem>
+                    <SelectItem value="terminated_time_up">Terminated (Time Up)</SelectItem>
+                    <SelectItem value="terminated_manual">Terminated (Manual)</SelectItem>
                 </SelectContent>
             </Select>
         </div>
@@ -129,34 +204,48 @@ export default function TestResultsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[50px]">Rank</TableHead>
+                  <TableHead className="w-[40px] sm:w-[50px] text-center">Rank</TableHead>
                   <TableHead>Student</TableHead>
                   <TableHead className="hidden md:table-cell">Email</TableHead>
-                  <TableHead>Score</TableHead>
-                  <TableHead>%</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="hidden sm:table-cell">Date</TableHead>
+                  <TableHead className="text-center">Score</TableHead>
+                  <TableHead className="text-center hidden sm:table-cell">%</TableHead>
+                  <TableHead className="text-center">Time</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="hidden lg:table-cell">Submitted (IST)</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredResults.map((result, index) => (
                   <TableRow key={result.id}>
-                    <TableCell className="font-medium text-muted-foreground">#{index + 1}</TableCell>
-                    <TableCell className="font-medium text-foreground">{result.studentName}</TableCell>
+                    <TableCell className="font-medium text-muted-foreground text-center">#{index + 1}</TableCell>
+                    <TableCell className="font-medium text-foreground">
+                        <div className="flex items-center gap-2">
+                            <Avatar className="h-8 w-8">
+                                <AvatarImage src={result.avatarUrl} alt={result.studentName} data-ai-hint="student avatar profile"/>
+                                <AvatarFallback>{getAvatarFallback(result.studentName)}</AvatarFallback>
+                            </Avatar>
+                            <span>{result.studentName}</span>
+                        </div>
+                    </TableCell>
                     <TableCell className="hidden md:table-cell text-xs text-muted-foreground">{result.studentEmail}</TableCell>
-                    <TableCell className="font-semibold text-primary">{result.score} / {result.max_score}</TableCell>
-                    <TableCell className="font-semibold">{result.percentage?.toFixed(1)}%</TableCell>
-                    <TableCell>
-                        <Badge variant={result.status === 'completed' ? 'default' : result.status.startsWith('terminated') ? 'destructive' : 'secondary'}
-                               className={result.status === 'completed' ? 'bg-green-500 text-white' : result.status.startsWith('terminated') ? '' : ''}>
-                            {result.status.replace(/_/g, ' ')}
+                    <TableCell className="font-semibold text-primary text-center">{result.score} / {result.max_score}</TableCell>
+                    <TableCell className="font-semibold text-center hidden sm:table-cell">{result.percentage?.toFixed(1)}%</TableCell>
+                    <TableCell className="text-xs text-muted-foreground text-center">{formatDuration(result.duration_taken_seconds)}</TableCell>
+                    <TableCell className="text-center">
+                        <Badge 
+                            variant={result.status === 'completed' ? 'default' : result.status?.startsWith('terminated') ? 'destructive' : 'secondary'}
+                            className={result.status === 'completed' ? 'bg-green-500 text-white hover:bg-green-600' : result.status?.startsWith('terminated') ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
+                        >
+                            {result.status?.replace(/_/g, ' ') || 'N/A'}
                         </Badge>
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground hidden sm:table-cell">{format(new Date(result.created), "dd MMM yy, HH:mm")}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground hidden lg:table-cell">{formatDateToIST(result.submitted_at)}</TableCell>
                     <TableCell className="text-right">
                        <Button variant="link" size="sm" className="p-0 h-auto text-primary" asChild>
-                         <Link href={Routes.testResultTeacherTest(result.id)}>View Details</Link>
+                         <Link href={Routes.teacherStudentResultView(result.id)}>
+                           <Eye className="mr-1 h-3.5 w-3.5"/>View Report
+                         </Link>
                        </Button>
                     </TableCell>
                   </TableRow>

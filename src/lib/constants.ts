@@ -81,7 +81,7 @@ export const Routes = {
   // Student Test Taking Routes
   studentTestInstructions: (testId: string) => `/student/test/${testId}/instructions`,
   studentTestChapterwise: (testId: string) => `/student/test/${testId}/chapterwise`,
-  studentTestEnterPin: (testId: string) => `/student/teacher-test/${testId}/live`,
+  studentTestEnterPin: (testId: string) => `/student/teacher-test/${testId}/live`, // Retained, though live page handles PIN now
   studentTeacherTestLive: (testId: string) => `/student/teacher-test/${testId}/live`,
   testResultTeacherTest: (attemptId: string) => `/student/teacher-test/results/${attemptId}`,
 
@@ -122,6 +122,7 @@ export const Routes = {
   teacherTestPanelViewQuestions: (testId: string) => `/teacher/dashboard/my-content/${testId}/view-questions`,
   teacherTestPanelSettings: (testId: string) => `/teacher/dashboard/my-content/${testId}/settings`,
   teacherTestPanelResults: (testId: string) => `/teacher/dashboard/my-content/${testId}/results`,
+  teacherStudentResultView: (attemptId: string) => `/teacher/dashboard/my-content/student-result/${attemptId}`, // New route
   teacherTestPanelStatus: (testId: string) => `/teacher/dashboard/my-content/${testId}/status`,
   teacherRanking: '/teacher/dashboard/ranking',
   teacherPlan: '/teacher/dashboard/plan',
@@ -351,3 +352,5 @@ export const teacherPlatformPlansData: Plan[] = [
     customActivationLink: Routes.teacherUpgradeAds,
   },
 ];
+
+    
