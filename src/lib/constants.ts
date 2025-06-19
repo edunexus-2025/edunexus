@@ -60,6 +60,7 @@ export const Routes = {
   myTeacherPortal: '/dashboard/my-teacher',
   testResult: (resultId: string) => `/dashboard/test-results/chapterwise/${resultId}`,
   testResultCompete: (resultId: string) => `/dashboard/test-results/compete/${resultId}`,
+  testResultTeacherTest: (attemptId: string) => `/student/teacher-test/results/${attemptId}`, // Student views their own teacher test result
   helpCenter: '/dashboard/help-center',
   termsOfService: '/terms-of-service',
   privacyPolicy: '/privacy-policy',
@@ -81,9 +82,8 @@ export const Routes = {
   // Student Test Taking Routes
   studentTestInstructions: (testId: string) => `/student/test/${testId}/instructions`,
   studentTestChapterwise: (testId: string) => `/student/test/${testId}/chapterwise`,
-  studentTestEnterPin: (testId: string) => `/student/teacher-test/${testId}/live`, // Retained, though live page handles PIN now
+  studentTestEnterPin: (testId: string) => `/student/teacher-test/${testId}/live`, 
   studentTeacherTestLive: (testId: string) => `/student/teacher-test/${testId}/live`,
-  testResultTeacherTest: (attemptId: string) => `/student/teacher-test/results/${attemptId}`,
 
 
   // Unified Question Bank view
@@ -122,7 +122,7 @@ export const Routes = {
   teacherTestPanelViewQuestions: (testId: string) => `/teacher/dashboard/my-content/${testId}/view-questions`,
   teacherTestPanelSettings: (testId: string) => `/teacher/dashboard/my-content/${testId}/settings`,
   teacherTestPanelResults: (testId: string) => `/teacher/dashboard/my-content/${testId}/results`,
-  teacherStudentResultView: (attemptId: string) => `/teacher/dashboard/my-content/student-result/${attemptId}`, // New route
+  teacherStudentResultView: (attemptId: string) => `/teacher/dashboard/my-content/student-result/${attemptId}`, // New route for teacher viewing student's attempt
   teacherTestPanelStatus: (testId: string) => `/teacher/dashboard/my-content/${testId}/status`,
   teacherRanking: '/teacher/dashboard/ranking',
   teacherPlan: '/teacher/dashboard/plan',

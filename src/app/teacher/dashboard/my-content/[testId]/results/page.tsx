@@ -237,7 +237,7 @@ export default function TestResultsPage() {
                             variant={result.status === 'completed' ? 'default' : result.status?.startsWith('terminated') ? 'destructive' : 'secondary'}
                             className={result.status === 'completed' ? 'bg-green-500 text-white hover:bg-green-600' : result.status?.startsWith('terminated') ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
                         >
-                            {result.status?.replace(/_/g, ' ') || 'N/A'}
+                            {result.status?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'N/A'}
                         </Badge>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground hidden lg:table-cell">{formatDateToIST(result.submitted_at)}</TableCell>
