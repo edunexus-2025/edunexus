@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { User, UserSubscriptionTierStudent, UserSubscriptionTierTeacher } from '@/lib/types';
@@ -270,9 +269,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
            pb.authStore.clear();
         }
       } else if (
-        modelToUse?.collectionName === 'users' && // Only for student/admin dev login
+        !storeIsValid && 
         process.env.NEXT_PUBLIC_POCKETBASE_EMAIL &&
-        process.env.NEXT_PUBLIC_POCKETBASE_PASSWORD
+        process.env.NEXT_PUBLIC_POCKETBASE_PASSWORD &&
+        (!modelToUse || modelToUse.collectionName === 'users') // Attempt dev login if no model or if last model was user
       ) {
         if (!isMounted) return;
         console.warn(
@@ -513,14 +513,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try { pb.realtime.unsubscribe(); console.log("AuthContext: Unsubscribed from all PocketBase real-time subscriptions.");
     } catch (unsubscribeError) { console.warn("AuthContext: Error during global real-time unsubscribe on logout:", unsubscribeError); }
     pb.authStore.clear();
-    // Set all user states to null and loading states to false
-    setUserState(null);
-    setTeacherState(null);
-    setCollegeUserState(null);
-    setIsLoading(false);
-    setIsLoadingTeacher(false);
-    setIsLoadingCollegeUser(false);
-    router.push(Routes.login); // Or a generic landing page
+    // AuthStore onChange will set user states to null and loading states to false.
+    router.push(Routes.home); 
   }, [router]);
 
   return (
