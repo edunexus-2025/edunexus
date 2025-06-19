@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -39,10 +38,10 @@ interface QbModalProps {
 
 interface QuestionFromBank {
   id: string;
-  questionText?: string; // For EduNexus QB (from question_bank collection)
-  QuestionText?: string;  // For My Teacher QB (from teacher_question_data collection)
-  difficulty?: 'Easy' | 'Medium' | 'Hard'; // For EduNexus QB
-  CorrectOption?: string; // For My Teacher QB
+  questionText?: string; 
+  QuestionText?: string;  
+  difficulty?: 'Easy' | 'Medium' | 'Hard'; 
+  CorrectOption?: string; 
   
   questionImage_filename?: string | null; 
   collectionId?: string; 
@@ -78,7 +77,6 @@ const renderLatexSnippet = (text: string | undefined | null, maxLength: number =
         }
       }
     } catch (e) {
-      // console.warn("Katex parsing error for part:", part, e);
       return <span key={index} className="text-destructive" title="LaTeX Error">{part}</span>;
     }
     return <span key={index}>{part}</span>;
@@ -91,7 +89,6 @@ export function QbModal({ isOpen, onOpenChange, onQuestionSelect }: QbModalProps
 
   const [activeTab, setActiveTab] = useState<"my-teacher-qb" | "edunexus-qb">("my-teacher-qb");
 
-  // EduNexus QB State
   const [subjectsEduNexusQb, setSubjectsEduNexusQb] = useState<string[]>([]);
   const [selectedSubjectEduNexusQb, setSelectedSubjectEduNexusQb] = useState<string | null>(null);
   const [isLoadingSubjectsEduNexus, setIsLoadingSubjectsEduNexus] = useState(false);
@@ -103,12 +100,11 @@ export function QbModal({ isOpen, onOpenChange, onQuestionSelect }: QbModalProps
   const [errorEduNexusQb, setErrorEduNexusQb] = useState<string | null>(null);
   const [searchEduNexusQb, setSearchEduNexusQb] = useState('');
 
-  // My Teacher QB State
   const [examsMyQb, setExamsMyQb] = useState<string[]>([]);
   const [selectedExamMyQb, setSelectedExamMyQb] = useState<string | null>(null);
   const [isLoadingExamsMyQb, setIsLoadingExamsMyQb] = useState(false);
-  const [lessonsMyQb, setLessonsMyQb] = useState<string[]>([]);
-  const [selectedLessonMyQb, setSelectedLessonMyQb] = useState<string | null>(null);
+  const [lessonsMyQb, setLessonsMyQb] = useState<{ value: string; label: string }[]>([]);
+  const [selectedLessonMyQb, setSelectedLessonMyQb] = useState<string | null>(null); 
   const [isLoadingLessonsMyQb, setIsLoadingLessonsMyQb] = useState(false);
   const [questionsMyQb, setQuestionsMyQb] = useState<QuestionFromBank[]>([]);
   const [isLoadingQuestionsMyQb, setIsLoadingQuestionsMyQb] = useState(false);
@@ -117,38 +113,24 @@ export function QbModal({ isOpen, onOpenChange, onQuestionSelect }: QbModalProps
 
   const [imageToViewUrl, setImageToViewUrl] = useState<string | null>(null);
 
-
-  // Fetch EduNexus QB Subjects
   useEffect(() => {
     let isMounted = true;
     if (isOpen && teacher?.teacherSubscriptionTier === 'Pro' && !isLoadingTeacher) {
-      setIsLoadingSubjectsEduNexus(true);
-      setErrorEduNexusQb(null);
+      setIsLoadingSubjectsEduNexus(true); setErrorEduNexusQb(null);
       pb.collection('question_bank').getFullList<{ subject: string }>({ fields: 'subject', $autoCancel: false })
-        .then(records => {
-          if (isMounted) {
-            const distinctSubjects = Array.from(new Set(records.map(r => r.subject).filter(Boolean))).sort();
-            setSubjectsEduNexusQb(distinctSubjects);
-          }
-        })
+        .then(records => { if (isMounted) { const distinctSubjects = Array.from(new Set(records.map(r => r.subject).filter(Boolean))).sort(); setSubjectsEduNexusQb(distinctSubjects); }})
         .catch(err => { if (isMounted) { console.error("QBModal: Failed to fetch EduNexus QB subjects:", err); setErrorEduNexusQb("Could not load subjects."); }})
         .finally(() => { if (isMounted) setIsLoadingSubjectsEduNexus(false); });
-    } else if (isOpen && (isLoadingTeacher || teacher?.teacherSubscriptionTier !== 'Pro')) {
-        setSubjectsEduNexusQb([]);
-    }
+    } else if (isOpen && (isLoadingTeacher || teacher?.teacherSubscriptionTier !== 'Pro')) { setSubjectsEduNexusQb([]); }
     return () => { isMounted = false; };
   }, [isOpen, teacher?.teacherSubscriptionTier, isLoadingTeacher]);
 
-  // Fetch EduNexus QB Lessons
   useEffect(() => {
     let isMounted = true;
     setLessonsEduNexusQb([]); setSelectedLessonEduNexusQb(null); setQuestionsEduNexusQb([]);
     if (selectedSubjectEduNexusQb && teacher?.teacherSubscriptionTier === 'Pro') {
       setIsLoadingLessonsEduNexus(true); setErrorEduNexusQb(null);
-      pb.collection('question_bank').getFullList<{ lessonName: string }>({
-        filter: `subject = "${escapeForPbFilter(selectedSubjectEduNexusQb)}"`,
-        fields: 'lessonName', $autoCancel: false
-      })
+      pb.collection('question_bank').getFullList<{ lessonName: string }>({ filter: `subject = "${escapeForPbFilter(selectedSubjectEduNexusQb)}"`, fields: 'lessonName', $autoCancel: false })
         .then(records => { if (isMounted) { const distinctLessons = Array.from(new Set(records.map(r => r.lessonName).filter(Boolean))).sort(); setLessonsEduNexusQb(distinctLessons); }})
         .catch(err => { if (isMounted) { console.error("QBModal: Failed to fetch EduNexus QB lessons:", err); setErrorEduNexusQb("Could not load lessons."); }})
         .finally(() => { if (isMounted) setIsLoadingLessonsEduNexus(false); });
@@ -156,67 +138,22 @@ export function QbModal({ isOpen, onOpenChange, onQuestionSelect }: QbModalProps
     return () => { isMounted = false; };
   }, [selectedSubjectEduNexusQb, teacher?.teacherSubscriptionTier]);
 
-  // Fetch EduNexus QB Questions
   useEffect(() => {
     let isMounted = true;
     setQuestionsEduNexusQb([]);
     if (selectedSubjectEduNexusQb && selectedLessonEduNexusQb && teacher?.teacherSubscriptionTier === 'Pro') {
       setIsLoadingQuestionsEduNexus(true); setErrorEduNexusQb(null);
-      
-      const trimmedSubject = selectedSubjectEduNexusQb.trim();
-      const trimmedLesson = selectedLessonEduNexusQb.trim();
-
-      if (!trimmedSubject || !trimmedLesson) {
-        if (isMounted) {
-          setErrorEduNexusQb("Subject and Lesson must be selected.");
-          setIsLoadingQuestionsEduNexus(false);
-        }
-        return;
-      }
+      const trimmedSubject = selectedSubjectEduNexusQb.trim(); const trimmedLesson = selectedLessonEduNexusQb.trim();
+      if (!trimmedSubject || !trimmedLesson) { if (isMounted) { setErrorEduNexusQb("Subject and Lesson must be selected."); setIsLoadingQuestionsEduNexus(false); } return; }
       const filterString = `subject = "${escapeForPbFilter(trimmedSubject)}" && lessonName = "${escapeForPbFilter(trimmedLesson)}"`;
-      pb.collection('question_bank').getFullList<RecordModel>({
-        filter: filterString,
-        fields: 'id,questionText,difficulty,questionImage,collectionId,collectionName',
-        $autoCancel: false
-      })
-      .then(records => {
-        if (isMounted) {
-          const mappedQuestions = records.map(r => {
-            let imageUrl: string | null = null;
-            if (r.questionImage && r.collectionId && r.collectionName) {
-              try { imageUrl = pb.files.getUrl(r, r.questionImage as string); } catch (e) { /* ignore */ }
-            }
-            return {
-              id: r.id,
-              questionText: r.questionText,
-              difficulty: r.difficulty as QuestionFromBank['difficulty'],
-              questionImage_filename: r.questionImage || null,
-              collectionId: r.collectionId,
-              collectionName: r.collectionName,
-              displayImageUrl: imageUrl,
-            };
-          });
-          setQuestionsEduNexusQb(mappedQuestions);
-        }
-      })
-      .catch((err: any) => {
-        if (isMounted) {
-          const clientError = err as PocketBaseClientResponseError;
-          let detailedErrorMessage = "Could not load questions.";
-          if (clientError && clientError.url && clientError.status && clientError.data) {
-            detailedErrorMessage = `Error: ${clientError.data?.message || clientError.message}. Filter: ${filterString}. Status: ${clientError.status}. URL: ${clientError.url}. Data: ${JSON.stringify(clientError.data, null, 2)}.`;
-          } else { detailedErrorMessage = `An unexpected error occurred: ${err?.message || "Unknown error"}.`; }
-          console.error("QBModal: Failed to fetch EduNexus QB questions. Filter:", filterString, "Error Details:", clientError?.data, "Full Error:", clientError);
-          setErrorEduNexusQb(detailedErrorMessage);
-        }
-      })
+      pb.collection('question_bank').getFullList<RecordModel>({ filter: filterString, fields: 'id,questionText,difficulty,questionImage,collectionId,collectionName', $autoCancel: false })
+      .then(records => { if (isMounted) { const mappedQuestions = records.map(r => { let imageUrl: string | null = null; if (r.questionImage && r.collectionId && r.collectionName) { try { imageUrl = pb.files.getUrl(r, r.questionImage as string); } catch (e) { /* ignore */ } } return { id: r.id, questionText: r.questionText, difficulty: r.difficulty as QuestionFromBank['difficulty'], questionImage_filename: r.questionImage || null, collectionId: r.collectionId, collectionName: r.collectionName, displayImageUrl: imageUrl, }; }); setQuestionsEduNexusQb(mappedQuestions); }})
+      .catch((err: any) => { if (isMounted) { const clientError = err as PocketBaseClientResponseError; let detailedErrorMessage = "Could not load questions."; if (clientError && clientError.url && clientError.status && clientError.data) { detailedErrorMessage = `Error: ${clientError.data?.message || clientError.message}. Filter: ${filterString}. Status: ${clientError.status}. URL: ${clientError.url}. Data: ${JSON.stringify(clientError.data, null, 2)}.`; } else { detailedErrorMessage = `An unexpected error occurred: ${err?.message || "Unknown error"}.`; } console.error("QBModal: Failed to fetch EduNexus QB questions. Filter:", filterString, "Error Details:", clientError?.data, "Full Error:", clientError); setErrorEduNexusQb(detailedErrorMessage); }})
       .finally(() => { if (isMounted) setIsLoadingQuestionsEduNexus(false); });
     }
     return () => { isMounted = false; };
   }, [selectedLessonEduNexusQb, selectedSubjectEduNexusQb, teacher?.teacherSubscriptionTier]);
 
-
-  // Fetch My Teacher QB Exams
   useEffect(() => {
     let isMounted = true;
     if (isOpen && teacher?.id && !isLoadingTeacher) {
@@ -229,31 +166,47 @@ export function QbModal({ isOpen, onOpenChange, onQuestionSelect }: QbModalProps
     return () => { isMounted = false; };
   }, [isOpen, teacher?.id, isLoadingTeacher]);
 
-  // Fetch My Teacher QB Lessons
   useEffect(() => {
     let isMounted = true;
     setLessonsMyQb([]); setSelectedLessonMyQb(null); setQuestionsMyQb([]);
     if (selectedExamMyQb && teacher?.id) {
       setIsLoadingLessonsMyQb(true); setErrorMyQb(null);
       const filterString = `teacher = "${teacher.id}" && QBExam = "${escapeForPbFilter(selectedExamMyQb)}"`;
-      pb.collection('teacher_question_data').getFullList<{ LessonName: string }>({ filter: filterString, fields: 'LessonName', $autoCancel: false })
-        .then(records => { if (isMounted) { const distinctLessons = Array.from(new Set(records.map(r => r.LessonName).filter(Boolean))).sort(); setLessonsMyQb(distinctLessons); }})
+      pb.collection('teacher_question_data').getFullList<RecordModel>({ 
+        filter: filterString, 
+        fields: 'LessonName,expand.LessonName.id,expand.LessonName.testName',
+        expand: 'LessonName', 
+        $autoCancel: false 
+      })
+        .then(records => { 
+          if (isMounted) { 
+            const lessonMap = new Map<string, string>(); 
+            records.forEach(r => {
+              if (r.expand?.LessonName?.id && r.expand?.LessonName?.testName) {
+                lessonMap.set(r.expand.LessonName.id, r.expand.LessonName.testName);
+              }
+            });
+            const distinctLessons = Array.from(lessonMap.entries())
+              .map(([id, name]) => ({ value: id, label: name }))
+              .sort((a, b) => a.label.localeCompare(b.label));
+            setLessonsMyQb(distinctLessons); 
+          }
+        })
         .catch(err => { if (isMounted) { console.error("QBModal: Failed to fetch My QB lessons:", err); setErrorMyQb("Could not load your lessons."); }})
         .finally(() => { if (isMounted) setIsLoadingLessonsMyQb(false); });
     }
     return () => { isMounted = false; };
   }, [selectedExamMyQb, teacher?.id]);
 
-  // Fetch My Teacher QB Questions
   useEffect(() => {
     let isMounted = true;
     setQuestionsMyQb([]);
     if (selectedExamMyQb && selectedLessonMyQb && teacher?.id) {
       setIsLoadingQuestionsMyQb(true); setErrorMyQb(null);
       const trimmedExam = selectedExamMyQb.trim();
-      const trimmedLesson = selectedLessonMyQb.trim();
-      if (!trimmedExam || !trimmedLesson) { if (isMounted) { setErrorMyQb("Exam and Lesson must be selected."); setIsLoadingQuestionsMyQb(false); } return; }
-      const filterString = `teacher = "${teacher.id}" && QBExam = "${escapeForPbFilter(trimmedExam)}" && LessonName = "${escapeForPbFilter(trimmedLesson)}"`;
+      const trimmedLessonId = selectedLessonMyQb.trim(); // This is the ID of the teacher_tests record
+      if (!trimmedExam || !trimmedLessonId) { if (isMounted) { setErrorMyQb("Exam and Lesson (Test ID) must be selected."); setIsLoadingQuestionsMyQb(false); } return; }
+      const filterString = `teacher = "${teacher.id}" && QBExam = "${escapeForPbFilter(trimmedExam)}" && LessonName = "${escapeForPbFilter(trimmedLessonId)}"`;
       pb.collection('teacher_question_data').getFullList<RecordModel>({ filter: filterString, fields: 'id,QuestionText,CorrectOption,QuestionImage', $autoCancel: false })
         .then(records => {
           if (isMounted) {
@@ -261,7 +214,7 @@ export function QbModal({ isOpen, onOpenChange, onQuestionSelect }: QbModalProps
               id: r.id,
               QuestionText: r.QuestionText,
               CorrectOption: r.CorrectOption as QuestionFromBank['CorrectOption'],
-              QuestionImage_url: r.QuestionImage || null, // Direct URL from teacher_question_data
+              QuestionImage_url: r.QuestionImage || null,
               displayImageUrl: r.QuestionImage || null,
             }));
             setQuestionsMyQb(mappedQuestions);
@@ -272,6 +225,7 @@ export function QbModal({ isOpen, onOpenChange, onQuestionSelect }: QbModalProps
     }
     return () => { isMounted = false; };
   }, [selectedLessonMyQb, selectedExamMyQb, teacher?.id]);
+
 
   const handleSelectQuestion = (questionId: string) => {
     if (onQuestionSelect) {
@@ -313,14 +267,14 @@ export function QbModal({ isOpen, onOpenChange, onQuestionSelect }: QbModalProps
       </div>
     </Card>
   );
-
+  
   const renderTabContent = (
-    primaryFilterOptions: string[],
+    primaryFilterOptions: Array<{ value: string; label: string } | string>, 
     selectedPrimaryFilter: string | null,
     onPrimaryFilterChange: (value: string | null) => void,
     primaryFilterPlaceholder: string,
     isLoadingPrimaryFilter: boolean,
-    secondaryFilterOptions: string[],
+    secondaryFilterOptions: Array<{ value: string; label: string } | string>, 
     selectedSecondaryFilter: string | null,
     onSecondaryFilterChange: (value: string | null) => void,
     secondaryFilterPlaceholder: string,
@@ -335,21 +289,20 @@ export function QbModal({ isOpen, onOpenChange, onQuestionSelect }: QbModalProps
     onEditFilters: () => void
   ) => {
     const showFilterSummary = selectedPrimaryFilter && selectedSecondaryFilter;
+    const mapOptions = (options: Array<{ value: string; label: string } | string>) => {
+        return options.map(opt => typeof opt === 'string' ? { value: opt, label: opt } : opt);
+    };
 
     return (
       <div className="flex flex-col h-full">
         <Card className="m-4 mb-0 p-3 border-b rounded-b-none shadow sticky top-0 bg-background z-10 flex-shrink-0">
           {showFilterSummary ? (
             <div className="flex items-center justify-between gap-3">
-              <Button
-                variant="outline"
-                className="flex-grow justify-between text-left font-normal h-10"
-                onClick={onEditFilters}
-              >
+              <Button variant="outline" className="flex-grow justify-between text-left font-normal h-10" onClick={onEditFilters}>
                 <span className="truncate">
-                  <span className="font-medium">{selectedPrimaryFilter}</span>
+                  <span className="font-medium">{(mapOptions(primaryFilterOptions).find(opt => opt.value === selectedPrimaryFilter))?.label || selectedPrimaryFilter}</span>
                   <span className="text-muted-foreground mx-1">&gt;</span>
-                  {selectedSecondaryFilter}
+                  {(mapOptions(secondaryFilterOptions).find(opt => opt.value === selectedSecondaryFilter))?.label || selectedSecondaryFilter}
                 </span>
                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
@@ -362,11 +315,11 @@ export function QbModal({ isOpen, onOpenChange, onQuestionSelect }: QbModalProps
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
               <Select value={selectedPrimaryFilter || ''} onValueChange={value => onPrimaryFilterChange(value || null)} disabled={isLoadingPrimaryFilter}>
                 <SelectTrigger className="h-10"><SelectValue placeholder={isLoadingPrimaryFilter ? "Loading..." : primaryFilterPlaceholder} /></SelectTrigger>
-                <SelectContent>{primaryFilterOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent>
+                <SelectContent>{mapOptions(primaryFilterOptions).map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
               </Select>
               <Select value={selectedSecondaryFilter || ''} onValueChange={value => onSecondaryFilterChange(value || null)} disabled={!selectedPrimaryFilter || isLoadingSecondaryFilter}>
                 <SelectTrigger className="h-10"><SelectValue placeholder={isLoadingSecondaryFilter ? "Loading..." : (selectedPrimaryFilter ? secondaryFilterPlaceholder : "Select primary filter first")} /></SelectTrigger>
-                <SelectContent>{secondaryFilterOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent>
+                <SelectContent>{mapOptions(secondaryFilterOptions).map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
               </Select>
               <div className="relative lg:col-span-1">
                 <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -377,35 +330,11 @@ export function QbModal({ isOpen, onOpenChange, onQuestionSelect }: QbModalProps
         </Card>
         <ScrollArea className="flex-1 p-4 pt-2 min-h-0"> 
           <div className="space-y-2 pt-2">
-            {errorState && (
-              <Card className="border-destructive bg-destructive/10 p-4 text-center my-4">
-                <AlertTriangle className="mx-auto h-8 w-8 text-destructive mb-2" />
-                <p className="text-sm text-destructive font-medium whitespace-pre-wrap">{errorState}</p>
-              </Card>
-            )}
-            {isLoadingQuestions && (
-              <div className="space-y-2 mt-4">
-                {[...Array(5)].map((_, i) => <Skeleton key={`skel-${sourceType}-${i}`} className="h-24 w-full rounded-lg" />)}
-              </div>
-            )}
-            {!isLoadingQuestions && questionsToDisplay.length > 0 && (
-              questionsToDisplay.map(q => renderQuestionItem(q, sourceType))
-            )}
-            {!isLoadingQuestions && (selectedPrimaryFilter && selectedSecondaryFilter) && questionsToDisplay.length === 0 && !errorState && (
-              <Card className="text-center p-6 border-dashed mt-4 bg-card">
-                <BadgeHelp className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
-                <p className="text-sm text-muted-foreground">
-                  No questions found for {`"${selectedSecondaryFilter}"`} in {`"${selectedPrimaryFilter}"`}.
-                  {searchQuery && ` matching "${searchQuery}"`}
-                </p>
-              </Card>
-            )}
-             {!isLoadingQuestions && !(selectedPrimaryFilter && selectedSecondaryFilter) && !errorState && (
-               <Card className="text-center p-6 border-dashed mt-4 bg-card">
-                  <FilterIconLucide className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
-                  <p className="text-sm text-muted-foreground">Please select filters above to view questions.</p>
-               </Card>
-             )}
+            {errorState && ( <Card className="border-destructive bg-destructive/10 p-4 text-center my-4"> <AlertTriangle className="mx-auto h-8 w-8 text-destructive mb-2" /> <p className="text-sm text-destructive font-medium whitespace-pre-wrap">{errorState}</p> </Card> )}
+            {isLoadingQuestions && ( <div className="space-y-2 mt-4"> {[...Array(5)].map((_, i) => <Skeleton key={`skel-${sourceType}-${i}`} className="h-24 w-full rounded-lg" />)} </div> )}
+            {!isLoadingQuestions && questionsToDisplay.length > 0 && ( questionsToDisplay.map(q => renderQuestionItem(q, sourceType)) )}
+            {!isLoadingQuestions && (selectedPrimaryFilter && selectedSecondaryFilter) && questionsToDisplay.length === 0 && !errorState && ( <Card className="text-center p-6 border-dashed mt-4 bg-card"> <BadgeHelp className="mx-auto h-10 w-10 text-muted-foreground mb-3" /> <p className="text-sm text-muted-foreground">No questions found for {`"${(mapOptions(secondaryFilterOptions).find(opt => opt.value === selectedSecondaryFilter))?.label || selectedSecondaryFilter}"`} in {`"${(mapOptions(primaryFilterOptions).find(opt => opt.value === selectedPrimaryFilter))?.label || selectedPrimaryFilter}"`}.{searchQuery && ` matching "${searchQuery}"`}</p></Card> )}
+             {!isLoadingQuestions && !(selectedPrimaryFilter && selectedSecondaryFilter) && !errorState && ( <Card className="text-center p-6 border-dashed mt-4 bg-card"> <FilterIconLucide className="mx-auto h-10 w-10 text-muted-foreground mb-3" /> <p className="text-sm text-muted-foreground">Please select filters above to view questions.</p> </Card> )}
           </div>
         </ScrollArea>
       </div>
@@ -417,33 +346,22 @@ export function QbModal({ isOpen, onOpenChange, onQuestionSelect }: QbModalProps
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
           <DialogHeader className="p-4 border-b flex-shrink-0">
-            <DialogTitle className="text-xl flex items-center gap-2">
-              <DatabaseZap className="h-6 w-6 text-primary" />
-              Question Bank Explorer
-            </DialogTitle>
-            <DialogDescription>
-              Browse, filter, and select questions. Pro features are enabled.
-            </DialogDescription>
+            <DialogTitle className="text-xl flex items-center gap-2"><DatabaseZap className="h-6 w-6 text-primary" />Question Bank Explorer</DialogTitle>
+            <DialogDescription>Browse, filter, and select questions. Pro features are enabled.</DialogDescription>
           </DialogHeader>
-
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)} className="flex-1 flex flex-col overflow-hidden">
             <TabsList className="grid w-full grid-cols-2 p-1 border-b flex-shrink-0 rounded-none h-auto">
-              <TabsTrigger value="my-teacher-qb" className="py-2.5 text-sm">
-                <BookUser className="mr-2 h-4 w-4" /> My Teacher QB
-              </TabsTrigger>
-              <TabsTrigger value="edunexus-qb" className="py-2.5 text-sm">
-                <DatabaseZap className="mr-2 h-4 w-4" /> EduNexus QB
-              </TabsTrigger>
+              <TabsTrigger value="my-teacher-qb" className="py-2.5 text-sm"><BookUser className="mr-2 h-4 w-4" /> My Teacher QB</TabsTrigger>
+              <TabsTrigger value="edunexus-qb" className="py-2.5 text-sm"><DatabaseZap className="mr-2 h-4 w-4" /> EduNexus QB</TabsTrigger>
             </TabsList>
-            
             <div className="flex-1 overflow-hidden"> 
               <TabsContent value="my-teacher-qb" className="mt-0 h-full">
                 {renderTabContent(
                   examsMyQb, selectedExamMyQb, (val) => {setSelectedExamMyQb(val); setSelectedLessonMyQb(null); setQuestionsMyQb([]); setSearchMyQb('');}, "Select Your Exam", isLoadingExamsMyQb,
-                  lessonsMyQb, selectedLessonMyQb, (val) => {setSelectedLessonMyQb(val); setQuestionsMyQb([]); setSearchMyQb('');}, "Select Your Lesson", isLoadingLessonsMyQb,
+                  lessonsMyQb, selectedLessonMyQb, (val) => {setSelectedLessonMyQb(val); setQuestionsMyQb([]); setSearchMyQb('');}, "Select Your Test (Lesson)", isLoadingLessonsMyQb,
                   searchMyQb, setSearchMyQb, "Search your questions...",
                   filteredMyQbQuestions, isLoadingQuestionsMyQb, errorMyQb, "MyQB",
-                  () => { setSelectedLessonMyQb(null); setQuestionsMyQb([]); setSearchMyQb(''); } 
+                  () => {setSelectedLessonMyQb(null); setQuestionsMyQb([]); setSearchMyQb('');} 
                 )}
               </TabsContent>
               <TabsContent value="edunexus-qb" className="mt-0 h-full">
@@ -452,43 +370,17 @@ export function QbModal({ isOpen, onOpenChange, onQuestionSelect }: QbModalProps
                   lessonsEduNexusQb, selectedLessonEduNexusQb, (val) => {setSelectedLessonEduNexusQb(val); setQuestionsEduNexusQb([]); setSearchEduNexusQb('');}, "Select Lesson", isLoadingLessonsEduNexus,
                   searchEduNexusQb, setSearchEduNexusQb, "Search EduNexus questions...",
                   filteredEduNexusQuestions, isLoadingQuestionsEduNexus, errorEduNexusQb, "EduNexus",
-                  () => { setSelectedLessonEduNexusQb(null); setQuestionsEduNexusQb([]); setSearchEduNexusQb(''); } 
-                ) : (
-                  <div className="text-center p-10 flex flex-col items-center justify-center h-full">
-                    <Lock className="h-12 w-12 text-amber-500 mb-4" />
-                    <h3 className="text-xl font-semibold text-foreground mb-2">Pro Feature Locked</h3>
-                    <p className="text-muted-foreground mb-6">
-                      Access to the full EduNexus Question Bank is a Pro feature.
-                      Upgrade your plan to unlock thousands of questions.
-                    </p>
-                    <Button asChild><Link href={Routes.teacherPlan}>View Pro Plans</Link></Button>
-                  </div>
-                )}
+                  () => {setSelectedLessonEduNexusQb(null); setQuestionsEduNexusQb([]); setSearchEduNexusQb('');} 
+                ) : ( <div className="text-center p-10 flex flex-col items-center justify-center h-full"> <Lock className="h-12 w-12 text-amber-500 mb-4" /> <h3 className="text-xl font-semibold text-foreground mb-2">Pro Feature Locked</h3> <p className="text-muted-foreground mb-6">Access to the full EduNexus Question Bank is a Pro feature. Upgrade your plan to unlock thousands of questions.</p> <Button asChild><Link href={Routes.teacherUpgradePlatformPlan}>View Pro Plans</Link></Button> </div> )}
               </TabsContent>
             </div>
           </Tabs>
-
-          <DialogFooter className="p-4 border-t flex-shrink-0">
-            <DialogClose asChild>
-              <Button type="button" variant="outline">
-                Close
-              </Button>
-            </DialogClose>
-          </DialogFooter>
+          <DialogFooter className="p-4 border-t flex-shrink-0"> <DialogClose asChild> <Button type="button" variant="outline">Close</Button> </DialogClose> </DialogFooter>
         </DialogContent>
       </Dialog>
-
       <Dialog open={!!imageToViewUrl} onOpenChange={(open) => !open && setImageToViewUrl(null)}>
-        <DialogContent className="max-w-3xl max-h-[80vh] p-2 sm:p-4">
-          <DialogHeader className="p-0"><DialogTitle className="sr-only">Image Preview</DialogTitle></DialogHeader>
-          {imageToViewUrl && (
-            <NextImage src={imageToViewUrl} alt="Enlarged question image" width={800} height={600} className="rounded-md object-contain max-w-full max-h-[70vh]" data-ai-hint="question diagram illustration"/>
-          )}
-          <DialogFooter className="pt-2 sm:pt-4"><DialogClose asChild><Button type="button" variant="outline">Close Preview</Button></DialogClose></DialogFooter>
-        </DialogContent>
+        <DialogContent className="max-w-3xl max-h-[80vh] p-2 sm:p-4"><DialogHeader className="p-0"><DialogTitle className="sr-only">Image Preview</DialogTitle></DialogHeader>{imageToViewUrl && (<NextImage src={imageToViewUrl} alt="Enlarged question image" width={800} height={600} className="rounded-md object-contain max-w-full max-h-[70vh]" data-ai-hint="question diagram illustration"/>)}<DialogFooter className="pt-2 sm:pt-4"><DialogClose asChild><Button type="button" variant="outline">Close Preview</Button></DialogClose></DialogFooter></DialogContent>
       </Dialog>
     </>
   );
 }
-
-    
