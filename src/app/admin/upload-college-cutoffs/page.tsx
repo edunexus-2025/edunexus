@@ -1,19 +1,18 @@
 
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, ChangeEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea'; // Changed from Input
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import pb from '@/lib/pocketbase';
 import type { RecordModel, ClientResponseError } from 'pocketbase';
-import { UploadCloud, Loader2, AlertTriangle, FileSpreadsheet, CheckCircle, ListChecks, Info, FileText } from 'lucide-react';
+import { UploadCloud, Loader2, AlertTriangle, FileSpreadsheet, CheckCircle, ListChecks, Info, FileText, FileUp } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Input } from '@/components/ui/input'; // For Academic Year and College Type
 
 // This structure matches the NEW FLAT schema for `college_cutoffs`
 interface ProcessedCollegeDataFlat {
@@ -23,7 +22,7 @@ interface ProcessedCollegeDataFlat {
   college_url?: string;
   college_status?: string;
   cutoff_year: number;
-  exam_context?: string; // Added for context, from form input
+  exam_context?: string;
   GOPENS?: number | null; GSCS?: number | null; GSTS?: number | null; GNT1S?: number | null;
   GNT2S?: number | null; GNT3S?: number | null; GOBCS?: number | null; GSEBCS?: number | null;
   LOPENS?: number | null; LSCS?: number | null; LSTS?: number | null; LVJS?: number | null; LNT1S?: number | null;
@@ -37,9 +36,6 @@ interface ProcessedCollegeDataFlat {
   [key: string]: any; // For dynamic access
 }
 
-// Define the expected order of columns in the PDF text if no headers are found or to validate headers.
-// This MUST match the order of data columns in the PDF after College Code, Name, District, URL.
-// The keys here should match the PocketBase schema field names (case-sensitive).
 const EXPECTED_CATEGORY_COLUMNS_ORDER: Array<keyof ProcessedCollegeDataFlat> = [
   "GOPENS", "GSCS", "GSTS", "GNT1S", "GNT2S", "GNT3S", "GOBCS", "GSEBCS",
   "LOPENS", "LSCS", "LSTS", "LVJS", "LNT1S", "LNT2S", "LNT3S", "LOBCS", "LSEBCS",
@@ -48,35 +44,16 @@ const EXPECTED_CATEGORY_COLUMNS_ORDER: Array<keyof ProcessedCollegeDataFlat> = [
   "TFWS", "EWS", "GVJS", "ORPHANS", "MI"
 ];
 
-const EXPECTED_HEADER_MAPPING: Record<string, keyof ProcessedCollegeDataFlat> = {
-    // PDF Header (lowercase) : PocketBase Field Name
-    'college code': 'college_code',
-    'college name': 'college_name',
-    'district': 'college_district', // Assuming PDF has 'District'
-    'website': 'college_url',       // Assuming PDF has 'Website' or similar
-    // Add mappings for all your category columns as they appear in the PDF header
-    // Example:
-    'gopens': 'GOPENS',
-    'gscs': 'GSCS',
-    'gsts': 'GSTS',
-    // ... and so on for ALL category columns in EXPECTED_CATEGORY_COLUMNS_ORDER
-};
-// Populate the rest of EXPECTED_HEADER_MAPPING based on your PDF's actual headers
-EXPECTED_CATEGORY_COLUMNS_ORDER.forEach(colKey => {
-    if (typeof colKey === 'string' && !EXPECTED_HEADER_MAPPING[colKey.toLowerCase()]) {
-        EXPECTED_HEADER_MAPPING[colKey.toLowerCase()] = colKey;
-    }
-});
-
 
 export default function UploadCollegeCutoffsPage() {
-  const [pastedText, setPastedText] = useState<string>('');
+  const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null);
   const [academicYear, setAcademicYear] = useState<string>(String(new Date().getFullYear()));
   const [collegeStatusInput, setCollegeStatusInput] = useState<string>('');
-  const [examContextInput, setExamContextInput] = useState<string>(''); // New input for exam context
+  const [examContextInput, setExamContextInput] = useState<string>('');
 
   const [processedData, setProcessedData] = useState<ProcessedCollegeDataFlat[]>([]);
-  const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [isProcessingPdfBackend, setIsProcessingPdfBackend] = useState(false);
+  const [backendProcessingProgress, setBackendProcessingProgress] = useState(0);
   const [isSavingToDb, setIsSavingToDb] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveProgress, setSaveProgress] = useState(0);
@@ -84,9 +61,22 @@ export default function UploadCollegeCutoffsPage() {
 
   const { toast } = useToast();
 
-  const parsePastedText = useCallback(() => {
-    if (!pastedText.trim()) {
-      setError('Please paste text from the PDF.');
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type === "application/pdf") {
+      setSelectedPdfFile(file);
+      setError(null);
+      setProcessedData([]); // Clear previous processed data
+    } else {
+      setSelectedPdfFile(null);
+      setError("Please select a valid PDF file.");
+      toast({ title: "Invalid File", description: "Please select a PDF file.", variant: "destructive" });
+    }
+  };
+
+  const handleUploadAndProcessPdf = async () => {
+    if (!selectedPdfFile) {
+      setError('Please select a PDF file to upload.');
       return;
     }
     const currentAcademicYearNum = parseInt(academicYear, 10);
@@ -95,111 +85,80 @@ export default function UploadCollegeCutoffsPage() {
       return;
     }
     if (!examContextInput.trim()) {
-        setError('Please enter the Exam Name/Context for this data batch.');
-        return;
+      setError('Please enter the Exam Name/Context for this data batch.');
+      return;
     }
 
-    setIsProcessingFile(true); setError(null); setProcessedData([]);
-    let localSkipped = 0; const tempProcessedData: ProcessedCollegeDataFlat[] = [];
+    setIsProcessingPdfBackend(true);
+    setBackendProcessingProgress(0);
+    setError(null);
+    setProcessedData([]);
 
-    const lines = pastedText.trim().split('\n').filter(line => line.trim() !== '');
-    if (lines.length === 0) {
-      setError("Pasted text is empty or contains only whitespace.");
-      setIsProcessingFile(false); return;
-    }
+    const formData = new FormData();
+    formData.append('pdfFile', selectedPdfFile);
+    formData.append('academicYear', academicYear);
+    formData.append('collegeStatus', collegeStatusInput.trim());
+    formData.append('examContext', examContextInput.trim());
 
-    // Very basic header detection (can be improved if PDF format is known)
-    const firstLineValues = lines[0].split(/\s{2,}|\t/); // Split by multiple spaces or tab
-    let hasHeaders = false;
-    let headerMap: Record<string, number> = {}; // maps PDF header to column index
-    let dataStartIndex = 0;
-
-    // Attempt to map known headers if they exist
-    if (firstLineValues.some(val => EXPECTED_HEADER_MAPPING[val.toLowerCase().trim()])) {
-        hasHeaders = true;
-        dataStartIndex = 1;
-        firstLineValues.forEach((header, index) => {
-            const normalizedHeader = header.toLowerCase().trim();
-            if (EXPECTED_HEADER_MAPPING[normalizedHeader]) {
-                headerMap[EXPECTED_HEADER_MAPPING[normalizedHeader]] = index;
-            } else if (EXPECTED_CATEGORY_COLUMNS_ORDER.includes(normalizedHeader.toUpperCase() as any)) {
-                // If PDF header directly matches a PB schema category field name
-                headerMap[normalizedHeader.toUpperCase()] = index;
-            }
-        });
-        console.log("Detected headers and created map:", headerMap);
-    } else {
-        console.warn("No reliable headers detected in the first line. Will attempt positional parsing. Ensure pasted text matches expected column order.");
-    }
-
-
-    for (let i = dataStartIndex; i < lines.length; i++) {
-      const line = lines[i];
-      const values = line.split(/\s{2,}|\t/).map(v => v.trim()); // Split by 2+ spaces or tab
-
-      const collegeData: ProcessedCollegeDataFlat = {
-        cutoff_year: currentAcademicYearNum,
-        college_status: collegeStatusInput.trim() || undefined,
-        exam_context: examContextInput.trim(),
-        college_code: '', // placeholder
-        college_name: '', // placeholder
-      };
-
-      if (hasHeaders) {
-        collegeData.college_code = values[headerMap['college_code']] || '';
-        collegeData.college_name = values[headerMap['college_name']] || '';
-        collegeData.college_district = values[headerMap['college_district']] || undefined;
-        collegeData.college_url = values[headerMap['college_url']] || undefined;
-
-        EXPECTED_CATEGORY_COLUMNS_ORDER.forEach(catKey => {
-          const colIdx = headerMap[catKey as string];
-          if (colIdx !== undefined && values[colIdx]) {
-            const val = parseFloat(values[colIdx]);
-            collegeData[catKey] = isNaN(val) ? null : val;
-          } else {
-            collegeData[catKey] = null;
-          }
-        });
+    // Simulate upload progress
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+      progress += 10;
+      if (progress <= 100) {
+        setBackendProcessingProgress(progress);
       } else {
-        // Positional - This is brittle and assumes a strict order:
-        // Code, Name, District, URL, then all category columns in EXPECTED_CATEGORY_COLUMNS_ORDER
-        let currentValIdx = 0;
-        collegeData.college_code = values[currentValIdx++] || '';
-        collegeData.college_name = values[currentValIdx++] || '';
-        collegeData.college_district = values[currentValIdx++] || undefined;
-        collegeData.college_url = values[currentValIdx++] || undefined;
-        EXPECTED_CATEGORY_COLUMNS_ORDER.forEach(catKey => {
-          if (values[currentValIdx]) {
-            const val = parseFloat(values[currentValIdx]);
-            collegeData[catKey] = isNaN(val) ? null : val;
-          } else {
-            collegeData[catKey] = null;
-          }
-          currentValIdx++;
-        });
+        clearInterval(progressInterval);
       }
-      
-      if (!collegeData.college_code || !collegeData.college_name) {
-        console.warn(`Skipping line ${i + 1}: Missing College Code or Name. Parsed:`, values);
-        localSkipped++;
-        continue;
-      }
-      tempProcessedData.push(collegeData);
-    }
+    }, 200);
 
-    setProcessedData(tempProcessedData);
-    setSaveCounts(prev => ({ ...prev, skipped: localSkipped }));
-    if (tempProcessedData.length > 0) {
-        toast({ title: "Processing Complete", description: `${tempProcessedData.length} college entries parsed. ${localSkipped} rows skipped.` });
-    } else if (lines.length > dataStartIndex) {
-        setError(`No valid college data rows could be parsed. Found ${lines.length - dataStartIndex} potential data lines. Please check the format of your pasted text and ensure it matches expected columns (Code, Name, District, URL, ${EXPECTED_CATEGORY_COLUMNS_ORDER.slice(0,2).join(', ')}... etc.).`);
-    } else if (lines.length <= dataStartIndex && lines.length > 0) {
-        setError("No data rows found after the header (or first line if no headers detected). Please ensure data is present.");
-    } else {
-        setError("No data parsed. The input text might be empty or incorrectly formatted.");
+    try {
+      // **HYPOTHETICAL BACKEND CALL**
+      // Replace this with your actual fetch call to the backend API endpoint
+      // const response = await fetch('/api/admin/process-cutoff-pdf', {
+      //   method: 'POST',
+      //   body: formData,
+      // });
+      // clearInterval(progressInterval); // Stop simulation
+      // setBackendProcessingProgress(100);
+
+      // if (!response.ok) {
+      //   const errorData = await response.json().catch(() => ({ message: "Failed to process PDF on the server." }));
+      //   throw new Error(errorData.message || `Server error: ${response.status}`);
+      // }
+      // const dataFromServer: { colleges: ProcessedCollegeDataFlat[], skipped: number } = await response.json();
+      // setProcessedData(dataFromServer.colleges || []);
+      // setSaveCounts(prev => ({ ...prev, skipped: dataFromServer.skipped || 0 }));
+      // if (dataFromServer.colleges && dataFromServer.colleges.length > 0) {
+      //   toast({ title: "PDF Processed", description: `${dataFromServer.colleges.length} college entries parsed. ${dataFromServer.skipped || 0} rows skipped by backend.` });
+      // } else {
+      //   setError("Backend processed the PDF but returned no valid college data rows. Check PDF content and backend parser.");
+      // }
+
+      // --- MOCK RESPONSE (REMOVE THIS WHEN YOU HAVE A BACKEND) ---
+      await new Promise(resolve => setTimeout(resolve, 2500)); // Simulate delay
+      clearInterval(progressInterval);
+      setBackendProcessingProgress(100);
+      const mockCollegeData: ProcessedCollegeDataFlat = {
+        college_code: "C012345", college_name: "Mock Engineering College from PDF", college_district: "Mockville",
+        cutoff_year: currentAcademicYearNum, exam_context: examContextInput.trim(), college_status: collegeStatusInput.trim() || undefined,
+        GOPENS: 95.5, GSCS: 88.2, TFWS: 98.1, // Example data
+      };
+      const mockSkipped = 1;
+      setProcessedData([mockCollegeData, {...mockCollegeData, college_code: "C012346", college_name: "Another Mock College"}]);
+      setSaveCounts(prev => ({...prev, skipped: mockSkipped}));
+      toast({title: "PDF Processed (Mocked)", description: `2 college entries parsed (mock). ${mockSkipped} rows skipped.`});
+      // --- END MOCK RESPONSE ---
+
+    } catch (e: any) {
+      clearInterval(progressInterval);
+      setBackendProcessingProgress(0);
+      setError(`Error processing PDF: ${e.message}`);
+      toast({ title: "PDF Processing Error", description: e.message, variant: "destructive" });
+    } finally {
+      setIsProcessingPdfBackend(false);
     }
-    setIsProcessingFile(false);
-  }, [pastedText, academicYear, collegeStatusInput, examContextInput, toast]);
+  };
+
 
   const saveToPocketBase = async () => {
     if (processedData.length === 0) {
@@ -212,7 +171,6 @@ export default function UploadCollegeCutoffsPage() {
 
     for (let i = 0; i < processedData.length; i++) {
       const college = processedData[i];
-      // Ensure only defined fields are sent to PocketBase
       const dataForPocketBase: Record<string, any> = {};
       for (const key in college) {
         if (college[key as keyof ProcessedCollegeDataFlat] !== undefined) {
@@ -242,7 +200,7 @@ export default function UploadCollegeCutoffsPage() {
     setIsSavingToDb(false);
     toast({
       title: "Database Sync Complete",
-      description: `${localSaveCounts.created} created, ${localSaveCounts.updated} updated, ${localSaveCounts.failed} failed. Original Excel rows skipped: ${localSaveCounts.skipped}.`,
+      description: `${localSaveCounts.created} created, ${localSaveCounts.updated} updated, ${localSaveCounts.failed} failed. Original PDF rows skipped: ${localSaveCounts.skipped}.`,
       duration: localSaveCounts.failed > 0 ? 9000 : 5000,
       variant: localSaveCounts.failed > 0 ? "destructive" : "default",
     });
@@ -253,11 +211,11 @@ export default function UploadCollegeCutoffsPage() {
       <Card className="shadow-xl border-t-4 border-primary">
         <CardHeader>
           <div className="flex items-center gap-3">
-            <FileText className="h-8 w-8 text-primary" />
+            <FileUp className="h-8 w-8 text-primary" />
             <div>
-              <CardTitle className="text-2xl font-bold text-foreground">Upload College Cutoffs (from PDF Text)</CardTitle>
+              <CardTitle className="text-2xl font-bold text-foreground">Upload College Cutoffs PDF</CardTitle>
               <CardDescription className="text-muted-foreground">
-                Paste text copied from a PDF. Ensure columns include College Code, Name, District, URL (optional), and then category-wise cutoffs.
+                Upload a PDF file containing college cutoff data. The backend will process it.
               </CardDescription>
             </div>
           </div>
@@ -270,7 +228,7 @@ export default function UploadCollegeCutoffsPage() {
             </div>
             <div className="md:col-span-1">
               <Label htmlFor="exam-context" className="block mb-1.5 text-sm font-medium">Exam Name/Context *</Label>
-              <Input id="exam-context" type="text" placeholder="e.g., MHT-CET Engineering" value={examContextInput} onChange={(e) => setExamContextInput(e.target.value)} className="bg-card border-border"/>
+              <Input id="exam-context" type="text" placeholder="e.g., MHT-CET Engineering 2024 CAP1" value={examContextInput} onChange={(e) => setExamContextInput(e.target.value)} className="bg-card border-border"/>
             </div>
             <div className="md:col-span-1">
               <Label htmlFor="college-status" className="block mb-1.5 text-sm font-medium">College Status/Type (Optional)</Label>
@@ -279,28 +237,27 @@ export default function UploadCollegeCutoffsPage() {
           </div>
 
           <div>
-            <Label htmlFor="pdf-text-area" className="block mb-1.5 text-sm font-medium">Paste Text from PDF *</Label>
-            <Textarea
-              id="pdf-text-area"
-              placeholder="Paste your copied table data here. Ensure the first line contains headers like 'College Code', 'College Name', 'District', 'GOPENS', 'GSCS', etc., OR paste only data rows in the correct order."
-              value={pastedText}
-              onChange={(e) => setPastedText(e.target.value)}
-              rows={15}
-              className="font-mono text-xs bg-card border-border"
+            <Label htmlFor="pdf-file-input" className="block mb-1.5 text-sm font-medium">Select PDF File *</Label>
+            <Input
+              id="pdf-file-input"
+              type="file"
+              accept=".pdf"
+              onChange={handleFileChange}
+              className="bg-card border-border file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              Tip: Try to ensure columns are separated by tabs or multiple spaces when copying from PDF.
-              The system will attempt to parse headers; if not found, a fixed column order is assumed (Code, Name, District, URL, then all categories in order).
-            </p>
+            {selectedPdfFile && <p className="text-xs text-muted-foreground mt-1">Selected: {selectedPdfFile.name}</p>}
           </div>
 
-          <Button onClick={parsePastedText} disabled={!pastedText.trim() || !academicYear.trim() || !examContextInput.trim() || isProcessingFile} className="w-full md:w-auto">
-            {isProcessingFile ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
-            {isProcessingFile ? 'Processing Text...' : 'Process Pasted Text'}
+          <Button onClick={handleUploadAndProcessPdf} disabled={!selectedPdfFile || !academicYear.trim() || !examContextInput.trim() || isProcessingPdfBackend} className="w-full md:w-auto">
+            {isProcessingPdfBackend ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
+            {isProcessingPdfBackend ? `Processing PDF... (${backendProcessingProgress.toFixed(0)}%)` : 'Upload & Process PDF'}
           </Button>
+          {isProcessingPdfBackend && (
+            <Progress value={backendProcessingProgress} className="w-full h-2 mt-2" />
+          )}
 
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" className="mt-4">
               <AlertTriangle className="h-4 w-4" />
               <CardTitle>Error</CardTitle>
               <AlertDescription className="whitespace-pre-wrap">{error}</AlertDescription>
@@ -313,7 +270,7 @@ export default function UploadCollegeCutoffsPage() {
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="text-xl flex items-center gap-2"><ListChecks className="text-primary"/>Processed Data Preview ({processedData.length} Colleges)</CardTitle>
-            <CardDescription>Review the structured data before saving. Showing first 5 entries.</CardDescription>
+            <CardDescription>Review the structured data (from backend) before saving. Showing first 5 entries.</CardDescription>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-72 border rounded-md p-3 bg-muted/30">
@@ -330,22 +287,21 @@ export default function UploadCollegeCutoffsPage() {
               <div className="mt-2">
                 <Progress value={saveProgress} className="w-full h-2" />
                 <p className="text-xs text-muted-foreground text-center mt-1">
-                  Created: {saveCounts.created}, Updated: {saveCounts.updated}, Failed: {saveCounts.failed}, PDF rows skipped: {saveCounts.skipped}
+                  Created: {saveCounts.created}, Updated: {saveCounts.updated}, Failed: {saveCounts.failed}, PDF rows skipped by backend: {saveCounts.skipped}
                 </p>
               </div>
             )}
           </CardContent>
         </Card>
       )}
-      <Card className="bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-700 mt-6">
-        <CardHeader><CardTitle className="text-blue-700 dark:text-blue-300 text-md flex items-center gap-2"><Info className="h-5 w-5"/> Important Instructions for PDF Text Upload</CardTitle></CardHeader>
+       <Card className="bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-700 mt-6">
+        <CardHeader><CardTitle className="text-blue-700 dark:text-blue-300 text-md flex items-center gap-2"><Info className="h-5 w-5"/> Important Instructions for PDF Upload</CardTitle></CardHeader>
         <CardContent className="text-xs text-blue-600 dark:text-blue-200 space-y-1">
-            <p>1. Copy data from your PDF. Try to select only the table content.</p>
-            <p>2. **Header Row (Recommended):** Ensure the first line of your pasted text contains column headers. Match these headers (case-insensitive) as closely as possible to the PocketBase field names (e.g., `college_code`, `GOPENS`, `LSCS`, `TFWS`). The system will try to map them.</p>
-            <p>3. **No Headers (Positional):** If headers are not detected, the system will assume a fixed column order: College Code, College Name, District, URL (optional, leave blank if N/A), then ALL category columns in this exact order: {EXPECTED_CATEGORY_COLUMNS_ORDER.join(', ')}.</p>
-            <p>4. **Data Format:** Cutoff values should be numbers. Missing values (e.g., "--", "N/A", or empty) will be stored as null.</p>
-            <p>5. **Context Fields:** Academic Year and Exam Context apply to ALL rows in the pasted text. College Status/Type is also applied to all rows if provided.</p>
-            <p>6. **Review Preview:** After processing, check the preview carefully before saving to the database.</p>
+            <p>1. Ensure your PDF contains selectable text, not just images of text. Scanned PDFs might not work.</p>
+            <p>2. The backend parser will attempt to extract tabular data. Complex layouts might cause issues.</p>
+            <p>3. **Backend Implementation Needed:** The actual PDF parsing and data extraction logic must be implemented in a backend API endpoint (e.g., `/api/admin/process-cutoff-pdf`). This frontend page only handles the file upload and displays data returned by that API.</p>
+            <p>4. The backend should be designed to return data matching the 'flat' structure of your `college_cutoffs` PocketBase collection (i.e., separate columns for GOPENS, GSCS, etc.).</p>
+            <p>5. **Context Fields:** Academic Year, Exam Context, and College Status from the form will be sent to the backend along with the PDF. The backend should use the Academic Year for the `cutoff_year` field and College Status for `college_status` field for each processed record.</p>
         </CardContent>
       </Card>
     </div>
