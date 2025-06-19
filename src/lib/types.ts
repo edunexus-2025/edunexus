@@ -35,7 +35,7 @@ export type User = {
   studentSubscriptionTier?: UserSubscriptionTierStudent;
   teacherSubscriptionTier?: UserSubscriptionTierTeacher; // Updated
 
-  role: 'User' | 'Admin' | 'Teacher' | 'CollegeDetailsUser'; // Added CollegeDetailsUser role
+  role: 'User' | 'Admin' | 'Teacher';
   avatarUrl?: string;
   avatar?: string;
   profile_picture?: string;
@@ -62,9 +62,6 @@ export type User = {
   ads_subscription?: 'Free' | 'Ads Model';
   max_content_plans_allowed?: number;
   wallet_money?: number; // Added for teacher's current balance
-
-  // College Details User specific fields
-  date_of_last_mht_cet_exam?: string;
 
   created?: string;
   updated?: string;
@@ -320,37 +317,45 @@ export interface AnswerLogItem {
   selectedOption: string | null;
   correctOption: string | null;
   isCorrect: boolean;
-  markedForReview?: boolean; // Optional, can be added if needed
+  markedForReview?: boolean; 
   timeSpentSeconds: number;
 }
 
-// This type represents a record in the `teacher_test_attempts` collection
+// This type represents a record in the `teacher_test_history` collection
 export interface TeacherTestAttempt extends RecordModel {
+  id: string; // Attempt ID
   student: string;
-  teacher_test: string;
-  teacher: string;
-  test_name_cache?: string; // Optional, for caching
-  plan_type_cache?: string; // Optional, for caching
+  teacher_test: string; 
+  teacher: string; 
+  test_name_cache?: string;
+  teacher_name_cache?: string;
   score: number;
   max_score: number;
   percentage?: number;
-  answers_log: string | AnswerLogItem[]; // JSON string from DB, but parsed to array in app
-  status: 'completed' | 'in_progress' | 'terminated_time_up' | 'terminated_manual';
-  start_time: string; // ISO Date string
-  end_time?: string; // ISO Date string
+  answers_log: string | AnswerLogItem[]; 
+  status: 'completed' | 'in_progress' | 'terminated_time_up' | 'terminated_manual' | 'terminated_proctoring';
+  started_at?: string; 
+  submitted_at?: string; // Use this for submission date
   duration_taken_seconds?: number;
-  proctoring_flags?: Record<string, any>; // Could be more specific if flags are known
-  plan_details?: {
-    studentPlan?: UserSubscriptionTierStudent;
-    teacherPlanId?: string; // if it was a subscription to a teacher's specific content plan
-  };
-  total_questions_in_test?: number; // Added
-  attempted_questions_count?: number; // Added
-  correct_answers_count?: number; // Added
-  incorrect_answers_count?: number; // Added
-  unattempted_questions_count?: number; // Added
-  attempt_date?: string; // Added, for when the attempt was made
+  total_questions_in_test_cache?: number; // Use this instead of total_questions
+  attempted_questions_count?: number; // Use this instead of attempted_questions
+  correct_answers_count?: number; // Use this instead of correct_answers
+  incorrect_answers_count?: number; // Use this instead of incorrect_answers
+  unattempted_questions_count?: number; // Use this instead of unattempted_questions
+  marked_for_review_without_selecting_option?: number;
+  marked_for_review_with_selecting_option?: number;
+  plan_context?: "Free Access" | "Subscribed - EduNexus Plan" | "Subscribed - Teacher Plan"; 
+  expand?: {
+    student?: User; // For student's name, avatar
+    teacher?: User; // For teacher's name
+    teacher_test?: { // To get original test details like subject, original total questions, original duration
+        Test_Subject?: string;
+        TotalTime?: string | number; // From teacher_tests (duration in minutes)
+        TotalQuestion?: number; // From teacher_tests
+    }
+  }
 }
+
 
 export interface TestPagesRecord extends RecordModel {
   TestName: string;
@@ -364,5 +369,5 @@ export interface TestPagesRecord extends RecordModel {
   ChemistryQuestion?: string[];
   MathsQuestion?: string[];
   BiologyQuestion?: string[];
-  derivedSubject?: string; // For client-side inference
+  derivedSubject?: string; 
 }
