@@ -40,7 +40,7 @@ interface QbModalProps {
 interface QuestionFromBank {
   id: string;
   questionText?: string; // For EduNexus QB (from question_bank collection)
-  QuestionText?: string;  // For My Teacher QB (from add_questions collection)
+  QuestionText?: string;  // For My Teacher QB (from teacher_question_data collection)
   difficulty?: 'Easy' | 'Medium' | 'Hard'; // For EduNexus QB
   CorrectOption?: string; // For My Teacher QB
   
@@ -221,7 +221,7 @@ export function QbModal({ isOpen, onOpenChange, onQuestionSelect }: QbModalProps
     let isMounted = true;
     if (isOpen && teacher?.id && !isLoadingTeacher) {
       setIsLoadingExamsMyQb(true); setErrorMyQb(null);
-      pb.collection('add_questions').getFullList<{ QBExam: string }>({ filter: `teacher = "${teacher.id}"`, fields: 'QBExam', $autoCancel: false })
+      pb.collection('teacher_question_data').getFullList<{ QBExam: string }>({ filter: `teacher = "${teacher.id}"`, fields: 'QBExam', $autoCancel: false })
         .then(records => { if (isMounted) { const distinctExams = Array.from(new Set(records.map(r => r.QBExam).filter(Boolean))).sort(); setExamsMyQb(distinctExams); }})
         .catch(err => { if (isMounted) { console.error("QBModal: Failed to fetch My QB exams:", err); setErrorMyQb("Could not load your exams."); }})
         .finally(() => { if (isMounted) setIsLoadingExamsMyQb(false); });
@@ -236,7 +236,7 @@ export function QbModal({ isOpen, onOpenChange, onQuestionSelect }: QbModalProps
     if (selectedExamMyQb && teacher?.id) {
       setIsLoadingLessonsMyQb(true); setErrorMyQb(null);
       const filterString = `teacher = "${teacher.id}" && QBExam = "${escapeForPbFilter(selectedExamMyQb)}"`;
-      pb.collection('add_questions').getFullList<{ LessonName: string }>({ filter: filterString, fields: 'LessonName', $autoCancel: false })
+      pb.collection('teacher_question_data').getFullList<{ LessonName: string }>({ filter: filterString, fields: 'LessonName', $autoCancel: false })
         .then(records => { if (isMounted) { const distinctLessons = Array.from(new Set(records.map(r => r.LessonName).filter(Boolean))).sort(); setLessonsMyQb(distinctLessons); }})
         .catch(err => { if (isMounted) { console.error("QBModal: Failed to fetch My QB lessons:", err); setErrorMyQb("Could not load your lessons."); }})
         .finally(() => { if (isMounted) setIsLoadingLessonsMyQb(false); });
@@ -254,14 +254,14 @@ export function QbModal({ isOpen, onOpenChange, onQuestionSelect }: QbModalProps
       const trimmedLesson = selectedLessonMyQb.trim();
       if (!trimmedExam || !trimmedLesson) { if (isMounted) { setErrorMyQb("Exam and Lesson must be selected."); setIsLoadingQuestionsMyQb(false); } return; }
       const filterString = `teacher = "${teacher.id}" && QBExam = "${escapeForPbFilter(trimmedExam)}" && LessonName = "${escapeForPbFilter(trimmedLesson)}"`;
-      pb.collection('add_questions').getFullList<RecordModel>({ filter: filterString, fields: 'id,QuestionText,CorrectOption,QuestionImage', $autoCancel: false })
+      pb.collection('teacher_question_data').getFullList<RecordModel>({ filter: filterString, fields: 'id,QuestionText,CorrectOption,QuestionImage', $autoCancel: false })
         .then(records => {
           if (isMounted) {
             const mappedQuestions = records.map(r => ({
               id: r.id,
               QuestionText: r.QuestionText,
               CorrectOption: r.CorrectOption as QuestionFromBank['CorrectOption'],
-              QuestionImage_url: r.QuestionImage || null, // Direct URL from add_questions
+              QuestionImage_url: r.QuestionImage || null, // Direct URL from teacher_question_data
               displayImageUrl: r.QuestionImage || null,
             }));
             setQuestionsMyQb(mappedQuestions);
