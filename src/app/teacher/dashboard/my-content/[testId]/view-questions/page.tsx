@@ -60,25 +60,36 @@ const renderLatex = (text: string | undefined | null): React.ReactNode => {
   });
 };
 
+const isValidHttpUrl = (string: string | null | undefined): string is string => {
+  if (!string || typeof string !== 'string') return false;
+  try { const url = new URL(string); return url.protocol === "http:" || url.protocol === "https:"; }
+  catch (_) { return false; }
+};
+
 const getPbFileUrlOrDirectUrl = (record: RecordModel | null | undefined, fieldName: string, isDirectUrlField: boolean = false): string | null => {
     if (!record || !record[fieldName] || typeof record[fieldName] !== 'string') {
       return null;
     }
     const fieldValue = record[fieldName] as string;
-    if (isDirectUrlField) {
-      try {
-        new URL(fieldValue); // Basic validation
+
+    if (isDirectUrlField) { // For fields that store the full URL directly (e.g., from teacher_question_data)
+      if (isValidHttpUrl(fieldValue)) { // Validate if it's a proper URL
         return fieldValue;
-      } catch (_) {
-        return null;
       }
+      // console.warn(`Invalid URL format for direct URL field '${fieldName}': ${fieldValue}`); // Optional: Log invalid URLs
+      return null; // Return null if not a valid URL to avoid broken images
+    } else { // For PocketBase file fields (like in question_bank)
+      if (record.collectionId && record.collectionName) {
+        try {
+          return pb.files.getUrl(record, fieldValue);
+        } catch (e) {
+          console.warn(`ViewTestQuestionsPage: Error getting PB file URL for ${fieldName} in record ${record.id}:`, e);
+          return null;
+        }
+      }
+      // console.warn(`Missing collectionId or collectionName for PB file field '${fieldName}' in record ${record.id}`); // Optional: Log missing info
+      return null;
     }
-    // For PocketBase file fields (like in question_bank)
-    if (record.collectionId && record.collectionName) {
-      try { return pb.files.getUrl(record, fieldValue); }
-      catch (e) { console.warn(`ViewTestQuestionsPage: Error getting PB file URL for ${fieldName} in record ${record.id}:`, e); return null; }
-    }
-    return null;
 };
 
 
@@ -162,14 +173,14 @@ export default function ViewTestQuestionsPage() {
               source: 'My QB',
               marks: q.marks,
               subject: q.subject || fetchedTest.QBExam,
-              lessonName: fetchedTest.testName, // For questions from "My QB", the lesson context is the Test's Name
-              difficulty: q.difficulty as DisplayableQuestion['difficulty'], // This field does not exist on teacher_question_data schema, so it will be undefined
+              lessonName: fetchedTest.testName, 
+              difficulty: q.difficulty as DisplayableQuestion['difficulty'],
             });
           });
           
           setQuestions(combinedQuestions);
           if (combinedQuestions.length === 0) {
-            setError(`No questions found for "${fetchedTest.testName}". This could be because:\n1. No questions are linked to this test in its 'questions_edunexus' or 'questions_teachers' fields in the database.\n2. API Rules for the 'question_bank' collection might be too restrictive (e.g., admin-only view access).\nPlease check the test data and collection permissions in your PocketBase admin panel.`);
+            setError(`No questions found for "${fetchedTest.testName}". This could be because:\n1. No questions are linked to this test in its 'questions_edunexus' or 'questions_teachers' fields in the database.\n2. API Rules for the 'question_bank' or 'teacher_question_data' collections might be too restrictive (e.g., admin-only view access or incorrect filter rules).\nPlease check the test data and collection permissions in your PocketBase admin panel.`);
           }
         } else { return; }
       } catch (err: any) {
