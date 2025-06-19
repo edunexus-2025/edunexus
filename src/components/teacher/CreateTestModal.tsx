@@ -22,7 +22,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription as ShadcnFormDescription, // Renamed to avoid conflict
+  FormDescription as ShadcnFormDescription, 
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import {
@@ -44,6 +44,7 @@ interface CreateTestModalProps {
 }
 
 const qbExamOptions: Array<NonNullable<TeacherCreateTestModalInput['QBExam']>> = ["MHT CET", "JEE MAIN", "NEET"];
+const testSubjectOptions: Array<NonNullable<TeacherCreateTestModalInput['Test_Subject']>> = ["Physics", "Chemistry", "Maths", "Biology"]; // Added
 
 export function CreateTestModal({ onTestCreated }: CreateTestModalProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -59,6 +60,7 @@ export function CreateTestModal({ onTestCreated }: CreateTestModalProps) {
       model: undefined,
       type: undefined,
       QBExam: undefined,
+      Test_Subject: undefined, // Added
       adminPassword: undefined,
     },
   });
@@ -77,6 +79,7 @@ export function CreateTestModal({ onTestCreated }: CreateTestModalProps) {
       model: values.model,
       type: values.type,
       QBExam: values.QBExam,
+      Test_Subject: values.Test_Subject || null, // Added, send null if undefined
       status: "Draft", 
       Admin_Password: values.adminPassword,
     };
@@ -205,6 +208,29 @@ export function CreateTestModal({ onTestCreated }: CreateTestModalProps) {
                     )}
                   />
                 </div>
+                 <FormField
+                  control={form.control}
+                  name="Test_Subject"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Test Subject (Optional)</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || ''}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select subject (if applicable)" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="">None</SelectItem>
+                          {testSubjectOptions.map(subject => (
+                            <SelectItem key={subject} value={subject}>{subject}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="QBExam"
@@ -247,7 +273,7 @@ export function CreateTestModal({ onTestCreated }: CreateTestModalProps) {
                       </FormControl>
                       <FormMessage />
                       <p className="text-xs text-muted-foreground pt-1">
-                        This is a numeric code for test management (e.g., 1234 or 987654).
+                        This is a numeric code for test management (e.g., 1234 or 987654). Students will need this to take the test.
                       </p>
                     </FormItem>
                   )}
@@ -272,3 +298,4 @@ export function CreateTestModal({ onTestCreated }: CreateTestModalProps) {
     </Dialog>
   );
 }
+

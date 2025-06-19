@@ -207,6 +207,7 @@ const TestExamEnum = z.enum(["MHT CET", "JEE MAIN", "NEET"], {
 const TestSubjectEnum = z.enum(['Physics', 'Chemistry', 'Mathematics', 'Biology'], {
   required_error: "Test Subject is required for Chapterwise tests.",
 });
+const TeacherTestSubjectEnum = z.enum(['Physics', 'Chemistry', 'Maths', 'Biology']).optional();
 
 
 export const CreateTestSchema = z.object({
@@ -309,6 +310,7 @@ export const TeacherCreateTestModalSchema = z.object({
   model: z.enum(["Chapterwise", "Full Length"], { required_error: "Please select a test model." }),
   type: z.enum(["Free", "Premium"], { required_error: "Please select a test type." }),
   QBExam: TestModalQBExamEnum,
+  Test_Subject: TeacherTestSubjectEnum, // Added Test_Subject field
   adminPassword: z.coerce.number().int().min(1000, "Admin password must be at least 1000.").max(999999, "Admin password must be at most 999999."),
 });
 export type TeacherCreateTestModalInput = z.infer<typeof TeacherCreateTestModalSchema>;
@@ -374,7 +376,7 @@ export const TeacherTestSettingsSchema = z.object({
     Shuffle_Questions: z.boolean().default(false),
     Who_can_take_your_test: WhoCanTakeTestEnum.default("EveryOne"),
     Would_you_like_to_get_admin_access_through_link: z.boolean().default(false),
-    QBExam: TestModalQBExamEnum.optional(), // Keep optional as it's not strictly required by the schema for *all* tests
+    QBExam: TestModalQBExamEnum.optional(), 
     model: z.enum(["Chapterwise", "Full Length"]).optional(),
     type: z.enum(["Free", "Premium"]).optional(),
 });
@@ -497,3 +499,4 @@ export const TeacherReferralCodeSchema = z.object({
   expiry_date: z.string().optional().nullable().refine(val => !val || !isNaN(Date.parse(val)), { message: "Invalid date format for expiry date." }),
 });
 export type TeacherReferralCodeInput = z.infer<typeof TeacherReferralCodeSchema>;
+
