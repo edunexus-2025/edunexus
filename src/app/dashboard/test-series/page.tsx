@@ -15,7 +15,7 @@ import { Routes, slugify } from '@/lib/constants';
 import pb from '@/lib/pocketbase';
 import type { RecordModel, ClientResponseError } from 'pocketbase';
 import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button'; // Added buttonVariants import
 import {
   Sheet,
   SheetContent,
@@ -28,17 +28,18 @@ import {
 } from "@/components/ui/sheet";
 import { formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils'; // Added cn import
 
 // Helper function to map PocketBase record to TestSeries type
 const mapPbRecordToTestSeries = (record: RecordModel): TestSeries => {
   let subject = "Mixed Subjects";
   const typeArray: string[] = Array.isArray(record.Type) ? record.Type : (typeof record.Type === 'string' ? [record.Type] : []);
-  let accessType: "Free" | "Premium" = "Premium"; 
+  let accessType: "Free" | "Premium" = "Premium";
   if (typeArray.includes("Free")) {
     accessType = "Free";
   }
 
-  let unlocksAtTier: UserSubscriptionTierStudent = "Combo"; 
+  let unlocksAtTier: UserSubscriptionTierStudent = "Combo";
   if (accessType === "Free") {
     unlocksAtTier = "Free";
   } else if (accessType === "Premium") {
@@ -53,13 +54,13 @@ const mapPbRecordToTestSeries = (record: RecordModel): TestSeries => {
     subject: subject,
     questionCount: typeof record.TotalQuestion === 'number' ? record.TotalQuestion : 0,
     durationMinutes: typeof record.TotalTime === 'string' ? parseInt(record.TotalTime, 10) : (typeof record.TotalTime === 'number' ? record.TotalTime : 0),
-    targetAudience: record.Model || 'General', 
+    targetAudience: record.Model || 'General',
     accessType: accessType,
     syllabus: typeof record.TestTags === 'string' ? record.TestTags.split(',').map(tag => tag.trim()) : [],
-    schedule: 'Available Anytime', 
-    price: accessType === 'Free' ? 0 : 499, 
-    imageUrl: `https://placehold.co/600x400.png?text=${encodeURIComponent(record.TestName || 'Test')}`, 
-    dataAiHint: slugify(record.TestName || 'test'), 
+    schedule: 'Available Anytime',
+    price: accessType === 'Free' ? 0 : 499,
+    imageUrl: `https://placehold.co/600x400.png?text=${encodeURIComponent(record.TestName || 'Test')}`,
+    dataAiHint: slugify(record.TestName || 'test'),
     targetExams: record.Exam ? [record.Exam] : [],
     unlocksAtTier: unlocksAtTier,
   };
@@ -91,7 +92,7 @@ export default function TestSeriesPage() {
 
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
-  
+
   const [allFetchedTests, setAllFetchedTests] = useState<TestSeries[]>([]);
   const [isLoadingTests, setIsLoadingTests] = useState(true);
   const [errorLoadingTests, setErrorLoadingTests] = useState<string | null>(null);
@@ -106,8 +107,8 @@ export default function TestSeriesPage() {
   useEffect(() => {
     if (user && user.studentSubscriptionTier) {
       setCurrentUserTier(user.studentSubscriptionTier);
-    } else if (!authLoading && !user) { 
-      setCurrentUserTier('Free'); 
+    } else if (!authLoading && !user) {
+      setCurrentUserTier('Free');
     }
   }, [user, authLoading]);
 
@@ -140,7 +141,7 @@ export default function TestSeriesPage() {
     }
     if (isMountedGetter()) setIsLoadingChallenges(true);
     if (isMountedGetter()) setErrorLoadingChallenges(null);
-    
+
     try {
       const expandString = 'created_challenged_data(id,Subject,Lesson,challenge_name,expires_at,student), created_challenged_data.student(id,name)';
       const records = await pb.collection('students_challenge_invites').getFullList<RecordModel>({
@@ -182,19 +183,19 @@ export default function TestSeriesPage() {
     let isMounted = true;
     const isMountedGetter = () => isMounted;
 
-    fetchTests(isMountedGetter); 
+    fetchTests(isMountedGetter);
     if (user?.id) fetchActiveChallenges(isMountedGetter); else if (isMountedGetter()) { setIsLoadingChallenges(false); setActiveChallenges([]); }
 
     const subscribeToRegularTests = async () => {
       if (!isMountedGetter()) return;
       try {
         const unsubscribeFn = await pb.collection('test_pages').subscribe('*', (e) => {
-          if (!isMountedGetter()) return; fetchTests(isMountedGetter); 
+          if (!isMountedGetter()) return; fetchTests(isMountedGetter);
         });
-        if (!isMountedGetter()) unsubscribeFn(); return unsubscribeFn; 
+        if (!isMountedGetter()) unsubscribeFn(); return unsubscribeFn;
       } catch (error) { if (isMountedGetter()) console.error("Error subscribing to test_pages:", error); return () => {}; }
     };
-    
+
     const subscribeToChallengeInvites = async () => {
       if (!isMountedGetter() || !user?.id) return;
       try {
@@ -235,18 +236,18 @@ export default function TestSeriesPage() {
   useEffect(() => {
     if (user?.favExam && exams.includes(user.favExam)) {
       setFilterExam(user.favExam);
-    } else if (!authLoading && !user) { 
+    } else if (!authLoading && !user) {
       setFilterExam('all');
     }
   }, [user?.favExam, exams, authLoading, user]);
 
 
   const filteredTestSeries = useMemo(() => {
-    if (authLoading || currentUserTier === null || isLoadingTests) return []; 
+    if (authLoading || currentUserTier === null || isLoadingTests) return [];
     return allFetchedTests.filter(ts => {
       const matchesSearch = ts.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             ts.description.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesTestTypeFilter = filterTestType === 'All' || 
+      const matchesTestTypeFilter = filterTestType === 'All' ||
         (ts.targetAudience && ts.targetAudience.toLowerCase().replace(/\s+/g, '_') === filterTestType.toLowerCase().replace(/\s+/g, '_'));
       const matchesSubject = filterSubject === 'All' || ts.subject === filterSubject;
       const matchesExam = filterExam === 'all' || ts.targetExams.includes(filterExam);
@@ -331,7 +332,13 @@ export default function TestSeriesPage() {
           <SheetContent side="bottom" className="flex flex-col max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-4rem)] sm:max-h-[75vh]"> {/* Adjusted max-h */}
             <SheetHeader className="p-4 border-b"> <SheetTitle>Filter Tests</SheetTitle> <SheetDescription> Refine your test series view. </SheetDescription> </SheetHeader>
             <div className="flex-grow overflow-y-auto p-4 space-y-4"> {renderFilterControls(true)} </div>
-            <SheetFooter className="p-4 border-t"> <SheetClose asChild> <Button className="w-full">Done</Button> </SheetClose> </SheetFooter>
+            <SheetFooter className="p-4 border-t">
+              <SheetClose asChild>
+                <button className={cn(buttonVariants({ variant: "default" }), "w-full")}>
+                  Done
+                </button>
+              </SheetClose>
+            </SheetFooter>
           </SheetContent>
         </Sheet>
       </div>
@@ -380,7 +387,7 @@ export default function TestSeriesPage() {
           </div>
         </section>
       )}
-      
+
       {/* Regular Test Series Section */}
       <section className={activeChallenges.length > 0 ? "mt-12 pt-8 border-t" : ""}>
         <h2 className="text-xl font-semibold mb-4 text-foreground">
@@ -391,7 +398,7 @@ export default function TestSeriesPage() {
             {filteredTestSeries.map((ts) => ( <TestSeriesCard key={ts.id} testSeries={ts} /> ))}
           </div>
         ) : (
-          !errorLoadingTests && !isLoadingTests && ( 
+          !errorLoadingTests && !isLoadingTests && (
               <Card className="text-center p-10 col-span-full">
               <CardHeader className="items-center p-0"> <AlertCircle className="h-12 w-12 text-muted-foreground mb-3" /> <CardTitle>No Test Series Found</CardTitle> </CardHeader>
               <CardContent className="p-0 mt-2"> <CardDescription> No test series match your current filters or subscription level. Try adjusting your search or filters. You can also <Link href={Routes.upgrade} className="text-primary hover:underline">upgrade your plan</Link> to access more tests. </CardDescription> </CardContent>
