@@ -2,7 +2,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import pb from '@/lib/pocketbase';
 import type { RecordModel, ClientResponseError } from 'pocketbase';
 import { useToast } from '@/hooks/use-toast';
@@ -15,17 +15,43 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
 import { Routes } from '@/lib/constants';
-import type { TeacherTestAttempt } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-interface TestResultDisplay extends TeacherTestAttempt {
-    studentName?: string;
-    studentEmail?: string;
-    avatarUrl?: string;
+// Interface matching the teacher_test_history schema and expanded student
+interface FetchedTestHistoryRecord extends RecordModel {
+  id: string;
+  student: string; // student ID
+  score: number;
+  max_score: number;
+  percentage?: number;
+  duration_taken_seconds?: number;
+  submitted_at?: string; // ISO Date string
+  created: string; // Fallback if submitted_at is missing
+  status: 'completed' | 'terminated_time_up' | 'terminated_proctoring' | 'terminated_manual'; // Added terminated_manual
+  test_name_cache?: string;
+  expand?: {
+    student?: {
+      id: string;
+      name: string;
+      email: string;
+      avatar?: string; // filename
+      avatarUrl?: string; // direct URL
+      collectionId?: string;
+      collectionName?: string;
+    };
+  };
 }
+
+interface TestResultDisplay extends FetchedTestHistoryRecord {
+  studentName?: string;
+  studentEmail?: string;
+  avatarUrl?: string;
+  rank?: number; // Added rank
+}
+
 
 const formatDuration = (totalSeconds?: number): string => {
     if (totalSeconds === undefined || totalSeconds === null || totalSeconds < 0) return 'N/A';
@@ -48,13 +74,11 @@ const formatDateToIST = (dateString?: string): string => {
         });
     } catch (e) {
         console.warn("Error formatting date to IST:", e);
-        try {
+        try { // Fallback to a more generic locale if IST fails
             return new Date(dateString).toLocaleDateString('en-GB', {
                 year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true
             });
-        } catch (fallbackError) {
-            return "Invalid Date";
-        }
+        } catch (fallbackError) { return "Invalid Date"; }
     }
 };
 
@@ -89,24 +113,28 @@ export default function TestResultsPage() {
       if (testRecord.teacherId !== teacher.id) { if(isMountedGetter()) setError("Unauthorized."); return; }
       setTestName(testRecord.testName || 'Untitled Test');
 
-      const resultRecords = await pb.collection('teacher_test_history').getFullList<TeacherTestAttempt>({
-        filter: `teacher_test = "${testId}" && teacher = "${teacher.id}"`,
+      const resultRecords = await pb.collection('teacher_test_history').getFullList<FetchedTestHistoryRecord>({
+        filter: `teacher_test = "${testId}" && teacher = "${teacher.id}"`, // Ensure results are for this teacher
         sort: '-score', 
-        expand: 'student(id,name,email,avatar,avatarUrl,collectionId,collectionName)',
+        expand: 'student', // Simpler expand, assuming default user fields are sufficient or set in PB
         fields: 'id,student,score,max_score,duration_taken_seconds,submitted_at,status,test_name_cache,percentage,expand.student.id,expand.student.name,expand.student.email,expand.student.avatar,expand.student.avatarUrl,expand.student.collectionId,expand.student.collectionName,created',
         '$autoCancel': false,
       });
       if (!isMountedGetter()) return;
 
-      const mappedResults = resultRecords.map(r => {
+      const mappedResults = resultRecords.map((r, index) => {
         let avatarUrlResult;
         const studentData = r.expand?.student;
+        if (!studentData) {
+            console.warn(`Student data missing for history record ${r.id}. Expand might have failed or relation is empty.`);
+        }
+
         if (studentData?.avatarUrl && typeof studentData.avatarUrl === 'string' && studentData.avatarUrl.startsWith('http')) {
           avatarUrlResult = studentData.avatarUrl;
         } else if (studentData?.avatar && typeof studentData.avatar === 'string' && studentData.collectionId && studentData.collectionName) {
           try {
             avatarUrlResult = pb.files.getUrl(studentData as RecordModel, studentData.avatar);
-          } catch (e) { console.warn("Error getting avatar URL for results page:", e); avatarUrlResult = undefined; }
+          } catch (e) { console.warn("Error getting student avatar URL for results page:", e); avatarUrlResult = undefined; }
         }
         
         if (!avatarUrlResult && studentData?.name && typeof studentData.name === 'string') {
@@ -118,7 +146,8 @@ export default function TestResultsPage() {
           studentName: studentData?.name || 'Unknown Student',
           studentEmail: studentData?.email || 'N/A',
           avatarUrl: avatarUrlResult,
-          submitted_at: r.submitted_at || r.created,
+          submitted_at: r.submitted_at || r.created, // Use created as fallback for submission time
+          rank: index + 1, // Basic rank based on initial sort by score
         };
       });
       setAllResults(mappedResults);
@@ -130,8 +159,8 @@ export default function TestResultsPage() {
         if (clientError?.isAbort || (clientError?.name === 'ClientResponseError' && clientError?.status === 0)) {
           console.warn('TeacherTestResultsPage: Fetch results request was cancelled.');
         } else {
-          console.error("Error fetching test results:", clientError); 
-          setError("Could not load test results."); 
+          console.error("Error fetching test results:", clientError.data || clientError); 
+          setError(`Could not load test results. Details: ${clientError.data?.message || clientError.message}`); 
         }
       }
     } finally { if (isMountedGetter()) setIsLoading(false); }
@@ -141,6 +170,26 @@ export default function TestResultsPage() {
   
   useEffect(() => {
     let currentResults = [...allResults];
+    // Sort by score descending, then by duration ascending (faster is better)
+    currentResults.sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      return (a.duration_taken_seconds || Infinity) - (b.duration_taken_seconds || Infinity);
+    });
+    // Assign ranks
+    let rank = 0;
+    let lastScore = -Infinity;
+    let lastDuration = Infinity;
+    currentResults = currentResults.map((r, index) => {
+      if (r.score !== lastScore || (r.duration_taken_seconds || Infinity) !== lastDuration) {
+        rank = index + 1;
+        lastScore = r.score;
+        lastDuration = r.duration_taken_seconds || Infinity;
+      }
+      return { ...r, rank };
+    });
+
     if (filterStatus !== 'all') {
       currentResults = currentResults.filter(r => r.status === filterStatus);
     }
@@ -190,6 +239,7 @@ export default function TestResultsPage() {
                     <SelectItem value="completed">Completed</SelectItem>
                     <SelectItem value="terminated_time_up">Terminated (Time Up)</SelectItem>
                     <SelectItem value="terminated_manual">Terminated (Manual)</SelectItem>
+                    <SelectItem value="terminated_proctoring">Terminated (Proctoring)</SelectItem>
                 </SelectContent>
             </Select>
         </div>
@@ -216,13 +266,13 @@ export default function TestResultsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredResults.map((result, index) => (
+                {filteredResults.map((result) => (
                   <TableRow key={result.id}>
-                    <TableCell className="font-medium text-muted-foreground text-center">#{index + 1}</TableCell>
+                    <TableCell className="font-medium text-muted-foreground text-center">#{result.rank}</TableCell>
                     <TableCell className="font-medium text-foreground">
                         <div className="flex items-center gap-2">
                             <Avatar className="h-8 w-8">
-                                <AvatarImage src={result.avatarUrl} alt={result.studentName} data-ai-hint="student avatar profile"/>
+                                <AvatarImage src={result.avatarUrl} alt={result.studentName} data-ai-hint="student profile"/>
                                 <AvatarFallback>{getAvatarFallback(result.studentName)}</AvatarFallback>
                             </Avatar>
                             <span>{result.studentName}</span>
@@ -240,7 +290,7 @@ export default function TestResultsPage() {
                             {result.status?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'N/A'}
                         </Badge>
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground hidden lg:table-cell">{formatDateToIST(result.submitted_at)}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground hidden lg:table-cell">{formatDateToIST(result.submitted_at || result.created)}</TableCell>
                     <TableCell className="text-right">
                        <Button variant="link" size="sm" className="p-0 h-auto text-primary" asChild>
                          <Link href={Routes.teacherStudentResultView(result.id)}>
