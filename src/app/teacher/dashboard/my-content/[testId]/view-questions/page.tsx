@@ -138,7 +138,7 @@ export default function ViewTestQuestionsPage() {
               source: 'EduNexus QB',
               difficulty: q.difficulty,
               subject: q.subject,
-              lessonName: q.lessonName, // Direct from question_bank
+              lessonName: q.lessonName,
               marks: q.marks
             });
           });
@@ -157,19 +157,19 @@ export default function ViewTestQuestionsPage() {
                 { label: 'D', text: q.OptionDText, imageUrl: getPbFileUrlOrDirectUrl(q, 'OptionDImage', true) },
               ],
               displayCorrectOptionLabel: q.CorrectOption?.replace("Option ", "") || "",
-              displayExplanationText: q.explanationText,
-              displayExplanationImageUrl: getPbFileUrlOrDirectUrl(q, 'explanationImage', true),
+              displayExplanationText: q.explanationText, // teacher_question_data has 'explanationText'
+              displayExplanationImageUrl: getPbFileUrlOrDirectUrl(q, 'explanationImage', true), // teacher_question_data has 'explanationImage'
               source: 'My QB',
               marks: q.marks,
-              subject: q.subject || fetchedTest.QBExam, // Fallback to test's exam type
+              subject: q.subject || fetchedTest.QBExam,
               lessonName: fetchedTest.testName, // For questions from "My QB", the lesson context is the Test's Name
-              difficulty: q.difficulty, // This field does not exist on teacher_question_data schema
+              difficulty: q.difficulty as DisplayableQuestion['difficulty'], // This field does not exist on teacher_question_data schema, so it will be undefined
             });
           });
           
           setQuestions(combinedQuestions);
           if (combinedQuestions.length === 0) {
-            setError(`No questions (from EduNexus QB or your QB) are currently linked to "${fetchedTest.testName}". Please use "Add Question" in the test panel.`);
+            setError(`No questions found for "${fetchedTest.testName}". This could be because:\n1. No questions are linked to this test in its 'questions_edunexus' or 'questions_teachers' fields in the database.\n2. API Rules for the 'question_bank' collection might be too restrictive (e.g., admin-only view access).\nPlease check the test data and collection permissions in your PocketBase admin panel.`);
           }
         } else { return; }
       } catch (err: any) {
@@ -212,7 +212,7 @@ export default function ViewTestQuestionsPage() {
   }
 
   if (error) {
-    return ( <div className="space-y-6 p-4 md:p-6 bg-slate-50 dark:bg-slate-950 min-h-screen"><Button variant="outline" size="sm" onClick={() => router.push(Routes.teacherTestPanel(testId))} className="mb-4"><ArrowLeft className="mr-2 h-4 w-4" /> Back to Test Panel</Button><Card className="shadow-lg border-destructive bg-destructive/10 max-w-3xl mx-auto"><CardHeader><CardTitle className="text-destructive flex items-center gap-2"><AlertCircle />Error Loading Questions</CardTitle></CardHeader><CardContent><p>{error}</p></CardContent></Card></div> );
+    return ( <div className="space-y-6 p-4 md:p-6 bg-slate-50 dark:bg-slate-950 min-h-screen"><Button variant="outline" size="sm" onClick={() => router.push(Routes.teacherTestPanel(testId))} className="mb-4"><ArrowLeft className="mr-2 h-4 w-4" /> Back to Test Panel</Button><Card className="shadow-lg border-destructive bg-destructive/10 max-w-3xl mx-auto"><CardHeader><CardTitle className="text-destructive flex items-center gap-2"><AlertCircle />Error Loading Questions</CardTitle></CardHeader><CardContent><p className="whitespace-pre-wrap">{error}</p></CardContent></Card></div> );
   }
 
   if (questions.length === 0 && !isLoadingData) {
@@ -284,3 +284,5 @@ export default function ViewTestQuestionsPage() {
     </div>
   );
 }
+
+    
