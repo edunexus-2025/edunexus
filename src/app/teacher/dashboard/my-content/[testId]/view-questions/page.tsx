@@ -58,7 +58,7 @@ interface DisplayableQuestionDetailed {
   subject?: string | null;
   lessonName?: string | null;
   marks?: number;
-  rawRecord: RecordModel; // Keep the original record for pb.files.getUrl
+  rawRecord: RecordModel;
 }
 
 // --- Helper Functions ---
@@ -81,18 +81,16 @@ const getPbFileUrlOrDirectUrl = (record: RecordModel | null | undefined, fieldNa
     console.warn(`getPbFileUrlOrDirectUrl: Field '${fieldName}' in teacher_question_data (ID: ${record.id}) expected a direct URL but got: '${fieldValue}'. It's not a valid HTTP/S URL.`);
     return null;
   } else {
-    // For PocketBase file fields, record.id, record.collectionId, and record.collectionName are crucial.
-    // sourceCollectionName is a fallback if collectionId/Name are not directly on the passed record.
     const effectiveCollectionId = record.collectionId || (sourceCollectionName === 'question_bank' ? 'pbc_1874489316' : (sourceCollectionName === 'teacher_question_data' ? 'pbc_3669383003' : undefined));
     const effectiveCollectionName = record.collectionName || sourceCollectionName;
 
     if (record.id && effectiveCollectionId && effectiveCollectionName) {
       try {
-        const minimalRecordForPb = { // Construct a minimal record with essential fields for pb.files.getUrl
+        const minimalRecordForPb = {
           id: record.id,
           collectionId: effectiveCollectionId,
           collectionName: effectiveCollectionName,
-          [fieldName]: fieldValue // The filename
+          [fieldName]: fieldValue
         };
         return pb.files.getUrl(minimalRecordForPb as RecordModel, fieldValue);
       } catch (e) { console.warn(`getPbFileUrlOrDirectUrl: Error getting PB file URL for ${fieldName} in record ${record.id} (Collection: ${effectiveCollectionName}):`, e); return null; }
@@ -151,9 +149,8 @@ export default function ViewTestQuestionsDetailedPage() {
 
     try {
       const fetchedTest = await pb.collection('teacher_tests').getOne(testId, {
-        expand: 'questions_edunexus,questions_teachers', // Ensure relations are expanded
-         fields: 'id,testName,teacherId,questions_edunexus,questions_teachers,QBExam,expand.questions_edunexus.id,expand.questions_edunexus.questionText,expand.questions_edunexus.questionImage,expand.questions_edunexus.optionAText,expand.questions_edunexus.optionAImage,expand.questions_edunexus.optionBText,expand.questions_edunexus.optionBImage,expand.questions_edunexus.optionCText,expand.questions_edunexus.optionCImage,expand.questions_edunexus.optionDText,expand.questions_edunexus.optionDImage,expand.questions_edunexus.correctOption,expand.questions_edunexus.explanationText,expand.questions_edunexus.explanationImage,expand.questions_edunexus.difficulty,expand.questions_edunexus.subject,expand.questions_edunexus.lessonName,expand.questions_edunexus.marks,expand.questions_edunexus.collectionId,expand.questions_edunexus.collectionName,expand.questions_teachers.id,expand.questions_teachers.QuestionText,expand.questions_teachers.QuestionImage,expand.questions_teachers.OptionAText,expand.questions_teachers.OptionAImage,expand.questions_teachers.OptionBText,expand.questions_teachers.OptionBImage,expand.questions_teachers.OptionCText,expand.questions_teachers.OptionCImage,expand.questions_teachers.OptionDText,expand.questions_teachers.OptionDImage,expand.questions_teachers.CorrectOption,expand.questions_teachers.explanationText,expand.questions_teachers.explanationImage,expand.questions_teachers.difficulty,expand.questions_teachers.subject,expand.questions_teachers.lesson_name,expand.questions_teachers.marks,expand.questions_teachers.collectionId,expand.questions_teachers.collectionName',
-
+        expand: 'questions_edunexus,questions_teachers', 
+        fields: 'id,testName,teacherId,questions_edunexus,questions_teachers,QBExam,expand.questions_edunexus.id,expand.questions_edunexus.questionText,expand.questions_edunexus.questionImage,expand.questions_edunexus.optionAText,expand.questions_edunexus.optionAImage,expand.questions_edunexus.optionBText,expand.questions_edunexus.optionBImage,expand.questions_edunexus.optionCText,expand.questions_edunexus.optionCImage,expand.questions_edunexus.optionDText,expand.questions_edunexus.optionDImage,expand.questions_edunexus.correctOption,expand.questions_edunexus.explanationText,expand.questions_edunexus.explanationImage,expand.questions_edunexus.difficulty,expand.questions_edunexus.subject,expand.questions_edunexus.lessonName,expand.questions_edunexus.marks,expand.questions_edunexus.collectionId,expand.questions_edunexus.collectionName,expand.questions_teachers.id,expand.questions_teachers.QuestionText,expand.questions_teachers.QuestionImage,expand.questions_teachers.OptionAText,expand.questions_teachers.OptionAImage,expand.questions_teachers.OptionBText,expand.questions_teachers.OptionBImage,expand.questions_teachers.OptionCText,expand.questions_teachers.OptionCImage,expand.questions_teachers.OptionDText,expand.questions_teachers.OptionDImage,expand.questions_teachers.CorrectOption,expand.questions_teachers.explanationText,expand.questions_teachers.explanationImage,expand.questions_teachers.difficulty,expand.questions_teachers.subject,expand.questions_teachers.lesson_name,expand.questions_teachers.marks,expand.questions_teachers.collectionId,expand.questions_teachers.collectionName',
         '$autoCancel': false,
       });
 
@@ -163,7 +160,6 @@ export default function ViewTestQuestionsDetailedPage() {
       setGeneratedDate(new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }));
 
       const combinedQuestions: DisplayableQuestionDetailed[] = [];
-      // These are now arrays of actual question records due to expand
       const eduNexusQuestions = fetchedTest.expand?.questions_edunexus || [];
       const teacherQuestions = fetchedTest.expand?.questions_teachers || [];
 
@@ -202,21 +198,17 @@ export default function ViewTestQuestionsDetailedPage() {
         });
       });
       
-      const originalEduNexusIds = Array.isArray(fetchedTest.questions_edunexus) ? fetchedTest.questions_edunexus : [];
-      const originalTeacherIds = Array.isArray(fetchedTest.questions_teachers) ? fetchedTest.questions_teachers : [];
+      const originalEduNexusIds = Array.isArray(fetchedTest.questions_edunexus) ? fetchedTest.questions_edunexus.map((item: any) => item.id || item) : []; // Ensure we get IDs
+      const originalTeacherIds = Array.isArray(fetchedTest.questions_teachers) ? fetchedTest.questions_teachers.map((item: any) => item.id || item) : [];
       const originalOrder = [...originalEduNexusIds, ...originalTeacherIds];
 
       if (originalOrder.length > 0) {
          combinedQuestions.sort((a, b) => {
-            const indexA = originalOrder.indexOf(a.id);
-            const indexB = originalOrder.indexOf(b.id);
-            if (indexA === -1 && indexB === -1) return 0; // Both not in original order, keep relative
-            if (indexA === -1) return 1; // a not in order, b is; b comes first
-            if (indexB === -1) return -1; // b not in order, a is; a comes first
+            const indexA = originalOrder.indexOf(a.id); const indexB = originalOrder.indexOf(b.id);
+            if (indexA === -1 && indexB === -1) return 0; if (indexA === -1) return 1; if (indexB === -1) return -1;
             return indexA - indexB;
          });
       }
-
 
       if (isMountedGetter()) {
         if (combinedQuestions.length === 0 && (eduNexusQuestions.length > 0 || teacherQuestions.length > 0)) {
@@ -224,8 +216,7 @@ export default function ViewTestQuestionsDetailedPage() {
         } else if (combinedQuestions.length === 0) {
           setError(`No questions are linked to "${fetchedTest.testName}". Please use the "Add Questions" tab.`);
         }
-        setAllQuestions(combinedQuestions);
-        setCurrentQuestionIndex(0);
+        setAllQuestions(combinedQuestions); setCurrentQuestionIndex(0);
       }
     } catch (err: any) { if (isMountedGetter()) { const clientError = err as ClientResponseError; if (clientError?.isAbort || (clientError?.name === 'ClientResponseError' && clientError?.status === 0)) { console.warn('ViewTestQuestionsDetailed: Fetch test questions request was cancelled.'); } else { console.error("Error fetching test questions for detailed view:", clientError.data || clientError); setError(`Could not load questions. Error: ${clientError.data?.message || clientError.message}`); }}}
     finally { if (isMountedGetter()) setIsLoading(false); }
@@ -245,8 +236,7 @@ export default function ViewTestQuestionsDetailedPage() {
     if (!editingQuestion || !newCorrectOption || newCorrectOption === '') { toast({ title: "Error", description: "No question or new option selected.", variant: "destructive" }); return; }
     setIsUpdatingCorrectOption(true);
     try {
-      const collectionToUpdate = editingQuestion.rawCollectionName;
-      const dataToUpdate = { CorrectOption: `Option ${newCorrectOption}` };
+      const collectionToUpdate = editingQuestion.rawCollectionName; const dataToUpdate = { CorrectOption: `Option ${newCorrectOption}` };
       await pb.collection(collectionToUpdate).update(editingQuestion.id, dataToUpdate);
       toast({ title: "Correct Option Updated", description: "The correct answer has been saved." });
       setIsEditCorrectOptionModalOpen(false); setEditingQuestion(null); fetchTestAndQuestionsDetailed(() => true);
@@ -255,32 +245,54 @@ export default function ViewTestQuestionsDetailedPage() {
   };
   
   const handlePrint = () => {
-    document.body.setAttribute('data-watermark-text', `EduNexus - ${testName || 'Test'}`);
+    const printableElement = document.getElementById('printableTestContent');
+    if (printableElement) {
+      printableElement.setAttribute('data-test-name', testName || 'Test');
+    }
     setIsPrintPreviewActive(true);
   };
 
   useEffect(() => {
+    let afterPrintHandler: () => void;
     if (isPrintPreviewActive) {
-      const printTimeout = setTimeout(() => { window.print(); }, 100);
-      const afterPrintHandler = () => { setIsPrintPreviewActive(false); window.removeEventListener('afterprint', afterPrintHandler); document.body.removeAttribute('data-watermark-text'); };
+      const printTimeout = setTimeout(() => {
+        // Ensure the body attribute is set just before printing
+        document.body.setAttribute('data-watermark-text', `EduNexus - ${testName || 'Test'}`);
+        window.print();
+      }, 100); // A small delay for DOM updates
+      
+      afterPrintHandler = () => {
+        setIsPrintPreviewActive(false);
+        document.body.removeAttribute('data-watermark-text');
+        window.removeEventListener('afterprint', afterPrintHandler);
+      };
       window.addEventListener('afterprint', afterPrintHandler);
-      return () => { clearTimeout(printTimeout); window.removeEventListener('afterprint', afterPrintHandler); document.body.removeAttribute('data-watermark-text'); };
+      
+      return () => {
+        clearTimeout(printTimeout);
+        window.removeEventListener('afterprint', afterPrintHandler);
+        document.body.removeAttribute('data-watermark-text'); // Cleanup in case component unmounts
+      };
     }
   }, [isPrintPreviewActive, testName]);
   
   const PrintLayout = () => (
-    <div id="printableTestContent" className={showAnswersInPrint ? 'answers-visible' : 'answers-hidden'}>
-      <header className="print-header"><h1>Test: {testName || 'N/A'}</h1><p>Test ID: {testId}</p><p>Generated on: {generatedDate}</p></header>
+    <div id="printableTestContent" className={cn(showAnswersInPrint ? 'answers-visible' : 'answers-hidden')}>
+      <header className="print-header text-center mb-6">
+        <h1 className="text-2xl font-bold">Test: {testName || 'N/A'}</h1>
+        <p className="text-sm">Test ID: {testId}</p>
+        <p className="text-sm">Generated on: {generatedDate}</p>
+      </header>
       {allQuestions.map((q, index) => (
         <div key={`print-${q.id}`} className="print-question-item">
-          <h3 className="font-semibold">Question {index + 1}:</h3>
+          <h3 className="font-semibold text-base mt-4">Question {index + 1}:</h3>
           {q.questionText && <div className="prose prose-sm max-w-none">{renderLatexDetailed(q.questionText)}</div>}
           {q.questionImageUrl && <div className="my-2"><NextImage src={q.questionImageUrl} alt="Question Image" width={300} height={200} className="rounded object-contain border" data-ai-hint="question diagram"/></div>}
           <ul className="list-none p-0 my-2 space-y-1">
-            {q.options.map(opt => (<li key={opt.label} className="flex items-start gap-2"><span className="font-semibold">{opt.label}.</span><div className="prose prose-sm max-w-none">{opt.text && renderLatexDetailed(opt.text)}{opt.imageUrl && <div className="mt-1"><NextImage src={opt.imageUrl} alt={`Option ${opt.label}`} width={100} height={60} className="rounded object-contain border" data-ai-hint="option diagram"/></div>}</div></li>))}
+            {q.options.map(opt => (<li key={opt.label} className="flex items-start gap-2"><span className="font-semibold">{opt.label}.</span><div className="prose prose-sm max-w-none">{opt.text && renderLatexDetailed(opt.text)}{opt.imageUrl && <div className="mt-1"><NextImage src={opt.imageUrl} alt={`Option ${opt.label}`} width={150} height={90} className="rounded object-contain border" data-ai-hint="option diagram"/></div>}</div></li>))}
           </ul>
-          <div className="correct-answer-block"><strong>Correct Answer:</strong> {q.correctOptionEnum}</div>
-          {q.explanationText && <div className="explanation-block mt-1"><strong className="text-xs">Explanation:</strong> <div className="prose prose-xs max-w-none">{renderLatexDetailed(q.explanationText)}</div></div>}
+          <div className="correct-answer-block text-sm"><strong>Correct Answer:</strong> {q.correctOptionEnum}</div>
+          {q.explanationText && <div className="explanation-block mt-1 text-sm"><strong className="text-xs">Explanation:</strong> <div className="prose prose-xs max-w-none">{renderLatexDetailed(q.explanationText)}</div></div>}
           {q.explanationImageUrl && <div className="explanation-block mt-1"><NextImage src={q.explanationImageUrl} alt="Explanation" width={200} height={120} className="rounded object-contain border" data-ai-hint="explanation diagram"/></div>}
         </div>
       ))}
@@ -310,15 +322,16 @@ export default function ViewTestQuestionsDetailedPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
             <div><CardTitle className="text-xl font-semibold flex items-center gap-2"><EyeIcon className="h-5 w-5 text-primary"/> Review Test: {testName}</CardTitle><CardDescription>View question details. Total: {allQuestions.length} question(s).</CardDescription></div>
             <div className="flex gap-2 flex-col sm:flex-row w-full sm:w-auto">
-                <Button variant="outline" size="sm" onClick={() => setShowAnswersInPrint(prev => !prev)} className="text-xs">{showAnswersInPrint ? "Hide Answers for Print" : "Show Answers for Print"}</Button>
-                <Button onClick={handlePrint} variant="default" size="sm" className="text-xs"><Printer className="mr-1.5 h-4 w-4" /> Print Test</Button>
+                <Button variant="outline" size="sm" onClick={() => setShowAnswersInPrint(prev => !prev)} className="text-xs">
+                    {showAnswersInPrint ? "Hide Answers for Print" : "Show Answers for Print"}
+                </Button>
                 <Sheet open={isMobileSheetOpen} onOpenChange={setIsMobileSheetOpen}><SheetTrigger asChild><Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary h-9 w-9 md:hidden" aria-label="Open Question Navigation"><ListOrdered className="h-5 w-5" /></Button></SheetTrigger><SheetContent side="right" className="w-3/4 p-0 flex flex-col"><ShadcnSheetHeader className="p-3 border-b text-center"><ShadcnSheetTitle className="text-lg">Navigate</ShadcnSheetTitle></ShadcnSheetHeader><div className="flex-grow p-2 flex flex-col"><QuestionPaletteContent/></div></SheetContent></Sheet>
             </div>
         </div>
       </CardHeader>
 
       {allQuestions.length === 0 ? (
-          <div className="flex-grow flex flex-col items-center justify-center text-center py-10 border-2 border-dashed rounded-lg bg-card">
+          <div className="flex-grow flex flex-col items-center justify-center text-center py-10 border-2 border-dashed rounded-lg bg-card hide-on-print">
             <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground mb-3" /><p className="text-muted-foreground font-semibold">No Questions Found</p><p className="text-sm text-muted-foreground mt-1">{error || `No questions currently in "${testName}".`}</p><Button asChild variant="link" className="mt-2"><Link href={Routes.teacherTestPanelAddQuestion(testId)}>Add Questions Now</Link></Button>
           </div>
         ) : (
@@ -349,7 +362,7 @@ export default function ViewTestQuestionsDetailedPage() {
                       <div key={opt.label} className={cn("p-3 border rounded-md flex items-start gap-3", isCorrect ? "bg-green-500/10 border-green-500/50 text-green-700 dark:text-green-300" : "bg-card border-border")}>
                         <span className={cn("font-semibold", isCorrect ? "text-green-700 dark:text-green-300" : "text-primary")}>{opt.label}.</span>
                         <div className={cn("flex-1 text-sm", isCorrect ? "text-green-700 dark:text-green-300" : "text-foreground")}>
-                          {(opt.text || opt.imageUrl) ? (<>{opt.text && <div className="prose prose-sm dark:prose-invert max-w-none">{renderLatexDetailed(opt.text)}</div>}{opt.imageUrl && <div className="mt-1.5"><NextImage src={opt.imageUrl} alt={`Option ${opt.label}`} width={150} height={80} className="rounded object-contain border" data-ai-hint="option illustration"/></div>}</>) : (<p className="italic">Option {opt.label} content not available.</p>)}
+                          {(opt.text || opt.imageUrl) ? (<>{opt.text && <div className="prose prose-sm dark:prose-invert max-w-none">{renderLatexDetailed(opt.text)}</div>}{opt.imageUrl && <div className="mt-1.5"><NextImage src={opt.imageUrl} alt={`Option ${opt.label}`} width={150} height={90} className="rounded object-contain border" data-ai-hint="option illustration"/></div>}</>) : (<p className="italic">Option {opt.label} content not available.</p>)}
                         </div>
                         {isCorrect && <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />}
                       </div>
@@ -372,6 +385,14 @@ export default function ViewTestQuestionsDetailedPage() {
             </CardFooter>
           </Card>
            <div className="hidden md:flex w-72 flex-shrink-0 flex-col space-y-0 hide-on-print"> <QuestionPaletteContent /> </div>
+        </div>
+      )}
+      {allQuestions.length > 0 && !isPrintPreviewActive && (
+        <div className="mt-6 text-center hide-on-print">
+            <Button onClick={handlePrint} size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                <Printer className="mr-2 h-5 w-5" />
+                Download / Print All Questions
+            </Button>
         </div>
       )}
       <Dialog open={isEditCorrectOptionModalOpen} onOpenChange={setIsEditCorrectOptionModalOpen}>
