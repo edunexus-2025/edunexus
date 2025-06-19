@@ -2,60 +2,64 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import pb from '@/lib/pocketbase';
 import type { RecordModel, ClientResponseError } from 'pocketbase';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, Eye as EyeIcon, Info, ListChecks, PlusCircle, Trash2, Edit2, Loader2, MessageSquare, NotebookText, ListOrdered, ChevronLeft, ChevronRight } from 'lucide-react';
+import { AlertCircle, Eye as EyeIcon, Info, ListChecks, PlusCircle, Trash2, Edit2 as EditIcon, Loader2, MessageSquare, NotebookText, ListOrdered, ChevronLeft, ChevronRight, CheckCircle, XCircle } from 'lucide-react';
 import NextImage from 'next/image';
 import 'katex/dist/katex.min.css';
 import { InlineMath, BlockMath } from 'react-katex';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { QuestionPreviewModal } from '@/components/admin/QuestionPreviewModal'; // Assuming this can be reused or adapted
+import { Routes, escapeForPbFilter } from '@/lib/constants';
+import Link from 'next/link';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from '@/components/ui/label';
 
-// More detailed interface for displaying full question details
+
 interface DisplayableQuestionDetailed {
   id: string;
   source: 'EduNexus QB' | 'My QB';
+  rawCollectionName: 'question_bank' | 'teacher_question_data';
   questionText?: string | null;
-  questionImageUrl?: string | null; // Resolved URL
+  questionImageUrl?: string | null;
   options: Array<{
     label: 'A' | 'B' | 'C' | 'D';
     text?: string | null;
-    imageUrl?: string | null; // Resolved URL
+    imageUrl?: string | null;
   }>;
-  correctOptionLabel: 'A' | 'B' | 'C' | 'D' | string; // Can be 'Option A' from My QB
+  correctOptionEnum: 'A' | 'B' | 'C' | 'D';
+  correctOptionString: 'Option A' | 'Option B' | 'Option C' | 'Option D';
   explanationText?: string | null;
-  explanationImageUrl?: string | null; // Resolved URL
+  explanationImageUrl?: string | null;
   difficulty?: 'Easy' | 'Medium' | 'Hard' | null;
   subject?: string | null;
   lessonName?: string | null;
   marks?: number;
   rawRecord: RecordModel;
-  // Fields needed for pb.files.getUrl for question_bank source
-  collectionId?: string;
-  collectionName?: string;
-  questionImage_filename?: string; // For question_bank image
-  optionAImage_filename?: string;
-  optionBImage_filename?: string;
-  optionCImage_filename?: string;
-  optionDImage_filename?: string;
-  explanationImage_filename?: string;
-  // Direct URL fields from teacher_question_data
-  QuestionImage_direct?: string | null;
-  OptionAImage_direct?: string | null;
-  OptionBImage_direct?: string | null;
-  OptionCImage_direct?: string | null;
-  OptionDImage_direct?: string | null;
-  explanationImage_direct?: string | null;
 }
-
 
 const isValidHttpUrl = (string: string | null | undefined): string is string => {
   if (!string || typeof string !== 'string') return false;
@@ -63,22 +67,28 @@ const isValidHttpUrl = (string: string | null | undefined): string is string => 
   catch (_) { return false; }
 };
 
-const getPbFileUrlOrDirectUrl = (record: RecordModel | null | undefined, fieldName: string, isDirectUrlField: boolean = false): string | null => {
+const getPbFileUrlOrDirectUrl = (record: RecordModel | null | undefined, fieldName: string, isDirectUrlField: boolean = false, sourceCollectionName?: 'question_bank' | 'teacher_question_data'): string | null => {
     if (!record) return null;
     const fieldValue = record[fieldName] as string | undefined | null;
     if (!fieldValue || typeof fieldValue !== 'string' || !fieldValue.trim()) return null;
 
-    if (isDirectUrlField) {
+    if (isDirectUrlField) { 
       if (isValidHttpUrl(fieldValue)) return fieldValue;
+      console.warn(`ViewQuestionsDetailed: Field '${fieldName}' in teacher_question_data (ID: ${record.id}) is not a valid URL: ${fieldValue}`);
       return null;
-    } else {
-      if (record.id && record.collectionId && record.collectionName) {
+    } else { 
+      if (record.id && (record.collectionId || sourceCollectionName) && (record.collectionName || sourceCollectionName)) {
         try {
-          const minimalRecordForPb = { id: record.id, collectionId: record.collectionId, collectionName: record.collectionName, [fieldName]: fieldValue };
+          const minimalRecordForPb = {
+            id: record.id,
+            collectionId: record.collectionId || (sourceCollectionName === 'question_bank' ? 'pbc_1874489316' : 'pbc_3669383003'), 
+            collectionName: record.collectionName || sourceCollectionName,
+            [fieldName]: fieldValue
+          };
           return pb.files.getUrl(minimalRecordForPb as RecordModel, fieldValue);
-        } catch (e) { console.warn(`ViewQuestionsDetailed: Error getting PB file URL for ${fieldName} in record ${record.id}:`, e); return null; }
+        } catch (e) { console.warn(`ViewQuestionsDetailed: Error getting PB file URL for ${fieldName} in record ${record.id} (Collection: ${record.collectionName || sourceCollectionName}):`, e); return null; }
       }
-      console.error(`ViewQuestionsDetailed: Missing collectionId/Name for PB file field '${fieldName}' in record '${record.id}'.`);
+      console.warn(`ViewQuestionsDetailed: Missing collectionId/Name for PB file field '${fieldName}' in record '${record.id}'. Cannot resolve URL.`);
       return null;
     }
 };
@@ -98,7 +108,6 @@ const renderLatexDetailed = (text: string | undefined | null): React.ReactNode =
   });
 };
 
-
 export default function ViewTestQuestionsDetailedPage() {
   const params = useParams();
   const { teacher } = useAuth();
@@ -110,8 +119,14 @@ export default function ViewTestQuestionsDetailedPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true); 
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
+
+  const [isEditCorrectOptionModalOpen, setIsEditCorrectOptionModalOpen] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<DisplayableQuestionDetailed | null>(null);
+  const [newCorrectOption, setNewCorrectOption] = useState<'A' | 'B' | 'C' | 'D' | ''>('');
+  const [isUpdatingCorrectOption, setIsUpdatingCorrectOption] = useState(false);
+  const { toast } = useToast();
 
   const currentQuestionForDisplay = questions[currentQuestionIndex];
 
@@ -121,63 +136,69 @@ export default function ViewTestQuestionsDetailedPage() {
 
     try {
       const fetchedTest = await pb.collection('teacher_tests').getOne(testId, {
-        expand: 'questions_edunexus(id,questionText,questionImage,optionAText,optionAImage,optionBText,optionBImage,optionCText,optionCImage,optionDText,optionDImage,correctOption,explanationText,explanationImage,difficulty,subject,lessonName,marks,collectionId,collectionName),questions_teachers(id,QuestionText,QuestionImage,OptionAText,OptionAImage,OptionBText,OptionBImage,OptionCText,OptionCImage,OptionDText,OptionDImage,CorrectOption,explanationText,explanationImage,subject,LessonName,marks,difficulty,QBExam)',
+        fields: 'id,testName,teacherId,questions_edunexus,questions_teachers,QBExam',
+        '$autoCancel': false, 
       });
 
       if (!isMountedGetter()) return;
-      if (fetchedTest.teacherId !== teacher.id) { if (isMountedGetter()) { setError("Unauthorized to view this test."); setIsLoading(false); } return; }
+      if (fetchedTest.teacherId !== teacher.id) { if (isMountedGetter()) { setError("Unauthorized to view this test's questions."); setIsLoading(false); } return; }
       setTestName(fetchedTest.testName || 'Untitled Test');
 
       const combinedQuestions: DisplayableQuestionDetailed[] = [];
+      const eduNexusQuestionIds = (Array.isArray(fetchedTest.questions_edunexus) ? fetchedTest.questions_edunexus : []).filter(Boolean);
+      const teacherQuestionIds = (Array.isArray(fetchedTest.questions_teachers) ? fetchedTest.questions_teachers : []).filter(Boolean);
 
-      (fetchedTest.expand?.questions_edunexus || []).forEach((q: RecordModel) => {
-        combinedQuestions.push({
-          id: q.id, source: 'EduNexus QB',
-          questionText: q.questionText,
-          questionImageUrl: getPbFileUrlOrDirectUrl(q, 'questionImage', false),
-          options: [
-            { label: 'A', text: q.optionAText, imageUrl: getPbFileUrlOrDirectUrl(q, 'optionAImage', false) },
-            { label: 'B', text: q.optionBText, imageUrl: getPbFileUrlOrDirectUrl(q, 'optionBImage', false) },
-            { label: 'C', text: q.optionCText, imageUrl: getPbFileUrlOrDirectUrl(q, 'optionCImage', false) },
-            { label: 'D', text: q.optionDText, imageUrl: getPbFileUrlOrDirectUrl(q, 'optionDImage', false) },
-          ],
-          correctOptionLabel: q.correctOption,
-          explanationText: q.explanationText,
-          explanationImageUrl: getPbFileUrlOrDirectUrl(q, 'explanationImage', false),
-          difficulty: q.difficulty, subject: q.subject, lessonName: q.lessonName, marks: q.marks, rawRecord: q,
-          collectionId: q.collectionId, collectionName: q.collectionName,
-          questionImage_filename: q.questionImage,
-          optionAImage_filename: q.optionAImage, optionBImage_filename: q.optionBImage, optionCImage_filename: q.optionCImage, optionDImage_filename: q.optionDImage,
-          explanationImage_filename: q.explanationImage,
+      if (eduNexusQuestionIds.length > 0) {
+        const eduNexusFilter = eduNexusQuestionIds.map(id => `id = "${escapeForPbFilter(id)}"`).join(' || ');
+        const eduNexusRecords = await pb.collection('question_bank').getFullList<RecordModel>({ filter: eduNexusFilter, '$autoCancel': false });
+        eduNexusRecords.forEach((q) => {
+          const correctOptEnum = q.correctOption as 'A' | 'B' | 'C' | 'D';
+          combinedQuestions.push({
+            id: q.id, source: 'EduNexus QB', rawCollectionName: 'question_bank',
+            questionText: q.questionText, questionImageUrl: getPbFileUrlOrDirectUrl(q, 'questionImage', false, 'question_bank'),
+            options: [
+              { label: 'A', text: q.optionAText, imageUrl: getPbFileUrlOrDirectUrl(q, 'optionAImage', false, 'question_bank') },
+              { label: 'B', text: q.optionBText, imageUrl: getPbFileUrlOrDirectUrl(q, 'optionBImage', false, 'question_bank') },
+              { label: 'C', text: q.optionCText, imageUrl: getPbFileUrlOrDirectUrl(q, 'optionCImage', false, 'question_bank') },
+              { label: 'D', text: q.optionDText, imageUrl: getPbFileUrlOrDirectUrl(q, 'optionDImage', false, 'question_bank') },
+            ],
+            correctOptionEnum: correctOptEnum, correctOptionString: `Option ${correctOptEnum}` as any,
+            explanationText: q.explanationText, explanationImageUrl: getPbFileUrlOrDirectUrl(q, 'explanationImage', false, 'question_bank'),
+            difficulty: q.difficulty, subject: q.subject, lessonName: q.lessonName, marks: q.marks, rawRecord: q,
+          });
         });
-      });
+      }
 
-      (fetchedTest.expand?.questions_teachers || []).forEach((q: RecordModel) => {
-        combinedQuestions.push({
-          id: q.id, source: 'My QB',
-          questionText: q.QuestionText,
-          questionImageUrl: getPbFileUrlOrDirectUrl(q, 'QuestionImage', true),
-          options: [
-            { label: 'A', text: q.OptionAText, imageUrl: getPbFileUrlOrDirectUrl(q, 'OptionAImage', true) },
-            { label: 'B', text: q.OptionBText, imageUrl: getPbFileUrlOrDirectUrl(q, 'OptionBImage', true) },
-            { label: 'C', text: q.OptionCText, imageUrl: getPbFileUrlOrDirectUrl(q, 'OptionCImage', true) },
-            { label: 'D', text: q.OptionDText, imageUrl: getPbFileUrlOrDirectUrl(q, 'OptionDImage', true) },
-          ],
-          correctOptionLabel: q.CorrectOption?.replace("Option ", "") || "N/A",
-          explanationText: q.explanationText,
-          explanationImageUrl: getPbFileUrlOrDirectUrl(q, 'explanationImage', true),
-          difficulty: q.difficulty, subject: q.subject || fetchedTest.QBExam, lessonName: fetchedTest.testName, marks: q.marks, rawRecord: q,
-          QuestionText: q.QuestionText, QuestionImage_direct: q.QuestionImage,
-          OptionAText: q.OptionAText, OptionAImage_direct: q.OptionAImage,
-          OptionBText: q.OptionBText, OptionBImage_direct: q.OptionBImage,
-          OptionCText: q.OptionCText, OptionCImage_direct: q.OptionCImage,
-          OptionDText: q.OptionDText, OptionDImage_direct: q.OptionDImage,
-          CorrectOption: q.CorrectOption, explanationImage_direct: q.explanationImage,
+      if (teacherQuestionIds.length > 0) {
+        const teacherQbFilter = teacherQuestionIds.map(id => `id = "${escapeForPbFilter(id)}"`).join(' || ');
+        const teacherQbRecords = await pb.collection('teacher_question_data').getFullList<RecordModel>({ filter: teacherQbFilter, '$autoCancel': false });
+        teacherQbRecords.forEach((q) => {
+          const correctOptStr = q.CorrectOption as 'Option A' | 'Option B' | 'Option C' | 'Option D';
+          const correctOptEnum = correctOptStr?.replace('Option ', '') as 'A' | 'B' | 'C' | 'D';
+          combinedQuestions.push({
+            id: q.id, source: 'My QB', rawCollectionName: 'teacher_question_data',
+            questionText: q.QuestionText, questionImageUrl: getPbFileUrlOrDirectUrl(q, 'QuestionImage', true, 'teacher_question_data'),
+            options: [
+              { label: 'A', text: q.OptionAText, imageUrl: getPbFileUrlOrDirectUrl(q, 'OptionAImage', true, 'teacher_question_data') },
+              { label: 'B', text: q.OptionBText, imageUrl: getPbFileUrlOrDirectUrl(q, 'OptionBImage', true, 'teacher_question_data') },
+              { label: 'C', text: q.OptionCText, imageUrl: getPbFileUrlOrDirectUrl(q, 'OptionCImage', true, 'teacher_question_data') },
+              { label: 'D', text: q.OptionDText, imageUrl: getPbFileUrlOrDirectUrl(q, 'OptionDImage', true, 'teacher_question_data') },
+            ],
+            correctOptionEnum: correctOptEnum, correctOptionString: correctOptStr,
+            explanationText: q.explanationText, explanationImageUrl: getPbFileUrlOrDirectUrl(q, 'explanationImage', true, 'teacher_question_data'),
+            difficulty: q.difficulty, subject: q.subject || fetchedTest.QBExam, lessonName: q.lesson_name || fetchedTest.testName, marks: q.marks, rawRecord: q,
+          });
         });
-      });
+      }
+      
       if (isMountedGetter()) {
-        if (combinedQuestions.length === 0) { setError(`No questions are linked to "${fetchedTest.testName}". Please add questions via the "Add Questions" tab.`); }
+        if (combinedQuestions.length === 0 && (eduNexusQuestionIds.length > 0 || teacherQuestionIds.length > 0) ) { 
+          setError(`No questions could be fully loaded for "${fetchedTest.testName}", though some links exist. Check if linked questions were deleted or if there's a data mismatch.`);
+        } else if (combinedQuestions.length === 0) {
+          setError(`No questions are linked to "${fetchedTest.testName}". Please use the "Add Questions" tab.`);
+        }
         setQuestions(combinedQuestions);
+        setCurrentQuestionIndex(0);
       }
     } catch (err: any) { if (isMountedGetter()) { const clientError = err as ClientResponseError; if (clientError?.isAbort || (clientError?.name === 'ClientResponseError' && clientError?.status === 0)) { console.warn('ViewTestQuestionsDetailed: Fetch test questions request was cancelled.'); } else { console.error("Error fetching test questions for detailed view:", clientError.data || clientError); setError(`Could not load questions. Error: ${clientError.data?.message || clientError.message}`); }}}
     finally { if (isMountedGetter()) setIsLoading(false); }
@@ -187,6 +208,41 @@ export default function ViewTestQuestionsDetailedPage() {
 
   const navigateQuestion = (newIndex: number) => { setCurrentQuestionIndex(Math.max(0, Math.min(questions.length - 1, newIndex))); };
   const questionPaletteButtonClass = (isActive: boolean) => isActive ? "bg-primary text-primary-foreground border-primary ring-2 ring-offset-1 ring-primary" : "bg-card hover:bg-muted/80 text-muted-foreground border-border";
+
+  const handleOpenEditCorrectOptionModal = (question: DisplayableQuestionDetailed) => {
+    if (question.source === 'EduNexus QB') {
+      toast({ title: "Cannot Edit", description: "EduNexus QB questions' correct options cannot be changed here.", variant: "default" });
+      return;
+    }
+    setEditingQuestion(question);
+    setNewCorrectOption(question.correctOptionEnum || '');
+    setIsEditCorrectOptionModalOpen(true);
+  };
+
+  const handleSaveCorrectOption = async () => {
+    if (!editingQuestion || !newCorrectOption || newCorrectOption === '') {
+      toast({ title: "Error", description: "No question or new option selected.", variant: "destructive" });
+      return;
+    }
+    setIsUpdatingCorrectOption(true);
+    try {
+      const collectionToUpdate = editingQuestion.rawCollectionName;
+      const dataToUpdate = collectionToUpdate === 'question_bank' 
+        ? { correctOption: newCorrectOption } 
+        : { CorrectOption: `Option ${newCorrectOption}` };
+
+      await pb.collection(collectionToUpdate).update(editingQuestion.id, dataToUpdate);
+      toast({ title: "Correct Option Updated", description: "The correct answer has been saved." });
+      setIsEditCorrectOptionModalOpen(false);
+      setEditingQuestion(null);
+      fetchTestAndQuestionsDetailed(() => true); 
+    } catch (err: any) {
+      console.error("Error updating correct option:", err);
+      toast({ title: "Update Failed", description: `Could not save: ${err.data?.message || err.message}`, variant: "destructive" });
+    } finally {
+      setIsUpdatingCorrectOption(false);
+    }
+  };
 
   const QuestionPaletteContent = () => (
     <Card className="border-primary/30 bg-primary/5 flex-1 flex flex-col min-h-0 shadow-md rounded-lg md:mt-0">
@@ -206,19 +262,21 @@ export default function ViewTestQuestionsDetailedPage() {
   );
 
   if (isLoading) { return (<div className="p-6 space-y-4"><Skeleton className="h-8 w-3/4 mb-2" /><Skeleton className="h-64 w-full" /></div>); }
-  if (error) { return (<Card className="text-center border-destructive bg-destructive/10 p-6"><AlertCircle className="mx-auto h-10 w-10 text-destructive mb-3" /><CardTitle className="text-destructive">Error</CardTitle><CardDescription className="text-destructive/80 whitespace-pre-wrap">{error}</CardDescription></Card>); }
+  if (error && questions.length === 0) { return (<Card className="text-center border-destructive bg-destructive/10 p-6"><AlertCircle className="mx-auto h-10 w-10 text-destructive mb-3" /><CardTitle className="text-destructive">Error</CardTitle><CardDescription className="text-destructive/80 whitespace-pre-wrap">{error}</CardDescription></Card>); }
+
 
   return (
     <div className="p-2 sm:p-4 md:p-6 h-[calc(100vh-var(--header-height,0px)-var(--tabs-height,0px)-theme(space.12))] flex flex-col">
       <CardHeader className="px-0 pb-3 flex-shrink-0">
-        <CardTitle className="text-xl font-semibold flex items-center gap-2"><EyeIcon className="h-5 w-5 text-primary"/> View Questions for: {testName}</CardTitle>
-        <CardDescription>Review full question details, options, and explanations. Total: {questions.length} question(s).</CardDescription>
+        <CardTitle className="text-xl font-semibold flex items-center gap-2"><EyeIcon className="h-5 w-5 text-primary"/> Review Questions for: {testName}</CardTitle>
+        <CardDescription>View full question details, options, and explanations. Total: {questions.length} question(s).</CardDescription>
       </CardHeader>
 
       {questions.length === 0 ? (
           <div className="flex-grow flex flex-col items-center justify-center text-center py-10 border-2 border-dashed rounded-lg bg-card">
             <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
-            <p className="text-muted-foreground">No questions currently in this test.</p>
+            <p className="text-muted-foreground font-semibold">No Questions Found</p>
+            <p className="text-sm text-muted-foreground mt-1">{error || `No questions currently in "${testName}".`}</p>
             <Button asChild variant="link" className="mt-2"><Link href={Routes.teacherTestPanelAddQuestion(testId)}>Add Questions Now</Link></Button>
           </div>
         ) : (
@@ -231,6 +289,12 @@ export default function ViewTestQuestionsDetailedPage() {
                   <Badge variant="outline" className="text-xs px-1.5 py-0.5">{currentQuestionForDisplay.source}</Badge>
                   {currentQuestionForDisplay.difficulty && <Badge variant={currentQuestionForDisplay.difficulty === 'Easy' ? 'secondary' : currentQuestionForDisplay.difficulty === 'Medium' ? 'default' : 'destructive'} className="text-xs px-1.5 py-0.5">{currentQuestionForDisplay.difficulty}</Badge>}
                   {currentQuestionForDisplay.marks !== undefined && <Badge variant="outline" className="text-xs px-1.5 py-0.5">Marks: {currentQuestionForDisplay.marks}</Badge>}
+                  {currentQuestionForDisplay.source === 'My QB' && (
+                      <Button variant="ghost" size="icon" className="h-6 w-6 p-0.5 text-muted-foreground hover:text-primary" onClick={() => handleOpenEditCorrectOptionModal(currentQuestionForDisplay)}>
+                          <EditIcon size={14} />
+                          <span className="sr-only">Edit Correct Option</span>
+                      </Button>
+                  )}
                 </div>
               </div>
             </CardHeader>
@@ -243,7 +307,7 @@ export default function ViewTestQuestionsDetailedPage() {
                 </div>
                 <div className="space-y-2.5">
                   {currentQuestionForDisplay.options.map(opt => {
-                    const isCorrect = opt.label === currentQuestionForDisplay.correctOptionLabel || `Option ${opt.label}` === currentQuestionForDisplay.correctOptionLabel;
+                    const isCorrect = opt.label === currentQuestionForDisplay.correctOptionEnum;
                     return (
                       <div key={opt.label} className={cn("p-3 border rounded-md flex items-start gap-3", isCorrect ? "bg-green-500/10 border-green-500/50 text-green-700 dark:text-green-300" : "bg-card border-border")}>
                         <span className={cn("font-semibold", isCorrect ? "text-green-700 dark:text-green-300" : "text-primary")}>{opt.label}.</span>
@@ -274,9 +338,41 @@ export default function ViewTestQuestionsDetailedPage() {
           {isRightSidebarOpen && ( <div className="hidden md:flex w-64 lg:w-72 flex-shrink-0 flex-col space-y-0"> <QuestionPaletteContent /> </div> )}
         </div>
       )}
+      <Dialog open={isEditCorrectOptionModalOpen} onOpenChange={setIsEditCorrectOptionModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Correct Option</DialogTitle>
+            <DialogDescription>
+              Question: "{editingQuestion?.questionText?.substring(0, 50) || editingQuestion?.id}"
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="correctOptionSelectModal" className="mb-2 block">New Correct Option</Label>
+            <Select value={newCorrectOption} onValueChange={(value) => setNewCorrectOption(value as 'A' | 'B' | 'C' | 'D')}>
+              <SelectTrigger id="correctOptionSelectModal">
+                <SelectValue placeholder="Select correct option" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="A">Option A</SelectItem>
+                <SelectItem value="B">Option B</SelectItem>
+                <SelectItem value="C">Option C</SelectItem>
+                <SelectItem value="D">Option D</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline" disabled={isUpdatingCorrectOption}>Cancel</Button></DialogClose>
+            <Button onClick={handleSaveCorrectOption} disabled={isUpdatingCorrectOption || !newCorrectOption}>
+              {isUpdatingCorrectOption && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Change
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-
+    
+    
     
     
