@@ -116,33 +116,83 @@ body {
   body * {
     visibility: hidden;
   }
-  .printable-content, .printable-content * {
+  .hide-on-print, .hide-on-print * {
+    display: none !important;
+    visibility: hidden !important;
+  }
+  #printableTestContent, #printableTestContent * {
     visibility: visible;
   }
-  .printable-content {
+  #printableTestContent {
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
     height: auto;
-    padding: 20px; /* Add some padding for print */
+    padding: 20px; /* Adjust as needed */
     margin: 0;
-    border: none !important; /* Remove borders for print */
-    box-shadow: none !important; /* Remove shadows for print */
+    border: none !important;
+    box-shadow: none !important;
+    background-color: white !important; /* Ensure background is white for printing */
+    color: black !important; /* Ensure text is black */
   }
-  .hide-on-print {
+
+  #printableTestContent .print-question-item {
+    page-break-inside: avoid;
+    page-break-after: auto; /* Changed from always to auto for better flow */
+    padding-bottom: 1.5rem; /* Space between questions */
+    border-bottom: 1px dashed #ccc;
+  }
+   #printableTestContent .print-question-item:last-child {
+    border-bottom: none;
+  }
+
+
+  #printableTestContent .prose, #printableTestContent .prose * {
+    font-size: 11pt !important;
+    line-height: 1.4 !important;
+    color: black !important;
+  }
+   #printableTestContent .prose img, #printableTestContent img {
+    max-width: 90% !important; /* Ensure images fit and are not too large */
+    height: auto !important;
+    display: block; /* For centering if margin auto is used */
+    margin-left: auto;
+    margin-right: auto;
+    border: 1px solid #eee; /* Optional: add a light border to images */
+  }
+
+  /* Answer visibility for print */
+  #printableTestContent.answers-hidden .correct-answer-block,
+  #printableTestContent.answers-hidden .explanation-block {
     display: none !important;
   }
-  /* Ensure prose styles are somewhat preserved or simplified */
-  .printable-content .prose {
-    font-size: 12pt;
-    line-height: 1.5;
+  #printableTestContent.answers-visible .correct-answer-block,
+  #printableTestContent.answers-visible .explanation-block {
+    display: block !important; /* Ensure they are block for proper layout */
+    margin-top: 0.5rem;
   }
-  .printable-content .prose img {
-    max-width: 100% !important; /* Ensure images fit */
+  #printableTestContent .correct-answer-block strong {
+    color: green !important;
   }
-  /* Remove backgrounds from cards if they are part of printable content */
-  .printable-content .bg-card, .printable-content .bg-muted\/30 {
-    background-color: transparent !important;
+
+
+  /* Watermark styles */
+  body::after { /* Apply watermark to body for print */
+    content: attr(data-watermark-text); /* Will be set via JS */
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-35deg);
+    font-size: 5rem; /* Adjust size as needed */
+    color: rgba(128, 128, 128, 0.15); /* Light grey, semi-transparent */
+    font-weight: bold;
+    z-index: -1000; /* Behind content */
+    pointer-events: none;
+    text-align: center;
+    width: 100%;
+    white-space: nowrap; /* Prevent text wrapping */
+    opacity: 1; /* Ensure it's visible for print, transparency is in color */
   }
 }
+
