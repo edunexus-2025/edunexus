@@ -6,10 +6,10 @@ import React, { useEffect, useState, useCallback } from 'react';
 import pb from '@/lib/pocketbase';
 import type { RecordModel } from 'pocketbase';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'; // Added Card & CardContent
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area'; // Added import
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { ArrowLeft, Settings, ListChecks, PlusCircle, BarChart3, Send, Edit } from 'lucide-react';
 import Link from 'next/link';
 import { Routes } from '@/lib/constants';
@@ -49,6 +49,7 @@ export default function TeacherTestPanelLayout({
     try {
       const record = await pb.collection('teacher_tests').getOne<TestDetailsLayout>(currentTestId, {
         fields: 'testName,teacherId', 
+        '$autoCancel': false, // Prevent auto-cancellation
       });
       if (record.teacherId !== currentTeacherId) {
         setError("You are not authorized to manage this test.");
