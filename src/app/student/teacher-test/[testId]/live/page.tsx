@@ -296,16 +296,16 @@ export default function StudentTakeTeacherTestLivePage() {
       teacher_name_cache: testDetails.expand?.teacherId?.name || 'Educator',
       score: pointsEarnedFromTest,
       max_score: maxScorePossible,
-      total_questions_in_test_cache: questions.length,
-      attempted_questions_count: attemptedCount,
-      correct_answers_count: correctCount,
-      incorrect_answers_count: attemptedCount - correctCount,
-      unattempted_questions_count: questions.length - attemptedCount,
+      total_questions: questions.length, // Corrected to match schema
+      attempted_questions: attemptedCount, // Corrected to match schema
+      correct_answers: correctCount, // Corrected to match schema
+      incorrect_answers: attemptedCount - correctCount, // Corrected to match schema
+      unattempted_questions: questions.length - attemptedCount, // Corrected to match schema
       percentage: parseFloat(percentageScore.toFixed(2)),
       duration_taken_seconds: Math.max(0, durationTakenSecs),
       answers_log: JSON.stringify(answersLogForDb),
       status: finalTestStatusDbValue,
-      // plan_context: "Subscribed - Teacher Plan", // This was commented out
+      // plan_context: "Subscribed - Teacher Plan", // Kept commented out
       started_at: testStartTimeRef.current ? new Date(testStartTimeRef.current).toISOString() : new Date().toISOString(),
       submitted_at: new Date().toISOString(),
       marked_for_review_without_selecting_option: answersLogForDb.filter(a => a.markedForReview && !a.selectedOption).length,
