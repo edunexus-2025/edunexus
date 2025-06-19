@@ -15,7 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription as RadixAlertDialogDescription, AlertDialogFooter as RadixAlertDialogFooter, AlertDialogHeader as RadixAlertDialogHeader, AlertDialogTitle as RadixAlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Sheet, SheetContent, SheetHeader as ShadcnSheetHeader, SheetTitle as ShadcnSheetTitle, SheetDescription as ShadcnSheetDescription, SheetTrigger, SheetClose, SheetFooter as ShadcnSheetFooter } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
-import { AlertCircle, CheckCircle, ChevronLeft, ChevronRight, Clock, Flag, Image as ImageIconLucide, Loader2, Minimize, Send, XCircle, ArrowLeft as BackArrowIcon, Settings as SettingsIcon, Bookmark as BookmarkIconLucide, Check, PlusCircle, Info, ListOrdered, UserCircle as UserCircleIcon, CalendarDays, NotebookText, BarChart, PieChart as PieChartIcon, UserCheck, ListChecks, Eye, X as CloseIcon, MoreVertical, Menu, PanelRightOpen, KeyRound, Lock } from 'lucide-react';
+import { AlertCircle, CheckCircle, ChevronLeft, ChevronRight, Clock, Flag, Image as ImageIconLucide, Loader2, Minimize, Send, XCircle, ArrowLeft as BackArrowIcon, Settings as SettingsIcon, Bookmark as BookmarkIconLucide, Check, PlusCircle, Info, ListOrdered, UserCircle as UserCircleIcon, Menu, PanelRightOpen, KeyRound, Lock } from 'lucide-react';
 import NextImage from 'next/image';
 import 'katex/dist/katex.min.css';
 import { InlineMath, BlockMath } from 'react-katex';
@@ -47,61 +47,64 @@ interface TeacherTestDetailsRecord extends RecordModel {
       id: string;
       name: string;
     };
-    questions_edunexus?: FetchedQuestionRecord[];
-    questions_teachers?: FetchedQuestionRecord[];
   };
 }
 
-interface QuestionRecord {
+// Unified structure for displaying questions from any source
+interface DisplayQuestionRecord {
   id: string;
   displayQuestionText?: string;
   displayQuestionImageUrl?: string | null;
   displayOptions: { label: string; text?: string; imageUrl?: string | null }[];
-  displayCorrectOptionLabel: string;
+  displayCorrectOptionLabel: "A" | "B" | "C" | "D";
   displayExplanationText?: string;
   displayExplanationImageUrl?: string | null;
   marks?: number;
   subject?: string;
-  source: 'edunexus' | 'teacher';
   difficulty?: 'Easy' | 'Medium' | 'Hard';
+  // For debugging or special handling if needed
+  originalSourceCollection?: 'question_bank' | 'teacher_question_data';
+  rawRecord?: RecordModel; // Store the original record for debugging
 }
 
-interface FetchedQuestionRecord extends RecordModel {
-  id: string;
-  questionText?: string; // For question_bank
-  questionImage?: string | null; // Filename from question_bank
+
+interface FetchedQuestionSourceRecord extends RecordModel {
+  // Fields from question_bank
+  questionText?: string;
+  questionImage?: string | null; // filename
   optionAText?: string;
-  optionAImage?: string | null;
+  optionAImage?: string | null; // filename
   optionBText?: string;
-  optionBImage?: string | null;
+  optionBImage?: string | null; // filename
   optionCText?: string;
-  optionCImage?: string | null;
+  optionCImage?: string | null; // filename
   optionDText?: string;
-  optionDImage?: string | null;
-  correctOption?: "A" | "B" | "C" | "D"; // For question_bank
+  optionDImage?: string | null; // filename
+  correctOption?: "A" | "B" | "C" | "D";
   explanationText?: string;
-  explanationImage?: string | null;
+  explanationImage?: string | null; // filename
   difficulty?: 'Easy' | 'Medium' | 'Hard';
   marks?: number;
   subject?: string;
-  LessonName?: string; // For teacher_question_data, also from question_bank
-  QBExam?: string; // For teacher_question_data, also from question_bank
+  lessonName?: string; // from question_bank
+  QBExam?: string;     // from question_bank
 
-  QuestionText?: string; // From teacher_question_data
-  QuestionImage?: string | null; // URL from teacher_question_data
-  OptionAText?: string; // For teacher_question_data
+  // Fields from teacher_question_data (often start with uppercase)
+  QuestionText?: string;
+  QuestionImage?: string | null; // URL
+  OptionAText?: string;
   OptionAImage?: string | null; // URL
-  OptionBText?: string; // For teacher_question_data
+  OptionBText?: string;
   OptionBImage?: string | null; // URL
-  OptionCText?: string; // For teacher_question_data
+  OptionCText?: string;
   OptionCImage?: string | null; // URL
-  OptionDText?: string; // For teacher_question_data
+  OptionDText?: string;
   OptionDImage?: string | null; // URL
-  CorrectOption?: "Option A" | "Option B" | "Option C" | "Option D"; // For teacher_question_data
-  teacher?: string; // For teacher_question_data
-
-  collectionId?: string;
-  collectionName?: string;
+  CorrectOption?: "Option A" | "Option B" | "Option C" | "Option D"; // String like "Option A"
+  ExplanationText?: string; // from teacher_question_data
+  ExplanationImage?: string | null; // URL
+  LessonName?: string; // Relation ID in teacher_question_data, not the name itself
+  teacher?: string;
 }
 
 interface UserAnswer {
@@ -114,11 +117,11 @@ interface UserAnswer {
 
 const getPbFileUrl = (record: RecordModel | null | undefined, fieldName: string): string | null => {
   if (record && record[fieldName] && record.collectionId && record.collectionName && typeof record[fieldName] === 'string') {
-    if (record[fieldName]!.startsWith('http://') || record[fieldName]!.startsWith('https://')) {
-        return record[fieldName] as string;
+    if ((record[fieldName] as string).startsWith('http://') || (record[fieldName] as string).startsWith('https://')) {
+        return record[fieldName] as string; // Assume it's already a full URL
     }
     try { return pb.files.getUrl(record, record[fieldName] as string); }
-    catch (e) { console.warn(`Error getting URL for ${fieldName} in record ${record.id}:`, e); return null; }
+    catch (e) { console.warn(`Error getting PB file URL for ${fieldName} in record ${record.id}:`, e); return null; }
   }
   return null;
 };
@@ -130,18 +133,18 @@ const isValidHttpUrl = (string: string | null | undefined): string is string => 
 };
 
 const renderLatex = (text: string | undefined | null): React.ReactNode => {
-  if (!text) return null;
-  const parts = text.split(/(\$\$[\s\S]*?\$\$|\$.*?\$|\\\(.*?\\\)|\\\[.*?\\\]|\\begin\{.*?\}[\s\S]*?\\end\{.*?\})/g);
-  return parts.map((part, index) => {
-    try {
-      if (part.startsWith('$$') && part.endsWith('$$')) return <BlockMath key={index} math={part.substring(2, part.length - 2)} />;
-      if (part.startsWith('$') && part.endsWith('$')) return <InlineMath key={index} math={part.substring(1, part.length - 1)} />;
-      if (part.startsWith('\\(') && part.endsWith('\\)')) return <InlineMath key={index} math={part.substring(2, part.length - 2)} />;
-      if (part.startsWith('\\[') && part.endsWith('\\]')) return <BlockMath key={index} math={part.substring(2, part.length - 2)} />;
-      if (part.startsWith('\\begin{') && part.includes('\\end{')) return <BlockMath key={index} math={part} />;
-    } catch (e) { return <span key={index} className="text-destructive" title="LaTeX Error">{part}</span>; }
-    return <span key={index}>{part}</span>;
-  });
+    if (!text) return null;
+    const parts = text.split(/(\$\$[\s\S]*?\$\$|\$.*?\$|\\\(.*?\\\)|\\\[.*?\\\]|\\begin\{.*?\}[\s\S]*?\\end\{.*?\})/g);
+    return parts.map((part, index) => {
+      try {
+        if (part.startsWith('$$') && part.endsWith('$$')) return <BlockMath key={index} math={part.substring(2, part.length - 2)} />;
+        if (part.startsWith('$') && part.endsWith('$')) return <InlineMath key={index} math={part.substring(1, part.length - 1)} />;
+        if (part.startsWith('\\(') && part.endsWith('\\)')) return <InlineMath key={index} math={part.substring(2, part.length - 2)} />;
+        if (part.startsWith('\\[') && part.endsWith('\\]')) return <BlockMath key={index} math={part.substring(2, part.length - 2)} />;
+        if (part.startsWith('\\begin{') && part.includes('\\end{')) return <BlockMath key={index} math={part} />;
+      } catch (e) { return <span key={index} className="text-destructive" title="LaTeX Error">{part}</span>; }
+      return <span key={index}>{part}</span>;
+    });
 };
 
 export default function StudentTeacherTestLivePage() {
@@ -154,8 +157,7 @@ export default function StudentTeacherTestLivePage() {
 
   const [testDetails, setTestDetails] = useState<TeacherTestDetailsRecord | null>(null);
   const [teacherName, setTeacherName] = useState<string>('Educator');
-  const [instructionScreenQuestionCount, setInstructionScreenQuestionCount] = useState<number | null>(null);
-  const [questions, setQuestions] = useState<QuestionRecord[]>([]);
+  const [questions, setQuestions] = useState<DisplayQuestionRecord[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<Record<string, UserAnswer>>({});
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
@@ -184,13 +186,11 @@ export default function StudentTeacherTestLivePage() {
     if (isMountedGetter()) { setIsLoadingPageData(true); setError(null); }
 
     try {
-      console.log(`[LIVE_PAGE_FETCH] Fetching 'teacher_tests' (ID: ${testId}). User: ${user?.id}`);
       const fetchedTest = await pb.collection('teacher_tests').getOne<TeacherTestDetailsRecord>(testId, {
         fields: 'id,testName,status,Admin_Password,duration,teacherId,model,QBExam,questions_edunexus,questions_teachers,expand.teacherId.name', 
         expand: 'teacherId',
         '$autoCancel': false,
       });
-      console.log("[LIVE_PAGE_FETCH] Fetched teacher_tests record:", JSON.parse(JSON.stringify(fetchedTest)));
 
       if (!isMountedGetter()) return;
       
@@ -201,24 +201,13 @@ export default function StudentTeacherTestLivePage() {
       setTestDetails(fetchedTest); 
       setTeacherName(fetchedTest.expand?.teacherId?.name || 'Your Teacher');
       
-      const eduNexusIdsCount = Array.isArray(fetchedTest.questions_edunexus) ? fetchedTest.questions_edunexus.length : 0;
-      const teacherIdsCount = Array.isArray(fetchedTest.questions_teachers) ? fetchedTest.questions_teachers.length : 0;
-      const totalQuestionIdsFromRecord = eduNexusIdsCount + teacherIdsCount;
-      
-      setInstructionScreenQuestionCount(totalQuestionIdsFromRecord);
-      console.log(`[LIVE_PAGE_FETCH] Instruction screen question count set to: ${totalQuestionIdsFromRecord}. EduNexus IDs: ${eduNexusIdsCount}, Teacher IDs: ${teacherIdsCount}`);
-
       const pinRequired = fetchedTest.Admin_Password !== null && fetchedTest.Admin_Password !== undefined && String(fetchedTest.Admin_Password).trim() !== "";
       const pinSessionKey = `${TEST_PIN_SESSION_KEY_PREFIX}${testId}`;
       const pinIsVerifiedInSession = sessionStorage.getItem(pinSessionKey) === 'true';
 
       if (pinRequired && !pinIsVerifiedInSession) {
-        console.log("[LIVE_PAGE_FETCH] PIN required and not verified. Setting to 'pinEntry'.");
-        setTestSessionState('pinEntry');
-        setIsLoadingPageData(false); 
-        return; 
+        setTestSessionState('pinEntry'); setIsLoadingPageData(false); return; 
       }
-      console.log("[LIVE_PAGE_FETCH] No PIN or PIN verified. Setting to 'instructions'.");
       setTestSessionState('instructions');
       
     } catch (err: any) {
@@ -226,9 +215,7 @@ export default function StudentTeacherTestLivePage() {
         const clientError = err as PocketBaseClientResponseError;
         let errorMsg = `Could not load test details. Error: ${clientError.data?.message || clientError.message}.`;
         if (clientError.status === 404) errorMsg = "Test not found or not accessible. Please check the link or contact your teacher.";
-        console.error("[LIVE_PAGE_FETCH] Error fetching teacher_tests:", errorMsg, "Full error:", clientError);
-        setError(errorMsg);
-        setTestSessionState('terminated');
+        setError(errorMsg); setTestSessionState('terminated');
       }
     } finally {
       if (isMountedGetter()) setIsLoadingPageData(false);
@@ -242,71 +229,104 @@ export default function StudentTeacherTestLivePage() {
   }, [fetchTestDataAndDecideStage]);
 
   const loadQuestions = useCallback(async (isMountedGetter: () => boolean) => {
-    if (!testDetails) { if (isMountedGetter()) { setError("Test details missing, cannot load questions."); setIsLoadingPageData(false); setQuestions([]); } return; }
-    console.log("[LOAD_QUESTIONS_DEBUG] Starting loadQuestions. testDetails available.");
-
-    const eduNexusQuestionIds: string[] = Array.isArray(testDetails.questions_edunexus) ? testDetails.questions_edunexus.filter(id => typeof id === 'string' && id.trim() !== '') : [];
-    const teacherQuestionIds: string[] = Array.isArray(testDetails.questions_teachers) ? testDetails.questions_teachers.filter(id => typeof id === 'string' && id.trim() !== '') : [];
-
-    if (eduNexusQuestionIds.length === 0 && teacherQuestionIds.length === 0) {
-      if (isMountedGetter()) {
-        setError("No questions are associated with this test record in 'teacher_tests'. The teacher needs to add questions to this test.");
-        setQuestions([]); setIsLoadingPageData(false);
-      }
-      return;
-    }
+    if (!testDetails || !user?.id) { if (isMountedGetter()) { setError("Test details or user ID missing, cannot load questions."); setIsLoadingPageData(false); setQuestions([]); } return; }
     if (isMountedGetter()) setIsLoadingPageData(true);
+    
+    let combinedQuestionsList: DisplayQuestionRecord[] = [];
 
-    let combinedQuestions: QuestionRecord[] = [];
     try {
-      if (eduNexusQuestionIds.length > 0) {
-        const eduNexusFilter = eduNexusQuestionIds.map(id => `id = "${escapeForPbFilter(id)}"`).join(' || ');
-        const eduNexusRecords = await pb.collection('question_bank').getFullList<FetchedQuestionRecord>({ filter: eduNexusFilter, '$autoCancel': false });
-        eduNexusRecords.forEach(q => {
-          combinedQuestions.push({
-            id: q.id, displayQuestionText: q.questionText, displayQuestionImageUrl: getPbFileUrl(q, 'questionImage'),
-            displayOptions: [ { label: 'A', text: q.optionAText, imageUrl: getPbFileUrl(q, 'optionAImage') }, { label: 'B', text: q.optionBText, imageUrl: getPbFileUrl(q, 'optionBImage') }, { label: 'C', text: q.optionCText, imageUrl: getPbFileUrl(q, 'optionCImage') }, { label: 'D', text: q.optionDText, imageUrl: getPbFileUrl(q, 'optionDImage') } ],
-            displayCorrectOptionLabel: q.correctOption || "", displayExplanationText: q.explanationText, displayExplanationImageUrl: getPbFileUrl(q, 'explanationImage'),
-            marks: q.marks, subject: q.subject, source: 'edunexus', difficulty: q.difficulty,
-          });
-        });
-      }
-      if (!isMountedGetter()) return;
+        const eduNexusQuestionIds: string[] = testDetails.questions_edunexus || [];
+        if (eduNexusQuestionIds.length > 0) {
+            const filter = eduNexusQuestionIds.map(id => `id = "${escapeForPbFilter(id)}"`).join(' || ');
+            const records = await pb.collection('question_bank').getFullList<FetchedQuestionSourceRecord>({ filter, '$autoCancel': false });
+            records.forEach(q => {
+                combinedQuestionsList.push({
+                    id: q.id,
+                    displayQuestionText: q.questionText,
+                    displayQuestionImageUrl: getPbFileUrl(q, 'questionImage'),
+                    displayOptions: [
+                        { label: 'A', text: q.optionAText, imageUrl: getPbFileUrl(q, 'optionAImage') },
+                        { label: 'B', text: q.optionBText, imageUrl: getPbFileUrl(q, 'optionBImage') },
+                        { label: 'C', text: q.optionCText, imageUrl: getPbFileUrl(q, 'optionCImage') },
+                        { label: 'D', text: q.optionDText, imageUrl: getPbFileUrl(q, 'optionDImage') },
+                    ],
+                    displayCorrectOptionLabel: q.correctOption!,
+                    displayExplanationText: q.explanationText,
+                    displayExplanationImageUrl: getPbFileUrl(q, 'explanationImage'),
+                    marks: q.marks, subject: q.subject, difficulty: q.difficulty,
+                    originalSourceCollection: 'question_bank', rawRecord: q,
+                });
+            });
+        }
+        if (!isMountedGetter()) return;
 
-      if (teacherQuestionIds.length > 0) {
-        const teacherFilter = teacherQuestionIds.map(id => `id = "${escapeForPbFilter(id)}"`).join(' || ');
-        const teacherRecords = await pb.collection('teacher_question_data').getFullList<FetchedQuestionRecord>({ filter: teacherFilter, '$autoCancel': false });
-        teacherRecords.forEach(q => {
-           combinedQuestions.push({
-            id: q.id, displayQuestionText: q.QuestionText, displayQuestionImageUrl: q.QuestionImage, 
-            displayOptions: [ { label: 'A', text: q.OptionAText, imageUrl: q.OptionAImage }, { label: 'B', text: q.OptionBText, imageUrl: q.OptionBImage }, { label: 'C', text: q.OptionCText, imageUrl: q.OptionCImage }, { label: 'D', text: q.OptionDText, imageUrl: q.OptionDImage } ],
-            displayCorrectOptionLabel: q.CorrectOption?.replace("Option ", "") || "", displayExplanationText: q.explanationText, displayExplanationImageUrl: q.explanationImage, 
-            marks: q.marks, subject: q.subject || testDetails.QBExam, source: 'teacher', difficulty: q.difficulty,
-            LessonName: q.LessonName, 
-          });
+        const teacherQuestionIds: string[] = testDetails.questions_teachers || [];
+        if (teacherQuestionIds.length > 0) {
+            const filter = teacherQuestionIds.map(id => `id = "${escapeForPbFilter(id)}"`).join(' || ');
+            const records = await pb.collection('teacher_question_data').getFullList<FetchedQuestionSourceRecord>({ filter, '$autoCancel': false });
+            records.forEach(q => {
+                combinedQuestionsList.push({
+                    id: q.id,
+                    displayQuestionText: q.QuestionText,
+                    displayQuestionImageUrl: q.QuestionImage, // Direct URL
+                    displayOptions: [
+                        { label: 'A', text: q.OptionAText, imageUrl: q.OptionAImage },
+                        { label: 'B', text: q.OptionBText, imageUrl: q.OptionBImage },
+                        { label: 'C', text: q.OptionCText, imageUrl: q.OptionCImage },
+                        { label: 'D', text: q.OptionDText, imageUrl: q.OptionDImage },
+                    ],
+                    displayCorrectOptionLabel: q.CorrectOption!.replace("Option ", "") as "A" | "B" | "C" | "D",
+                    displayExplanationText: q.ExplanationText, // Use uppercase from teacher_question_data
+                    displayExplanationImageUrl: q.ExplanationImage, // Direct URL
+                    marks: q.marks, subject: q.subject || testDetails.QBExam, difficulty: q.difficulty,
+                    originalSourceCollection: 'teacher_question_data', rawRecord: q,
+                });
+            });
+        }
+        if (!isMountedGetter()) return;
+
+        // Reorder combinedQuestionsList based on the original order in teacher_tests
+        const orderedQuestions: DisplayQuestionRecord[] = [];
+        const originalOrder = [...(testDetails.questions_edunexus || []), ...(testDetails.questions_teachers || [])];
+        
+        originalOrder.forEach(id => {
+            const question = combinedQuestionsList.find(q => q.id === id);
+            if (question) {
+                orderedQuestions.push(question);
+            }
         });
-      }
-      
-      if (!isMountedGetter()) return;
-      if (combinedQuestions.length === 0 ) {
-        if (isMountedGetter()) { setError("No questions were loaded despite IDs being present. Check console or contact teacher."); setQuestions([]); }
-      } else {
-        setQuestions(combinedQuestions); 
-        const initialAnswers: Record<string, UserAnswer> = {};
-        combinedQuestions.forEach(q => { initialAnswers[q.id] = { questionId: q.id, selectedOption: null, isCorrect: null, markedForReview: false, timeSpentSeconds: 0 }; });
-        setUserAnswers(initialAnswers);
-      }
-    } catch (err: any) { if (isMountedGetter()) { const clientError = err as PocketBaseClientResponseError; console.error("[LOAD_QUESTIONS_DEBUG] Error loading questions:", clientError.data || clientError); setError(`Critical error loading question content: ${clientError.data?.message || clientError.message}.`); }}
-    finally { if (isMountedGetter()) setIsLoadingPageData(false); }
-  }, [testDetails, escapeForPbFilter]);
+        
+        if (isMountedGetter()) {
+            if (orderedQuestions.length === 0 && (eduNexusQuestionIds.length > 0 || teacherQuestionIds.length > 0)) {
+                setError("No questions were loaded despite IDs being present in test. Check question collections or contact teacher.");
+                setQuestions([]);
+            } else if (orderedQuestions.length === 0) {
+                setError("No questions are linked to this test by the teacher.");
+                setQuestions([]);
+            } else {
+                setQuestions(orderedQuestions);
+                const initialAnswers: Record<string, UserAnswer> = {};
+                orderedQuestions.forEach(q => { initialAnswers[q.id] = { questionId: q.id, selectedOption: null, isCorrect: null, markedForReview: false, timeSpentSeconds: 0 }; });
+                setUserAnswers(initialAnswers);
+            }
+        }
+    } catch (err: any) {
+        if (isMountedGetter()) {
+            const clientError = err as PocketBaseClientResponseError;
+            setError(`Error loading question content: ${clientError.data?.message || clientError.message}.`);
+        }
+    } finally {
+        if (isMountedGetter()) setIsLoadingPageData(false);
+    }
+  }, [testDetails, user?.id, escapeForPbFilter]);
   
   useEffect(() => { 
     let isMounted = true;
-    if (testSessionState === 'inProgress') {
+    if (testSessionState === 'instructions' && questions.length === 0) { // Load questions when instructions are shown
         loadQuestions(() => isMounted);
     }
     return () => { isMounted = false; };
-  }, [testSessionState, loadQuestions]);
+  }, [testSessionState, loadQuestions, questions.length]);
 
   const handleSubmitTest = useCallback(async (autoSubmit = false, terminationReason?: string) => {
     if (!user || !testDetails || !testDetails.teacherId || isSubmittingTest || testSessionState === 'completed' || testSessionState === 'terminated') { return; }
@@ -330,26 +350,14 @@ export default function StudentTeacherTestLivePage() {
     const durationTakenSecs = testDetails?.duration ? parseInt(testDetails.duration, 10) * 60 - (timeLeft || 0) : 0;
     
     const resultDataToSave: Partial<TeacherTestAttempt> = {
-      student: user.id, 
-      teacher_test: testDetails.id, 
-      teacher: testDetails.teacherId, 
-      test_name_cache: testDetails.testName,
-      score: pointsEarnedFromTest, 
-      max_score: maxScorePossible,
-      percentage: parseFloat(percentage.toFixed(2)), 
-      status: finalTestStatus,
-      start_time: new Date(Date.now() - durationTakenSecs * 1000).toISOString(),
-      end_time: new Date().toISOString(),
-      duration_taken_seconds: durationTakenSecs, 
-      answers_log: JSON.stringify(answersLogForDb),
-      total_questions_in_test_cache: questions.length, 
-      attempted_questions_count: attemptedCount,
-      correct_answers_count: correctCount, 
-      incorrect_answers_count: attemptedCount - correctCount,
+      student: user.id, teacher_test: testDetails.id, teacher: testDetails.teacherId, test_name_cache: testDetails.testName,
+      score: pointsEarnedFromTest, max_score: maxScorePossible, percentage: parseFloat(percentage.toFixed(2)), status: finalTestStatus,
+      start_time: new Date(Date.now() - durationTakenSecs * 1000).toISOString(), end_time: new Date().toISOString(),
+      duration_taken_seconds: durationTakenSecs, answers_log: JSON.stringify(answersLogForDb),
+      total_questions_in_test_cache: questions.length, attempted_questions_count: attemptedCount,
+      correct_answers_count: correctCount, incorrect_answers_count: attemptedCount - correctCount,
       unattempted_questions_count: questions.length - attemptedCount,
     };
-
-    console.log("Submitting teacher test attempt with data:", JSON.stringify(resultDataToSave, null, 2));
 
     try {
       const createdResultRecord = await pb.collection('teacher_test_attempts').create(resultDataToSave);
@@ -359,13 +367,9 @@ export default function StudentTeacherTestLivePage() {
     } catch (err: any) { 
         console.error("Failed to submit teacher test results:", err.data || err.message, "Full Error:", err); 
         let errorMessage = "Could not save results.";
-        if (err.data && err.data.data) {
-          errorMessage += " Details: " + JSON.stringify(err.data.data);
-        } else if (err.data && err.data.message) {
-          errorMessage += " " + err.data.message;
-        } else if (err.message) {
-          errorMessage += " " + err.message;
-        }
+        if (err.data && err.data.data) { errorMessage += " Details: " + JSON.stringify(err.data.data); } 
+        else if (err.data && err.data.message) { errorMessage += " " + err.data.message; } 
+        else if (err.message) { errorMessage += " " + err.message; }
         toast({ title: "Submission Failed", description: errorMessage, variant: "destructive", duration: 9000 }); 
     }
     finally { setIsSubmittingTest(false); }
@@ -390,8 +394,7 @@ export default function StudentTeacherTestLivePage() {
       sessionStorage.setItem(`${TEST_PIN_SESSION_KEY_PREFIX}${testId}`, 'true');
       setTestSessionState('instructions');
     } else {
-      setPinError("Invalid PIN. Please try again.");
-      toast({ title: "Incorrect PIN", variant: "destructive" });
+      setPinError("Invalid PIN. Please try again."); toast({ title: "Incorrect PIN", variant: "destructive" });
     }
     setIsVerifyingPin(false);
   };
@@ -401,6 +404,7 @@ export default function StudentTeacherTestLivePage() {
     const durationMinutes = parseInt(testDetails.duration || "0", 10);
     setTimeLeft(isNaN(durationMinutes) || durationMinutes <=0 ? 3600 : durationMinutes * 60); 
     setTestSessionState('inProgress'); 
+    questionStartTimeRef.current = Date.now();
   };
   
   const handleOptionChange = (value: string) => { if (testSessionState !== 'inProgress' || !currentQuestion) return; setUserAnswers(prev => ({ ...prev, [currentQuestion.id]: { ...(prev[currentQuestion.id] || { questionId: currentQuestion.id, timeSpentSeconds: 0, markedForReview: false }), selectedOption: value, isCorrect: null, }})); };
@@ -422,92 +426,48 @@ export default function StudentTeacherTestLivePage() {
   const formatTime = (seconds: number | null): string => { if (seconds === null || seconds < 0) seconds = 0; const h = Math.floor(seconds / 3600); const m = Math.floor((seconds % 3600) / 60); const s = seconds % 60; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`; };
   const getQuestionStatusForPalette = (questionId: string): 'answered' | 'notAnswered' | 'markedForReview' | 'markedAndAnswered' | 'notVisited' => { const answer = userAnswers[questionId]; if (!answer || (answer.selectedOption === null && !answer.markedForReview)) return 'notVisited'; if (answer.selectedOption) { return answer.markedForReview ? 'markedAndAnswered' : 'answered'; } else { return answer.markedForReview ? 'markedForReview' : 'notAnswered'; }};
   const questionPaletteButtonClass = (status: ReturnType<typeof getQuestionStatusForPalette>, isActive: boolean) => { if (isActive) return "bg-primary text-primary-foreground border-primary ring-2 ring-offset-1 ring-primary"; switch (status) { case 'answered': return "bg-green-500 hover:bg-green-600 text-white border-green-500"; case 'notAnswered': return "bg-red-500 hover:bg-red-600 text-white border-red-500"; case 'markedForReview': return "bg-purple-500 hover:bg-purple-600 text-white border-purple-500"; case 'markedAndAnswered': return "bg-orange-500 hover:bg-orange-600 text-white border-orange-500"; case 'notVisited': default: return "bg-card hover:bg-muted/80 text-muted-foreground border-border"; }};
-  const renderOption = (optionKey: "A" | "B" | "C" | "D"): React.ReactNode => { if(!currentQuestion) return null; const textKey = `Option${optionKey}Text` as keyof QuestionRecord; const imageKey = `Option${optionKey}Image` as keyof QuestionRecord; const optionText = currentQuestion[textKey]; const imageUrl = currentQuestion[imageKey] as string | null; const optionValue = `Option ${optionKey}`; return ( <Label htmlFor={`option-${currentQuestion.id}-${optionKey}`} className={cn("flex items-start space-x-3 rounded-lg border p-3 cursor-pointer transition-all hover:shadow-md", userAnswers[currentQuestion.id]?.selectedOption === optionValue ? 'bg-primary/10 border-primary ring-1 ring-primary' : 'bg-card border-border hover:border-primary/50')}> <RadioGroupItem value={optionValue} id={`option-${currentQuestion.id}-${optionKey}`} className="mt-1 border-muted-foreground data-[state=checked]:border-primary shrink-0" /> <div className="flex-1 text-sm"> <div className="font-semibold">{optionKey}.</div> {optionText && <div className="prose prose-sm dark:prose-invert max-w-none mt-0.5">{renderLatex(optionText as string)}</div>} {imageUrl && isValidHttpUrl(imageUrl) && (<div className="mt-1.5"><NextImage src={imageUrl} alt={`Option ${optionKey}`} width={200} height={100} className="rounded object-contain border" data-ai-hint="option diagram"/></div>)} {!(optionText || imageUrl) && <p className="text-muted-foreground italic">Option {optionKey} content not available.</p>} </div> </Label> ); };
   
-  const QuestionPaletteContent = () => (
-    <>
-      <Card className="shadow-none border-0 md:border md:shadow-sm md:rounded-lg md:bg-card">
-        <CardHeader className="p-3 border-b text-center">
-          <UserCircleIcon className="mx-auto h-10 w-10 text-primary mb-1" />
-          <CardTitle className="text-base">{user?.name || "Student"}</CardTitle>
-          <CardDescription className="text-xs truncate">{user?.email}</CardDescription>
-          <CardDescription className="text-xs">{todayDate}</CardDescription>
-        </CardHeader>
-      </Card>
-      <Card className="border-primary/30 bg-primary/5 flex-1 flex flex-col min-h-0 shadow-md rounded-lg md:mt-3">
-        <CardHeader className="p-2 text-center border-b border-primary/20">
-          <CardTitle className="text-sm text-primary">QUESTION NAVIGATION</CardTitle>
-        </CardHeader>
-        <CardContent className="p-2 flex-1 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="grid grid-cols-5 sm:grid-cols-4 gap-1.5 p-1">
-              {questions.map((q, index) => {
-                const status = getQuestionStatusForPalette(q.id);
-                const isActive = currentQuestionIndex === index;
-                return (
-                  <Button
-                    key={q.id}
-                    variant="outline"
-                    size="icon"
-                    className={cn(
-                      "h-8 w-full text-xs rounded-md aspect-square",
-                      questionPaletteButtonClass(status, isActive)
-                    )}
-                    onClick={() => {
-                      navigateQuestion(index);
-                      if (isMobileSheetOpen) setIsMobileSheetOpen(false);
-                    }}
-                    disabled={testSessionState !== 'inProgress'}
-                    aria-label={`Go to question ${index + 1}, Status: ${(status || 'Not Visited').replace(/([A-Z])/g, ' $1')}`}
-                  >
-                    {index + 1}
-                    {status === 'markedAndAnswered' && <Check className="absolute h-2.5 w-2.5 bottom-0.5 right-0.5 text-white" />}
-                  </Button>
-                );
-              })}
+  const renderOption = (optionKey: "A" | "B" | "C" | "D"): React.ReactNode => {
+    if (!currentQuestion) return null;
+    const optionData = currentQuestion.displayOptions.find(opt => opt.label === optionKey);
+    const optionValue = `Option ${optionKey}`;
+    return (
+        <Label htmlFor={`option-${currentQuestion.id}-${optionKey}`}
+               className={cn(
+                   "flex items-start space-x-3 rounded-lg border p-3 cursor-pointer transition-all hover:shadow-md",
+                   userAnswers[currentQuestion.id]?.selectedOption === optionValue
+                       ? 'bg-primary/10 border-primary ring-1 ring-primary'
+                       : 'bg-card border-border hover:border-primary/50'
+               )}>
+            <RadioGroupItem value={optionValue} id={`option-${currentQuestion.id}-${optionKey}`}
+                            className="mt-1 border-muted-foreground data-[state=checked]:border-primary shrink-0"/>
+            <div className="flex-1 text-sm">
+                <div className="font-semibold">{optionKey}.</div>
+                {optionData?.text && (
+                    <div className="prose prose-sm dark:prose-invert max-w-none mt-0.5">
+                        {renderLatex(optionData.text)}
+                    </div>
+                )}
+                {optionData?.imageUrl && isValidHttpUrl(optionData.imageUrl) && (
+                    <div className="mt-1.5">
+                        <NextImage src={optionData.imageUrl} alt={`Option ${optionKey}`} width={200} height={100}
+                                   className="rounded object-contain border" data-ai-hint="option diagram"/>
+                    </div>
+                )}
+                {!(optionData?.text || optionData?.imageUrl) && (
+                    <p className="text-muted-foreground italic">Option {optionKey} content not available.</p>
+                )}
             </div>
-          </ScrollArea>
-        </CardContent>
-      </Card>
-      <div className="p-3 border-t bg-card md:bg-transparent rounded-b-lg md:shadow-md mt-auto md:mt-3">
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant="destructive"
-              className="w-full text-sm py-2.5"
-              disabled={testSessionState !== 'inProgress' || isSubmittingTest}
-            >
-              <CloseIcon className="mr-1.5 h-4 w-4" /> Submit Test
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <RadixAlertDialogHeader>
-              <RadixAlertDialogTitle>Confirm Submission</RadixAlertDialogTitle>
-              <RadixAlertDialogDescription>
-                Are you sure you want to submit your test?
-              </RadixAlertDialogDescription>
-            </RadixAlertDialogHeader>
-            <RadixAlertDialogFooter>
-              <AlertDialogCancel disabled={isSubmittingTest}>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => handleSubmitTest(false, 'manual')}
-                disabled={isSubmittingTest}
-              >
-                {isSubmittingTest && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Yes, Submit
-              </AlertDialogAction>
-            </RadixAlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-    </>
-  );
+        </Label>
+    );
+  };
 
-  // Main render logic after loading and error checks
+  const QuestionPaletteContent = () => ( <> <Card className="shadow-none border-0 md:border md:shadow-sm md:rounded-lg md:bg-card"> <CardHeader className="p-3 border-b text-center"> <UserCircleIcon className="mx-auto h-10 w-10 text-primary mb-1" /> <CardTitle className="text-base">{user?.name || "Student"}</CardTitle> <CardDescription className="text-xs truncate">{user?.email}</CardDescription> <CardDescription className="text-xs">{todayDate}</CardDescription> </CardHeader> </Card> <Card className="border-primary/30 bg-primary/5 flex-1 flex flex-col min-h-0 shadow-md rounded-lg md:mt-3"> <CardHeader className="p-2 text-center border-b border-primary/20"><CardTitle className="text-sm text-primary">QUESTION NAVIGATION</CardTitle></CardHeader> <CardContent className="p-2 flex-1 overflow-hidden"><ScrollArea className="h-full"><div className="grid grid-cols-5 sm:grid-cols-4 gap-1.5 p-1">{questions.map((q, index) => { const status = getQuestionStatusForPalette(q.id); const isActive = currentQuestionIndex === index; return ( <Button key={q.id} variant="outline" size="icon" className={cn("h-8 w-full text-xs rounded-md aspect-square", questionPaletteButtonClass(status, isActive))} onClick={() => { navigateQuestion(index); if(isMobileSheetOpen) setIsMobileSheetOpen(false); }} disabled={testSessionState !== 'inProgress'}>{index + 1}{userAnswers[q.id]?.markedForReview && userAnswers[q.id]?.selectedOption && <Check className="absolute h-2.5 w-2.5 bottom-0.5 right-0.5 text-white" />}</Button> ); })}</div></ScrollArea></CardContent> </Card> <div className="p-3 border-t bg-card md:bg-transparent rounded-b-lg md:shadow-md mt-auto md:mt-3"> <AlertDialog><AlertDialogTrigger asChild><Button variant="destructive" className="w-full text-sm py-2.5" disabled={testSessionState !== 'inProgress' || isSubmittingTest}><Send className="mr-1.5 h-4 w-4" /> Submit Test</Button></AlertDialogTrigger><AlertDialogContent><RadixAlertDialogHeader><RadixAlertDialogTitle>Confirm Submission</RadixAlertDialogTitle><RadixAlertDialogDescription>Are you sure you want to submit your test?</RadixAlertDialogDescription></RadixAlertDialogHeader><RadixAlertDialogFooter><AlertDialogCancel disabled={isSubmittingTest}>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleSubmitTest(false, 'manual')} disabled={isSubmittingTest}>{isSubmittingTest && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Yes, Submit</AlertDialogAction></RadixAlertDialogFooter></AlertDialogContent></AlertDialog></div> </> );
+
   if (isLoadingPageData || isAuthLoading || testSessionState === 'initialLoading') { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-4 text-white"> <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" /> <p className="text-lg">Loading test environment...</p> </div> ); }
   if (error) { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-4 text-white"> <Card className="w-full max-w-lg text-center shadow-xl bg-background text-foreground"> <CardHeader> <AlertCircle className="mx-auto h-12 w-12 text-destructive" /> <CardTitle className="text-destructive">Error Loading Test</CardTitle> </CardHeader> <CardContent><p className="text-muted-foreground whitespace-pre-wrap">{error}</p></CardContent> <CardFooter><Button onClick={() => router.back()} variant="outline" className="w-full">Go Back</Button></CardFooter> </Card> </div> ); }
   if (testSessionState === 'pinEntry') { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/80 p-4"> <Card className="w-full max-w-sm shadow-xl bg-card text-foreground"> <CardHeader><CardTitle className="text-xl flex items-center gap-2"><KeyRound className="text-primary"/>Enter Test PIN</CardTitle><CardDescription>This test by {teacherName} requires a PIN.</CardDescription></CardHeader> <CardContent className="space-y-4"> <Input type="password" placeholder="Enter PIN" value={enteredPin} onChange={(e) => setEnteredPin(e.target.value)} className="text-center text-lg tracking-widest" maxLength={6} autoFocus/> {pinError && <p className="text-sm text-destructive text-center">{pinError}</p>} </CardContent> <CardFooter className="flex-col gap-2"> <Button onClick={handlePinVerify} className="w-full" disabled={isVerifyingPin || enteredPin.length < 4}> {isVerifyingPin && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>} Verify PIN & Continue </Button> <Button variant="ghost" size="sm" onClick={() => router.back()} className="text-xs text-muted-foreground">Cancel & Go Back</Button> </CardFooter> </Card> </div> ); }
-  if (testSessionState === 'instructions') { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/80 p-4"> <Card className="w-full max-w-2xl shadow-xl bg-card text-foreground"> <CardHeader><CardTitle className="text-2xl">Test Instructions: {testDetails?.testName}</CardTitle><CardDescription>From: {teacherName}. Total Questions: {instructionScreenQuestionCount ?? 'N/A'}</CardDescription></CardHeader> <CardContent className="max-h-[60vh] overflow-y-auto prose prose-sm dark:prose-invert"> <p>Duration: {testDetails?.duration || 'N/A'} minutes</p><h4>General Instructions:</h4><ol><li>The clock will be set at the server. The countdown timer in the top right corner of screen will display the remaining time.</li><li>When the timer reaches zero, the examination will end by itself.</li><li>The Question Palette on the right shows question status.</li></ol> </CardContent> <CardFooter className="justify-center"> <Button onClick={handleStartTestAfterInstructions} size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">I'm Ready, Start Test!</Button> </CardFooter> </Card> </div> ); }
+  if (testSessionState === 'instructions') { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/80 p-4"> <Card className="w-full max-w-2xl shadow-xl bg-card text-foreground"> <CardHeader><CardTitle className="text-2xl">Test Instructions: {testDetails?.testName}</CardTitle><CardDescription>From: {teacherName}. Total Questions: {questions.length}</CardDescription></CardHeader> <CardContent className="max-h-[60vh] overflow-y-auto prose prose-sm dark:prose-invert"> <p>Duration: {testDetails?.duration || 'N/A'} minutes</p><h4>General Instructions:</h4><ol><li>The clock will be set at the server. The countdown timer in the top right corner of screen will display the remaining time.</li><li>When the timer reaches zero, the examination will end by itself.</li><li>The Question Palette on the right shows question status.</li></ol> </CardContent> <CardFooter className="justify-center"> <Button onClick={handleStartTestAfterInstructions} size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">I'm Ready, Start Test!</Button> </CardFooter> </Card> </div> ); }
   if (testSessionState === 'completed' || testSessionState === 'terminated') { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-4 text-white"> <Card className="w-full max-w-lg text-center shadow-xl bg-background text-foreground"> <CardHeader> {testSessionState === 'completed' ? <CheckCircle className="mx-auto h-12 w-12 text-green-500" /> : <XCircle className="mx-auto h-12 w-12 text-destructive" />} <CardTitle>{testSessionState === 'completed' ? "Test Completed" : "Test Terminated"}</CardTitle> </CardHeader> <CardContent><p className="text-muted-foreground">{testSessionState === 'completed' ? "Your responses have been submitted." : "This test session has been terminated."}</p></CardContent> <CardFooter> <Button onClick={() => { if (window.opener && !window.opener.closed) window.close(); else router.push(Routes.dashboard);}} className="w-full"> Close Window / Back to Dashboard </Button> </CardFooter> </Card> </div> ); }
   if (!currentQuestion && !isLoadingPageData && testSessionState === 'inProgress') { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-4 text-white"> <Card className="w-full max-w-lg text-center shadow-xl bg-background text-foreground"> <CardHeader> <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground" /> <CardTitle>No Questions</CardTitle> </CardHeader> <CardContent><p className="text-muted-foreground whitespace-pre-wrap">No questions loaded for this test, or you've finished. If this is unexpected, please contact your teacher. Error: {error}</p></CardContent> <CardFooter><Button onClick={() => handleSubmitTest(false, 'no_questions_or_finished')} variant="outline" className="w-full">Submit & End Test</Button></CardFooter> </Card> </div> );}
   
@@ -530,29 +490,17 @@ export default function StudentTeacherTestLivePage() {
               SUBJECT: {currentQuestion?.subject || testDetails?.QBExam || 'N/A'}
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
-                <Sheet open={isMobileSheetOpen} onOpenChange={setIsMobileSheetOpen}>
-                    <SheetTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary h-7 w-7 md:hidden" aria-label="Open Question Navigation"><ListOrdered className="h-5 w-5" /></Button>
-                    </SheetTrigger>
-                    <SheetContent side="right" className="w-3/4 p-0 flex flex-col">
-                        <ShadcnSheetHeader className="p-3 border-b text-center">
-                            <ShadcnSheetTitle className="text-lg">Navigation</ShadcnSheetTitle>
-                            <ShadcnSheetDescription>Jump to any question or submit.</ShadcnSheetDescription>
-                        </ShadcnSheetHeader>
-                        <QuestionPaletteContent />
-                    </SheetContent>
-                </Sheet>
+                <Sheet open={isMobileSheetOpen} onOpenChange={setIsMobileSheetOpen}><SheetTrigger asChild><Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary h-7 w-7 md:hidden" aria-label="Open Question Navigation"><ListOrdered className="h-5 w-5" /></Button></SheetTrigger><SheetContent side="right" className="w-3/4 p-0 flex flex-col"><ShadcnSheetHeader className="p-3 border-b text-center"><ShadcnSheetTitle className="text-lg">Navigation</ShadcnSheetTitle><ShadcnSheetDescription>Jump to any question or submit.</ShadcnSheetDescription></ShadcnSheetHeader><QuestionPaletteContent /></SheetContent></Sheet>
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary h-7 w-7 hidden md:inline-flex" onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} aria-label={isRightSidebarOpen ? "Hide Question Panel" : "Show Question Panel"}><Menu className="h-5 w-5" /></Button>
-                {/* Instructions link might be redundant now since instructions are shown before test starts */}
-                {/* <Button variant="ghost" size="icon" asChild className="text-muted-foreground hover:text-primary h-7 w-7"><Link href={Routes.studentTestInstructions(testId as string)} target="_blank"><Info className="h-4 w-4" /></Link></Button> */}
+                <Button variant="ghost" size="icon" asChild className="text-muted-foreground hover:text-primary h-7 w-7"><Link href={Routes.studentTestInstructions(testId as string)} target="_blank"><Info className="h-4 w-4" /></Link></Button>
             </div>
         </div>
       </div>
       <div className={cn("flex-1 flex max-w-full p-2 sm:p-4 gap-2 sm:gap-4 overflow-hidden")}>
         <Card className="flex-1 flex flex-col bg-card shadow-xl rounded-lg border border-border overflow-hidden">
-            <CardHeader className="p-3 sm:p-4 border-b border-border bg-muted/30"><div className="flex justify-between items-center"><p className="text-xs sm:text-sm font-medium text-muted-foreground">Question {currentQuestionIndex + 1} of {questions.length}</p><div className="flex items-center gap-1">{currentQuestion.difficulty && <Badge variant={currentQuestion.difficulty === 'Easy' ? 'secondary' : currentQuestion.difficulty === 'Medium' ? 'default' : 'destructive'} className="text-xs px-1.5 py-0.5">{currentQuestion.difficulty}</Badge>}{currentQuestion.marks && <Badge variant="outline" className="text-xs px-1.5 py-0.5">Marks: {currentQuestion.marks}</Badge>}</div></div></CardHeader>
+            <CardHeader className="p-3 sm:p-4 border-b border-border bg-muted/30"><div className="flex justify-between items-center"><p className="text-xs sm:text-sm font-medium text-muted-foreground">Question {currentQuestionIndex + 1} of {questions.length}</p><div className="flex items-center gap-1">{currentQuestion?.difficulty && <Badge variant={currentQuestion.difficulty === 'Easy' ? 'secondary' : currentQuestion.difficulty === 'Medium' ? 'default' : 'destructive'} className="text-xs px-1.5 py-0.5">{currentQuestion.difficulty}</Badge>}{currentQuestion?.marks && <Badge variant="outline" className="text-xs px-1.5 py-0.5">Marks: {currentQuestion.marks}</Badge>}</div></div></CardHeader>
             <ScrollArea className="flex-1 min-h-0"><CardContent className="p-3 sm:p-4 md:p-6 space-y-4">
-                <div className="p-2 border-b border-border/50 rounded-md bg-background min-h-[80px]">{currentQuestion.QuestionText && (<div className="prose prose-sm dark:prose-invert max-w-none mb-3 text-foreground leading-relaxed">{renderLatex(currentQuestion.QuestionText)}</div>)}{currentQuestion.QuestionImage && isValidHttpUrl(currentQuestion.QuestionImage) && (<div className="my-2 text-center"><NextImage src={currentQuestion.QuestionImage} alt="Question Image" width={400} height={300} className="rounded object-contain inline-block border" data-ai-hint="question diagram"/></div>)}{!(currentQuestion.QuestionText || (currentQuestion.QuestionImage && isValidHttpUrl(currentQuestion.QuestionImage))) && (<p className="text-xs sm:text-sm text-muted-foreground italic py-3">Question content not provided.</p>)}</div>
+                <div className="p-2 border-b border-border/50 rounded-md bg-background min-h-[80px]">{currentQuestion.displayQuestionText && (<div className="prose prose-sm dark:prose-invert max-w-none mb-3 text-foreground leading-relaxed">{renderLatex(currentQuestion.displayQuestionText)}</div>)}{currentQuestion.displayQuestionImageUrl && isValidHttpUrl(currentQuestion.displayQuestionImageUrl) && (<div className="my-2 text-center"><NextImage src={currentQuestion.displayQuestionImageUrl} alt="Question Image" width={400} height={300} className="rounded object-contain inline-block border" data-ai-hint="question diagram"/></div>)}{!(currentQuestion.displayQuestionText || (currentQuestion.displayQuestionImageUrl && isValidHttpUrl(currentQuestion.displayQuestionImageUrl))) && (<p className="text-xs sm:text-sm text-muted-foreground italic py-3">Question content not provided.</p>)}</div>
                 <RadioGroup value={userAnswers[currentQuestion.id]?.selectedOption || ""} onValueChange={handleOptionChange} className="space-y-2.5" disabled={testSessionState !== 'inProgress'}>{renderOption("A")} {renderOption("B")} {renderOption("C")} {renderOption("D")}</RadioGroup>
             </CardContent></ScrollArea>
             <CardFooter className="p-3 sm:p-4 border-t border-border bg-muted/30 flex-wrap justify-center sm:justify-between gap-2"><Button variant="outline" size="sm" onClick={handleClearResponse} disabled={testSessionState !== 'inProgress' || !userAnswers[currentQuestion.id]?.selectedOption}>Clear Response</Button><Button variant={userAnswers[currentQuestion.id]?.markedForReview ? "secondary" : "outline"} size="sm" onClick={handleMarkForReview} disabled={testSessionState !== 'inProgress'} className="border-purple-500 text-purple-600 data-[state=active]:bg-purple-500/10 data-[state=active]:text-purple-700 hover:bg-purple-500/10"><Flag className="mr-1.5 h-4 w-4" /> {userAnswers[currentQuestion.id]?.markedForReview ? "Unmark Review" : "Mark for Review"}</Button><Button size="sm" onClick={handleSaveAndNext} disabled={testSessionState !== 'inProgress' || currentQuestionIndex === questions.length - 1} className="bg-green-600 hover:bg-green-700 text-white">Save & Next <ChevronRight className="ml-1.5 h-4 w-4" /></Button></CardFooter>
@@ -562,4 +510,5 @@ export default function StudentTeacherTestLivePage() {
     </div>
   );
 }
+
     
