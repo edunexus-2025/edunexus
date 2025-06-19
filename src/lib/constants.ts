@@ -1,8 +1,7 @@
-
 import type { Plan, UserSubscriptionTierStudent, UserSubscriptionTierTeacher } from '@/lib/types';
 
 export const AppConfig = {
-  appName: 'EduNexus',
+  appName: 'EduNexus', // Updated appName
 };
 
 // Define APP_BASE_URL with a client-side fallback
@@ -355,3 +354,5 @@ export const teacherPlatformPlansData: Plan[] = [
     customActivationLink: Routes.teacherUpgradeAds, // Special link for this plan
   },
 ];
+
+    

@@ -1,10 +1,9 @@
-
 'use client';
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { Routes, AppConfig } from '@/lib/constants'; 
+import { Routes, AppConfig } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Navbar } from '@/components/layout/Navbar';
@@ -146,7 +145,7 @@ export default function RootPageSwitcher() {
     }
   }, [user, teacher, collegeUser, isLoading, isLoadingTeacher, isLoadingCollegeUser, router]);
 
-  if (isLoading || isLoadingTeacher || isLoadingCollegeUser || user || teacher || collegeUser) { 
+  if (isLoading || isLoadingTeacher || isLoadingCollegeUser || user || teacher || collegeUser) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background">
         <div className="space-y-4 p-8 rounded-lg shadow-xl bg-card">

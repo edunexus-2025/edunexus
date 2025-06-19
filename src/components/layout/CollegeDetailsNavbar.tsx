@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -25,7 +24,7 @@ export function CollegeDetailsNavbar() {
           <GraduationCap className="h-7 w-7 text-primary" />
           <span className="text-xl font-bold text-primary">{AppConfig.appName} College Portal</span>
         </Link>
-        
+
         <div className="flex items-center gap-2">
           {isLoadingCollegeUser ? (
             <div className="h-9 w-20 animate-pulse rounded-md bg-muted"></div>

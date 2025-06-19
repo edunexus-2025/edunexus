@@ -1,6 +1,6 @@
-
 import { NextResponse } from 'next/server';
 import crypto from 'crypto'; // Node.js crypto module for SHA512
+import { AppConfig } from '@/lib/constants'; // Import AppConfig
 
 // These are read from .env (which should source from .env.local)
 const PAYU_FORM_KEY = process.env.NEXT_PUBLIC_PAYU_CLIENT_ID; // Public Client ID for form's 'key'
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     }
 
     const txnid = `EDUNEXUS_TEACHER_${teacherId.substring(0,5)}_${Date.now()}`;
-    const productinfo = `EduNexus Teacher Plan - ${planId}`;
+    const productinfo = `${AppConfig.appName} - The Online Test Platform Teacher Plan - ${planId}`; // Updated productinfo
     const firstname = teacherName.split(' ')[0] || 'Teacher'; // Ensure teacherName is not empty
     const email = teacherEmail;
     const phone = String(teacherPhone).replace(/\D/g, ''); // Clean phone number
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
       PAYU_CLIENT_SECRET_SERVER // Use server-side Client Secret (Salt) for hashing
     ];
     const hashString = hashStringParams.join('|');
-    
+
     console.log("--------------------------------------------------------------------");
     console.log("[PayU Initiate DEBUG] Preparing to hash for PayU request.");
     console.log("[PayU Initiate DEBUG] PAYU_FORM_KEY (for form 'key' - public Client ID):", PAYU_FORM_KEY ? `${PAYU_FORM_KEY.substring(0,3)}...` : "NOT SET!");
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
     console.log("[PayU Initiate DEBUG] UDF5 (sent as empty):", udf5);
     console.log("[PayU Initiate DEBUG] Full hashStringParams array (for HASH calculation - credentials masked):", JSON.stringify(hashStringParams.map((p,i) => (i === 0 || i === hashStringParams.length -1) ? (p ? '******' : 'EMPTY_OR_NOT_SET') : p)));
     console.log("[PayU Initiate DEBUG] Raw String to be Hashed (hashString - credentials masked):\n", hashString.replace(PAYU_HASH_KEY_SERVER!, "******KEY_FOR_HASH******").replace(PAYU_CLIENT_SECRET_SERVER!, "******SECRET_FOR_HASH******"));
-    
+
     const hash = crypto.createHash('sha512').update(hashString).digest('hex');
     console.log("[PayU Initiate DEBUG] Calculated SHA512 Hash:", hash);
     console.log("--------------------------------------------------------------------");
@@ -96,7 +96,7 @@ export async function POST(request: Request) {
       phone, // Cleaned phone number
       surl,
       furl,
-      hash, 
+      hash,
       udf1: udf1,
       udf2: udf2,
       udf3: udf3,
@@ -111,5 +111,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message || 'Failed to initiate payment.' }, { status: 500 });
   }
 }
-
-    

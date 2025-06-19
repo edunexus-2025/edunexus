@@ -1,4 +1,3 @@
-
 'use client'; // Moved to the top of the file
 
 import React, { useEffect, useState, Suspense } from 'react';
@@ -100,7 +99,7 @@ function ProfileCompletionFormComponent() {
   const onSubmit = async (values: CompleteProfileInput) => {
     if (!user) return;
     setIsSubmitting(true);
-    
+
     const dataToUpdate = {
       password: values.password,
       passwordConfirm: values.confirmPassword,
@@ -111,7 +110,7 @@ function ProfileCompletionFormComponent() {
       model: user.studentSubscriptionTier || 'Free',
       role: user.role || 'User',
       emailVisibility: user.emailVisibility === undefined ? true : user.emailVisibility,
-      verified: true, 
+      verified: true,
     };
 
     try {
@@ -119,9 +118,9 @@ function ProfileCompletionFormComponent() {
       if (success) {
         toast({
           title: 'Profile Completed!',
-          description: `Welcome to ${AppConfig.appName}, ${user.name}! Your profile is set up.`,
+          description: `Welcome to ${AppConfig.appName} - The Online Test Platform, ${user.name}! Your profile is set up.`,
         });
-        await authRefresh(); 
+        await authRefresh();
         const redirect = searchParams.get('redirect') || Routes.dashboard;
         router.replace(redirect);
       } else {
@@ -141,7 +140,7 @@ function ProfileCompletionFormComponent() {
       setIsSubmitting(false);
     }
   };
-  
+
   if (authLoading || !user) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-gradient-to-br from-primary/10 via-background to-secondary/10">
@@ -160,7 +159,7 @@ function ProfileCompletionFormComponent() {
           <UserCheck className="mx-auto h-12 w-12 text-primary mb-3" />
           <CardTitle className="text-2xl">Complete Your Profile</CardTitle>
           <CardDescription>
-            Welcome, {user.name}! Please fill in a few more details to get started with {AppConfig.appName}.
+            Welcome, {user.name}! Please fill in a few more details to get started with {AppConfig.appName} - The Online Test Platform.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -254,5 +253,3 @@ export default function CompleteProfilePage() {
     </Suspense>
   );
 }
-
-    

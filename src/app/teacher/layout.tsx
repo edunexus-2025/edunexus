@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Navbar } from "@/components/layout/Navbar";
@@ -25,7 +24,7 @@ export default function TeacherLayout({
     // On the server, and on the client's first render pass,
     // we assume the server *would* render the Navbar based on the error's diff.
     // This ensures the client's initial HTML matches the server's.
-    showNavbar = true; 
+    showNavbar = true;
   } else {
     // After hydration/mounting, on the client, use the actual pathname
     // to determine if the Navbar should be shown.
@@ -33,13 +32,13 @@ export default function TeacherLayout({
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background"> 
+    <div className="flex min-h-screen flex-col bg-background">
       {showNavbar && <Navbar />}
       <main className="flex-1 container mx-auto px-4 py-8">
         {children}
       </main>
       <footer className="py-6 text-center text-xs text-muted-foreground border-t">
-        © {new Date().getFullYear()} {AppConfig.appName} - Teacher Portal
+        © {new Date().getFullYear()} {AppConfig.appName} - The Online Test Platform - Teacher Portal
       </footer>
     </div>
   );

@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -14,7 +13,7 @@ import {
   SidebarMenuButton,
   SidebarGroup,
   SidebarGroupLabel,
-  useSidebar, 
+  useSidebar,
 } from '@/components/ui/sidebar';
 import {
   AlertDialog,
@@ -45,22 +44,22 @@ import {
   LogOut,
   User,
   LayoutDashboard,
-  ListPlus, 
-  FileEdit, 
+  ListPlus,
+  FileEdit,
   FileJson2,
-  FilePlus, 
+  FilePlus,
   Megaphone,
   TicketPercent,
-  BookOpen, 
-  Layers, 
+  BookOpen,
+  Layers,
   BookCopy,
-  GraduationCap, 
-  Database, 
-  ClipboardList, 
+  GraduationCap,
+  Database,
+  ClipboardList,
   FileSpreadsheet // Added FileSpreadsheet icon
 } from 'lucide-react';
 import { ThemeToggleButton } from './ThemeToggleButton';
-import { buttonVariants } from '../ui/button'; 
+import { buttonVariants } from '../ui/button';
 
 const adminNavGroups = [
   {
@@ -77,7 +76,7 @@ const adminNavGroups = [
     label: 'Content Creation',
     icon: <ClipboardList />,
     items: [
-      { href: Routes.adminQuestionBank, label: 'Add Question', icon: <ListPlus /> }, 
+      { href: Routes.adminQuestionBank, label: 'Add Question', icon: <ListPlus /> },
       { href: Routes.adminEditQuestion, label: 'Edit Questions', icon: <FileEdit /> },
       { href: Routes.adminAddQuestionJson, label: 'Add Questions (JSON)', icon: <FileJson2 /> },
       { href: Routes.adminCreateTest, label: 'Create Test', icon: <FilePlus /> },
@@ -85,7 +84,7 @@ const adminNavGroups = [
   },
   {
     label: 'Syllabus & Structure',
-    icon: <BookOpen />, 
+    icon: <BookOpen />,
     items: [
       { href: Routes.adminSyllabusOverview, label: 'Syllabus Overview', icon: <BookOpen /> },
       { href: Routes.adminContentStructure, label: 'Content Structure', icon: <Layers /> },
@@ -107,7 +106,7 @@ const adminNavGroups = [
 export function AdminSidebar() {
   const pathname = usePathname();
   const { user, logout, isLoading } = useAuth();
-  const { isMobile, setOpenMobile } = useSidebar(); 
+  const { isMobile, setOpenMobile } = useSidebar();
 
   const isActive = (href: string) => {
     if (!href) return false;
@@ -210,7 +209,7 @@ export function AdminSidebar() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Confirm Logout</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Do you really want to logout from {AppConfig.appName}?
+                    Do you really want to logout from {AppConfig.appName} - The Online Test Platform?
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

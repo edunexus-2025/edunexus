@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -14,7 +13,7 @@ import {
   SidebarMenuButton,
   SidebarGroup,
   SidebarGroupLabel,
-  useSidebar, 
+  useSidebar,
 } from '@/components/ui/sidebar';
 import {
   AlertDialog,
@@ -46,12 +45,12 @@ import {
   User,
   BarChart3,
   Bell,
-  XIcon, 
-  Users2, 
+  XIcon,
+  Users2,
   Megaphone,
-  DollarSign, 
-  MessagesSquare, 
-  Trophy, 
+  DollarSign,
+  MessagesSquare,
+  Trophy,
   Zap,
   Wallet,
   TicketPercent // Added TicketPercent for referrals
@@ -60,8 +59,8 @@ import { ThemeToggleButton } from './ThemeToggleButton';
 import { NotificationPopover } from './NotificationPopover';
 import type { NotificationMessage } from '@/lib/types';
 import { buttonVariants } from '../ui/button';
-import { Checkbox } from '@/components/ui/checkbox'; 
-import { Label } from '@/components/ui/label'; 
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '../ui/label';
 import { Button } from '@/components/ui/button';
 
 
@@ -77,7 +76,7 @@ const teacherNotificationsData: NotificationMessage[] = [
         id: 'teacher_2',
         title: 'Content Update Reminder',
         message: "Don't forget to upload new DPPs for Thermodynamics.",
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), 
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
     },
 ];
 
@@ -87,11 +86,11 @@ const teacherNavItems = [
   { href: Routes.teacherManagePlans, label: 'Manage Plans', icon: <DollarSign /> },
   { href: Routes.teacherManageReferrals, label: 'Manage Referrals', icon: <TicketPercent /> }, // New Item
   { href: Routes.teacherMyStudents, label: 'My Students', icon: <Users /> },
-  { href: Routes.teacherManageDiscussion, label: 'Manage Discussion', icon: <MessagesSquare /> }, 
+  { href: Routes.teacherManageDiscussion, label: 'Manage Discussion', icon: <MessagesSquare /> },
   { href: Routes.teacherStudentPerformance, label: 'Student Performance', icon: <BarChart3 /> },
   { href: Routes.teacherWallet, label: 'My Wallet', icon: <Wallet /> },
   { href: Routes.teacherCreateAds, label: 'Create Ads', icon: <Megaphone /> },
-  { href: Routes.teacherUpgradePlatformPlan, label: 'Upgrade Plan', icon: <Zap /> }, 
+  { href: Routes.teacherUpgradePlatformPlan, label: 'Upgrade Plan', icon: <Zap /> },
   { href: Routes.teacherSettings, label: 'Settings', icon: <Settings /> },
 ];
 
@@ -130,7 +129,7 @@ export function TeacherSidebar() {
     }
   };
 
-  const isActive = (href?: string) => { 
+  const isActive = (href?: string) => {
     if (!href) return false;
     if (href === Routes.teacherDashboard) return pathname === href;
     // For nested routes like /teacher/dashboard/my-content/[testId], check if pathname starts with the base
@@ -171,7 +170,7 @@ export function TeacherSidebar() {
           <SidebarGroupLabel>Teacher Tools</SidebarGroupLabel>
           <SidebarMenu>
             {teacherNavItems.map((item) => (
-              item.href ? ( 
+              item.href ? (
                 <SidebarMenuItem key={item.label}>
                   <Link href={item.href} passHref legacyBehavior>
                     <SidebarMenuButton
@@ -185,7 +184,7 @@ export function TeacherSidebar() {
                     </SidebarMenuButton>
                   </Link>
                 </SidebarMenuItem>
-              ) : null 
+              ) : null
             ))}
           </SidebarMenu>
         </SidebarGroup>
@@ -258,7 +257,7 @@ export function TeacherSidebar() {
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader><AlertDialogTitle>Confirm Logout</AlertDialogTitle><AlertDialogDescription>
-                    Do you really want to logout from {AppConfig.appName} (Teacher Portal)?
+                    Do you really want to logout from {AppConfig.appName} - The Online Test Platform (Teacher Portal)?
                 </AlertDialogDescription></AlertDialogHeader>
                 <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction onClick={() => { logout(); handleMobileNavClick(); }} className={buttonVariants({ variant: "destructive" })}>Logout</AlertDialogAction>

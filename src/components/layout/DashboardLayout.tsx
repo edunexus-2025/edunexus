@@ -1,4 +1,3 @@
-
 'use client';
 
 import { DashboardSidebar } from '@/components/layout/DashboardSidebar';
@@ -180,7 +179,7 @@ export default function DashboardLayout({
       </ProtectedRoute>
     );
   }
-  
+
   let SidebarComponent;
   if (teacher) {
     SidebarComponent = <TeacherSidebar />;
@@ -199,7 +198,7 @@ export default function DashboardLayout({
     <ProtectedRoute>
       <SidebarProvider defaultOpen={true}>
         {SidebarComponent}
-        
+
         <div className="flex flex-col flex-1">
           <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background px-4 md:hidden">
             <AppLogo mainTextSize="text-xl" taglineTextSize="text-[10px]" />

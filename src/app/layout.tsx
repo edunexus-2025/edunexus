@@ -1,11 +1,10 @@
-import type { Metadata } from 'next'; 
+import type { Metadata } from 'next';
 import { Geist } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { AppConfig } from '@/lib/constants';
 import { ThemeProvider } from 'next-themes';
-// useEffect is no longer needed for document.title
 import { NotificationPermissionManager } from '@/components/layout/NotificationPermissionManager';
 
 
@@ -16,11 +15,11 @@ const geist = Geist({
 
 // Set metadata for the application
 export const metadata: Metadata = {
-  title: AppConfig.appName,
-  description: `Prepare for MHT CET, JEE, NEET with ${AppConfig.appName} - Your ultimate test series and DPP companion.`,
+  title: `${AppConfig.appName} - The Online Test Platform`, // Updated title
+  description: `${AppConfig.appName}: The Online Test Platform for MHT CET, JEE, and NEET preparation. Access test series, DPPs, and AI-powered guidance.`, // Updated description
   icons: {
-    icon: '/edunexus-applogo.png', // Standard favicon
-    apple: '/edunexus-applogo.png', // Apple touch icon
+    icon: '/edunexus-applogo.png', 
+    apple: '/edunexus-applogo.png', 
   },
 };
 
@@ -29,15 +28,12 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  
-  // useEffect for document.title has been removed. 
-  // The title is now set via the metadata export above.
 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>{/* Ensure no leading whitespace */}
         {/* Favicon and Apple touch icon links are now handled by Next.js metadata.icons */}
-        
+
         {/* Razorpay Checkout Script */}
         <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 

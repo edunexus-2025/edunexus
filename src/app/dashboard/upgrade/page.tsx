@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -14,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import type { UserSubscriptionTierStudent, UserSubscriptionTierTeacher, User, Plan } from '@/lib/types';
 import pb from '@/lib/pocketbase';
 import type { RecordModel } from 'pocketbase';
-import { AppConfig, escapeForPbFilter, Routes, studentPlansData } from '@/lib/constants';
+import { AppConfig, Routes, studentPlansData, escapeForPbFilter } from '@/lib/constants';
 import { format, isPast } from 'date-fns'; // Import isPast
 
 declare global {
@@ -87,7 +86,7 @@ export default function UpgradePage() {
         setIsVerifyingPromo(false);
         return;
       }
-      
+
       setAppliedPromo(promoRecord);
       const validDiscountAmount = (promoRecord.discount !== null && promoRecord.discount !== undefined && !isNaN(Number(promoRecord.discount)))
                                   ? Number(promoRecord.discount)
@@ -194,7 +193,7 @@ export default function UpgradePage() {
     try {
       const orderResponse = await fetch('/api/razorpay/create-order', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: amountForApi, currency: 'INR', planId: plan.id, userId: user.id, userType: 'student_platform_plan', productDescription: `${AppConfig.appName} Plan - ${plan.name}` }),
+        body: JSON.stringify({ amount: amountForApi, currency: 'INR', planId: plan.id, userId: user.id, userType: 'student_platform_plan', productDescription: `${AppConfig.appName} - The Online Test Platform Plan - ${plan.name}` }),
       });
       const responseText = await orderResponse.text();
       if (!orderResponse.ok) {
@@ -204,7 +203,7 @@ export default function UpgradePage() {
       const order = JSON.parse(responseText);
 
       const options = {
-        key: razorpayKeyId, amount: order.amount, currency: order.currency, name: AppConfig.appName, description: `Upgrade to ${plan.name} Plan`, order_id: order.id,
+        key: razorpayKeyId, amount: order.amount, currency: order.currency, name: `${AppConfig.appName} - The Online Test Platform`, description: `Upgrade to ${plan.name} Plan`, order_id: order.id,
         handler: async (response: any) => {
           toast({ title: "Payment Initiated", description: "Verifying your payment..." });
           try {
@@ -230,7 +229,7 @@ export default function UpgradePage() {
           setProcessingPaymentForPlan(null);
         },
         prefill: { name: user.name || "", email: user.email || "", contact: user.phoneNumber || "" },
-        notes: { plan_id: plan.id, user_id: user.id, user_type: 'student_platform_plan', app_name: AppConfig.appName },
+        notes: { plan_id: plan.id, user_id: user.id, user_type: 'student_platform_plan', app_name: `${AppConfig.appName} - The Online Test Platform` },
         theme: { color: "#3F51B5" }, modal: { ondismiss: () => { toast({ title: "Payment Cancelled" }); setProcessingPaymentForPlan(null); } }
       };
       const rzp = new window.Razorpay(options);
@@ -253,7 +252,7 @@ export default function UpgradePage() {
           <ShoppingBag className="h-12 w-12 text-primary mb-3" />
           <CardTitle className="text-3xl md:text-4xl font-bold text-foreground">{AppConfig.appName} Subscription Plans</CardTitle>
           <CardDescription className="text-md md:text-lg text-muted-foreground max-w-xl">
-            Choose the perfect plan to supercharge your exam preparation.
+            Choose the perfect plan from The Online Test Platform to supercharge your exam preparation.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -263,7 +262,7 @@ export default function UpgradePage() {
           <CardTitle className="text-lg flex items-center gap-2"><Tag className="h-5 w-5 text-primary"/>Have a Promo Code?</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 items-start">
             <Input
               placeholder="Enter Code (e.g., GODWIN50)" value={promoCodeInput}
               onChange={(e) => { setPromoCodeInput(e.target.value.toUpperCase()); setPromoError(null); if(appliedPromo && e.target.value.toUpperCase() !== appliedPromo.refferal_name){ setAppliedPromo(null); setPromoExpiryCountdown(null);}}}

@@ -1,4 +1,3 @@
-
 import { NextResponse, NextRequest } from 'next/server';
 import Razorpay from 'razorpay';
 import { AppConfig, escapeForPbFilter } from '@/lib/constants';
@@ -14,7 +13,7 @@ if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
 }
 
 const instance = new Razorpay({
-  key_id: RAZORPAY_KEY_ID!, 
+  key_id: RAZORPAY_KEY_ID!,
   key_secret: RAZORPAY_KEY_SECRET!,
 });
 
@@ -51,15 +50,15 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    let { 
+    let {
       amount, // Expected in base currency unit (e.g., 500 for ₹500.00)
-      currency = 'INR', 
-      planId, 
-      userId, 
-      userType, 
+      currency = 'INR',
+      planId,
+      userId,
+      userType,
       teacherIdForPlan, // For 'student_teacher_plan': ID of the teacher whose plan is being bought
       referralCodeUsed, // For 'student_teacher_plan': Teacher's referral code
-      productDescription 
+      productDescription
     } = body;
 
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
@@ -79,7 +78,7 @@ export async function POST(request: NextRequest) {
       try {
         const filter = `teacher = "${escapeForPbFilter(teacherIdForPlan)}" && referral_code_string = "${escapeForPbFilter(referralCodeUsed.trim().toUpperCase())}" && (expiry_date = "" || expiry_date = null || expiry_date >= "${new Date().toISOString().split('T')[0]}")`;
         const promoRecord = await pb.collection('teacher_refferal_code').getFirstListItem<TeacherReferralCode>(filter);
-        
+
         if (promoRecord.applicable_plan_ids.includes(planId)) {
           const discountPercent = Number(promoRecord.discount_percentage);
           if (discountPercent > 0 && discountPercent <= 100) {
@@ -99,7 +98,7 @@ export async function POST(request: NextRequest) {
         }
       }
     }
-    
+
     finalAmount = Math.max(1, finalAmount); // Ensure amount is at least 1 (Razorpay minimum)
 
     const appPrefix = "ENX";
@@ -117,9 +116,10 @@ export async function POST(request: NextRequest) {
         planId: String(planId),
         userId: String(userId),
         userType: String(userType),
-        ...(teacherIdForPlan && { teacherIdForPlan: String(teacherIdForPlan) }), 
+        ...(teacherIdForPlan && { teacherIdForPlan: String(teacherIdForPlan) }),
         ...(appliedReferralCodeDetails && { referralCodeUsed: appliedReferralCodeDetails }), // Store applied code with discount
         productDescription: String(productDescription || `Payment for ${planId}`),
+        app_name: `${AppConfig.appName} - The Online Test Platform`, // Updated app_name in notes
       },
     };
 
@@ -137,4 +137,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
-    

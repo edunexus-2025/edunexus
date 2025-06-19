@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -125,7 +124,7 @@ export default function FeedbackPage() {
             <MessageSquareHeart className="mx-auto h-12 w-12 text-primary mb-3" />
             <CardTitle className="text-2xl">We Value Your Opinion!</CardTitle>
             <CardDescription>
-              Help us make {AppConfig.appName} better by sharing your thoughts, experiences, and suggestions.
+              Help us make {AppConfig.appName} - The Online Test Platform better by sharing your thoughts, experiences, and suggestions.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -149,7 +148,7 @@ export default function FeedbackPage() {
                   name="rating"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>How would you rate your overall experience with {AppConfig.appName}? *</FormLabel>
+                      <FormLabel>How would you rate your overall experience with {AppConfig.appName} - The Online Test Platform? *</FormLabel>
                       <Select onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)} value={field.value?.toString()}>
                         <FormControl>
                           <SelectTrigger className="bg-background">
@@ -227,4 +226,3 @@ export default function FeedbackPage() {
     </div>
   );
 }
-

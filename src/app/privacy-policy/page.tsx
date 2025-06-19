@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Navbar } from '@/components/layout/Navbar';
@@ -27,6 +26,8 @@ export default function PrivacyPolicyPage() {
                 <div>
                     <CardTitle className="text-2xl md:text-3xl">Privacy Policy</CardTitle>
                     <CardDescription>
+                      for {AppConfig.appName} - The Online Test Platform
+                      <br/>
                       {lastUpdatedDate ? `Last updated: ${lastUpdatedDate}` : 'Loading update date...'}
                     </CardDescription>
                 </div>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -38,7 +37,7 @@ export function SignupForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+
 
   const form = useForm<SignupInput>({
     resolver: zodResolver(SignupSchema),
@@ -63,9 +62,9 @@ export function SignupForm() {
 
   async function onSubmit(values: SignupInput) {
     setIsSubmitting(true);
-    
+
     try {
-      const success = await signup(values); 
+      const success = await signup(values);
       if (success) {
         toast({
           title: 'Signup Successful',
@@ -107,8 +106,8 @@ export function SignupForm() {
   return (
     <Card className="w-full max-w-md shadow-xl my-8">
       <CardHeader>
-        <CardTitle className="text-2xl">Create your ${AppConfig.appName} Account</CardTitle>
-        <CardDescription>Join us to start boosting your exam preparation today.</CardDescription>
+        <CardTitle className="text-2xl">Create your {AppConfig.appName} Account</CardTitle>
+        <CardDescription>Join us on The Online Test Platform to start boosting your exam preparation today.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -168,10 +167,10 @@ export function SignupForm() {
                 <FormItem>
                   <FormLabel>Phone Number (10 digits, e.g., 9876543210)</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="tel" 
-                      placeholder="e.g. 9876543210" 
-                      {...field} 
+                    <Input
+                      type="tel"
+                      placeholder="e.g. 9876543210"
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />

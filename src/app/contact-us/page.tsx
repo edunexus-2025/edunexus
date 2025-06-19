@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Navbar } from '@/components/layout/Navbar';
@@ -7,8 +6,8 @@ import { AppConfig, Routes } from '@/lib/constants';
 import { Mail, SendHorizonal, Phone } from 'lucide-react';
 import Link from 'next/link';
 
-const contactEmail = "edunexustestplatform@gmail.com"; 
-const telegramUsername = "EduNexus_Test"; 
+const contactEmail = "edunexustestplatform@gmail.com";
+const telegramUsername = "EduNexus_Test";
 
 export default function ContactUsPage() {
   return (
@@ -20,7 +19,7 @@ export default function ContactUsPage() {
             <Mail className="mx-auto h-12 w-12 text-primary mb-4" />
             <CardTitle className="text-3xl font-bold">Contact Us</CardTitle>
             <CardDescription className="text-lg text-muted-foreground">
-              We're here to help! Reach out to us with any questions or inquiries.
+              We're here to help! Reach out to us with any questions or inquiries regarding {AppConfig.appName} - The Online Test Platform.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-8 pt-6">
@@ -55,7 +54,7 @@ export default function ContactUsPage() {
             <div className="text-center text-muted-foreground text-sm pt-6 border-t">
               <p>We typically respond within 24-48 business hours.</p>
               <p>
-                Thank you for choosing {AppConfig.appName}!{' '}
+                Thank you for choosing {AppConfig.appName} - The Online Test Platform!{' '}
                 <Link href={Routes.ownerInfo} className="text-primary hover:underline font-medium">
                   [Owner]
                 </Link>
@@ -65,7 +64,7 @@ export default function ContactUsPage() {
         </Card>
       </main>
       <footer className="py-6 text-center text-xs text-muted-foreground border-t">
-        © {new Date().getFullYear()} {AppConfig.appName}
+        © {new Date().getFullYear()} {AppConfig.appName} - The Online Test Platform
       </footer>
     </div>
   );

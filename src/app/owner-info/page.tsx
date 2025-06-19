@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Navbar } from '@/components/layout/Navbar';
@@ -29,7 +28,7 @@ const OwnerInfoPage = () => {
               <UserCircle className="h-8 w-8 text-primary" />
               <div>
                 <CardTitle className="text-2xl md:text-3xl">Owner Information</CardTitle>
-                <CardDescription>Details about the owner and pricing of {AppConfig.appName}.</CardDescription>
+                <CardDescription>Details about the owner and pricing of {AppConfig.appName} - The Online Test Platform.</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -82,7 +81,7 @@ const OwnerInfoPage = () => {
         </Card>
       </main>
       <footer className="py-6 text-center text-xs text-muted-foreground border-t bg-background">
-        © {new Date().getFullYear()} {AppConfig.appName}
+        © {new Date().getFullYear()} {AppConfig.appName} - The Online Test Platform
       </footer>
     </div>
   );

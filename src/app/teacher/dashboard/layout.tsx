@@ -1,5 +1,4 @@
-
-'use client'; 
+'use client';
 
 import { TeacherSidebar } from '@/components/layout/TeacherSidebar';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
@@ -21,13 +20,13 @@ const initialTeacherNotifications: NotificationMessage[] = [
     id: 't_notif_1',
     title: 'New Student Joined!',
     message: 'Suresh Sharma has joined your JEE Physics batch.',
-    timestamp: new Date(Date.now() - 1000 * 60 * 30), 
+    timestamp: new Date(Date.now() - 1000 * 60 * 30),
   },
   {
     id: 't_notif_2',
     title: 'Content Update Reminder',
     message: "Don't forget to upload new DPPs for Thermodynamics.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), 
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
   },
 ];
 
@@ -66,8 +65,8 @@ export default function TeacherDashboardLayout({
   return (
     <TeacherProtectedRoute>
       <SidebarProvider defaultOpen={true}>
-        <TeacherSidebar /> 
-        
+        <TeacherSidebar />
+
         <div className="flex flex-col flex-1">
           <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background px-4 md:hidden">
             <AppLogo mainTextSize="text-xl" taglineTextSize="text-[10px]" />
@@ -87,7 +86,7 @@ export default function TeacherDashboardLayout({
             </div>
           </header>
 
-          <SidebarInset> 
+          <SidebarInset>
             {children}
           </SidebarInset>
         </div>

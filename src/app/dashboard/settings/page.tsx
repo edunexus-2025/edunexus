@@ -1,35 +1,34 @@
-
 'use client';
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThemeToggleButton } from "@/components/layout/ThemeToggleButton";
-import { useAuth } from "@/contexts/AuthContext";
-import { Routes, AppConfig } from "@/lib/constants";
+import { useAuth } from '@/contexts/AuthContext';
+import { Routes, AppConfig } from '@/lib/constants';
 import pb from '@/lib/pocketbase';
 import type { User, UserSubscriptionTierStudent, UserSubscriptionTierTeacher } from '@/lib/types';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import { 
-  ArrowLeft, 
-  UserCog, 
-  Lock, 
-  Mail, 
-  Palette, 
-  Bell, 
-  Globe, 
-  HelpCircle, 
-  MessageSquare, 
-  FileText, 
-  Shield, 
+import {
+  ArrowLeft,
+  UserCog,
+  Lock,
+  Mail,
+  Palette,
+  Bell,
+  Globe,
+  HelpCircle,
+  MessageSquare,
+  FileText,
+  Shield,
   LogOut,
   ChevronRight,
   Copy,
   Users,
   TrendingUp,
   Loader2,
-  LifeBuoy 
+  LifeBuoy
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -42,13 +41,13 @@ interface SettingItemProps {
   icon: ReactNode;
   label: string;
   href?: string;
-  action?: ReactNode; 
+  action?: ReactNode;
   onClick?: () => void;
 }
 
 const SettingItem: React.FC<SettingItemProps> = ({ icon, label, href, action, onClick }) => {
   const content = (
-    <div 
+    <div
       className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors rounded-md cursor-pointer"
       onClick={onClick}
       role={onClick || href ? "button" : undefined}
@@ -91,7 +90,7 @@ export default function SettingsPage() {
   const { user, logout, isLoading: authLoading, authRefresh } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  
+
   const [referralStats, setReferralStats] = useState<Record<UserSubscriptionTierStudent, number>>(
     createDisplayReferralStats(user?.referralStats)
   );
@@ -108,7 +107,7 @@ export default function SettingsPage() {
     } else {
       setReferralStats(createDisplayReferralStats());
     }
-    setIsLoadingReferralStats(false); 
+    setIsLoadingReferralStats(false);
 
   }, [user, user?.referralStats, authLoading]);
 
@@ -129,7 +128,7 @@ export default function SettingsPage() {
           if (!isMounted) return;
           if (e.action === 'update' && e.record && e.record.id === currentUserId) {
             console.log("SettingsPage: Current user record updated via subscription (ID:", e.record.id,"). Triggering authRefresh.");
-            authRefresh(); 
+            authRefresh();
           }
         });
       } catch (err) {
@@ -138,7 +137,7 @@ export default function SettingsPage() {
         }
       }
     };
-    
+
     setupSubscription();
 
     return () => {
@@ -147,25 +146,25 @@ export default function SettingsPage() {
         unsubFunc();
       }
     };
-  }, [user?.id, authLoading, isLoadingReferralStats, authRefresh]); 
+  }, [user?.id, authLoading, isLoadingReferralStats, authRefresh]);
 
 
   const accountSettings: SettingItemProps[] = [
-    { icon: <UserCog className="h-5 w-5 text-primary" />, label: "Edit Profile", href: Routes.editProfile }, 
-    { icon: <Lock className="h-5 w-5 text-primary" />, label: "Change Password", href: Routes.changePassword }, 
+    { icon: <UserCog className="h-5 w-5 text-primary" />, label: "Edit Profile", href: Routes.editProfile },
+    { icon: <Lock className="h-5 w-5 text-primary" />, label: "Change Password", href: Routes.changePassword },
   ];
 
   const appSettings: SettingItemProps[] = [
-    { 
-      icon: <Palette className="h-5 w-5 text-primary" />, 
-      label: "Theme", 
+    {
+      icon: <Palette className="h-5 w-5 text-primary" />,
+      label: "Theme",
       action: <ThemeToggleButton />
     },
   ];
 
   const supportSettings: SettingItemProps[] = [
     { icon: <LifeBuoy className="h-5 w-5 text-primary" />, label: "Help Center", href: Routes.helpCenter },
-    { icon: <MessageSquare className="h-5 w-5 text-primary" />, label: "Feedback", href: Routes.feedback }, 
+    { icon: <MessageSquare className="h-5 w-5 text-primary" />, label: "Feedback", href: Routes.feedback },
     { icon: <FileText className="h-5 w-5 text-primary" />, label: "Terms of Service", href: Routes.termsOfService },
     { icon: <Shield className="h-5 w-5 text-primary" />, label: "Privacy Policy", href: Routes.privacyPolicy },
     { icon: <FileText className="h-5 w-5 text-primary" />, label: "Cancellation Policy", href: Routes.cancellationPolicy },
@@ -193,7 +192,7 @@ export default function SettingsPage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-xl font-bold">Settings</h1>
-        <div className="w-8 h-8"></div> 
+        <div className="w-8 h-8"></div>
       </header>
 
       <main className="p-4 md:p-8 space-y-6">
@@ -202,11 +201,11 @@ export default function SettingsPage() {
                 <ArrowLeft className="h-4 w-4" /> Back to Profile
             </Button>
             <h1 className="text-3xl font-bold text-center flex-1">Settings</h1>
-            <div className="w-auto invisible md:visible">
+            <div className="w-auto invisible md:visible"> {/* Maintain balance */}
                  <Button variant="ghost" className="opacity-0 pointer-events-none">Back to Profile</Button>
             </div>
         </div>
-        
+
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="text-xl">Account Settings</CardTitle>
@@ -229,7 +228,7 @@ export default function SettingsPage() {
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="text-xl flex items-center gap-2"><Users className="h-5 w-5 text-primary"/>Referral Program</CardTitle>
-              <CardDescription>Share your code and earn rewards when friends join!</CardDescription>
+              <CardDescription>Share your code and earn rewards when friends join {AppConfig.appName} - The Online Test Platform!</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -254,9 +253,9 @@ export default function SettingsPage() {
                   </div>
                 ) : (
                 <ul className="space-y-1 text-sm text-muted-foreground list-none pl-1">
-                  {studentReferralTierKeys.map(tierKey => ( 
+                  {studentReferralTierKeys.map(tierKey => (
                     <li key={tierKey} className="flex justify-between items-center py-0.5">
-                      <span className="font-medium text-foreground capitalize">{tierKey.replace(/_/g, ' ')}:</span> 
+                      <span className="font-medium text-foreground capitalize">{tierKey.replace(/_/g, ' ')}:</span>
                       <span className="font-semibold text-primary">{referralStats?.[tierKey] || 0}</span>
                     </li>
                   ))}
@@ -275,14 +274,14 @@ export default function SettingsPage() {
             {supportSettings.map(item => <SettingItem key={item.label} {...item} />)}
           </CardContent>
         </Card>
-        
-        <Button 
-          variant="outline" 
+
+        <Button
+          variant="outline"
           className="w-full flex items-center justify-center gap-2 text-base py-6 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
           onClick={logout}
           disabled={authLoading}
         >
-          {authLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogOut className="h-5 w-5" />} 
+          {authLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogOut className="h-5 w-5" />}
           {authLoading ? 'Logging out...' : 'Logout'}
         </Button>
       </main>

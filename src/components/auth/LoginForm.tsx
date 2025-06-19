@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -22,7 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Eye, EyeOff, Loader2 } from 'lucide-react'; 
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import pb from '@/lib/pocketbase';
 import Image from 'next/image'; // Import Next.js Image component
@@ -68,7 +67,7 @@ export function LoginForm() {
           variant: 'destructive',
         });
       }
-    } catch (error) { 
+    } catch (error) {
       toast({
         title: 'Login Error',
         description: (error as Error).message || 'An unexpected error occurred.',
@@ -117,7 +116,7 @@ export function LoginForm() {
     <Card className="w-full max-w-md shadow-xl">
       <CardHeader>
         <CardTitle className="text-2xl">Login to {AppConfig.appName}</CardTitle>
-        <CardDescription>Enter your credentials to access your dashboard.</CardDescription>
+        <CardDescription>Enter your credentials to access your dashboard on The Online Test Platform.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -191,11 +190,11 @@ export function LoginForm() {
           {isGoogleSubmitting ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
-            <Image 
-              src="https://www.citypng.com/public/uploads/preview/google-logo-icon-gsuite-hd-701751694791470gzbayltphh.png" 
-              alt="Google logo" 
-              width={16} 
-              height={16} 
+            <Image
+              src="https://www.citypng.com/public/uploads/preview/google-logo-icon-gsuite-hd-701751694791470gzbayltphh.png"
+              alt="Google logo"
+              width={16}
+              height={16}
               className="mr-2"
               data-ai-hint="google logo"
             />

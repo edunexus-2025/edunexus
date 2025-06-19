@@ -11,7 +11,7 @@ import Link from 'next/link';
 function PaymentStatusContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  
+
   const [status, setStatus] = useState<'loading' | 'success' | 'failure' | 'error' | 'info'>('loading');
   const [message, setMessage] = useState<string | null>(null);
   const [transactionId, setTransactionId] = useState<string | null>(null);
@@ -26,7 +26,7 @@ function PaymentStatusContent() {
     if (paymentStatus) {
       setStatus(paymentStatus);
     } else {
-      setStatus('info'); 
+      setStatus('info');
     }
     setMessage(paymentMessage || null);
     setTransactionId(txnid || null);
@@ -70,7 +70,7 @@ function PaymentStatusContent() {
           <div className="mx-auto mb-4">{renderIcon()}</div>
           <CardTitle className="text-2xl">{renderTitle()}</CardTitle>
           <CardDescription className="text-sm text-muted-foreground">
-            {AppConfig.appName} - Payment Status
+            {AppConfig.appName} - The Online Test Platform - Payment Status
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">

@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -16,7 +15,7 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarSeparator,
-  useSidebar, 
+  useSidebar,
 } from '@/components/ui/sidebar';
 import {
   AlertDialog,
@@ -52,18 +51,18 @@ import {
   LogOut,
   Settings,
   User,
-  ShieldCheck, 
+  ShieldCheck,
   Bell,
   XIcon,
   UserPlus,
-  Award, 
-  ClipboardSignature, 
-  DollarSign, 
-  BookHeart, 
-  LifeBuoy, 
+  Award,
+  ClipboardSignature,
+  DollarSign,
+  BookHeart,
+  LifeBuoy,
   Grid,
-  Trophy, 
-  ChevronDown 
+  Trophy,
+  ChevronDown
 } from 'lucide-react';
 import { ThemeToggleButton } from './ThemeToggleButton';
 import { NotificationPopover } from './NotificationPopover';
@@ -72,7 +71,7 @@ import { buttonVariants } from '../ui/button';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils'; 
+import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 
@@ -80,8 +79,8 @@ const mainNavItems = [
   { href: Routes.dashboard, label: 'Dashboard', icon: <LayoutDashboard /> },
   { href: Routes.testSeries, label: 'Test Series', icon: <ListChecks />, badge: 'New' },
   { href: Routes.dpp, label: 'DPP', icon: <FileText /> },
-  { href: Routes.pyqPractice, label: 'PYQ Practice', icon: <Grid /> }, 
-  { href: Routes.notebooks, label: 'Notebooks', icon: <BookHeart /> }, 
+  { href: Routes.pyqPractice, label: 'PYQ Practice', icon: <Grid /> },
+  { href: Routes.notebooks, label: 'Notebooks', icon: <BookHeart /> },
   { href: Routes.myProgress, label: 'My Progress', icon: <TrendingUp /> },
 ];
 
@@ -92,12 +91,12 @@ const teacherPanelItems = [
 
 const connectNavItems = [
   { href: Routes.createChallenge, label: 'Create Challenge', icon: <Swords /> },
-  { href: Routes.challengeInvites, label: 'Challenge Invites', icon: <ListChecks /> }, 
+  { href: Routes.challengeInvites, label: 'Challenge Invites', icon: <ListChecks /> },
   { href: Routes.findFriends, label: 'Find Friends', icon: <UserPlus /> },
   { href: Routes.connections, label: 'Connections', icon: <Link2 /> },
 ];
 
-const supportNavItems = [ 
+const supportNavItems = [
   { href: Routes.helpCenter, label: 'Help Center', icon: <LifeBuoy /> },
 ];
 
@@ -117,7 +116,7 @@ export function DashboardSidebar({
 }: DashboardSidebarProps) {
   const pathname = usePathname();
   const { user, logout, isLoading } = useAuth();
-  const { state: sidebarState, isMobile, setOpenMobile } = useSidebar(); 
+  const { state: sidebarState, isMobile, setOpenMobile } = useSidebar();
   const { toast } = useToast();
 
   const [showProfileHint, setShowProfileHint] = React.useState(false);
@@ -129,7 +128,7 @@ export function DashboardSidebar({
       if (shouldHidePermanently === 'true') {
         setShowProfileHint(false);
       } else {
-        setShowProfileHint(true); 
+        setShowProfileHint(true);
       }
     }
   }, []);
@@ -147,10 +146,10 @@ export function DashboardSidebar({
 
 
   const isActive = (href: string) => {
-    if (!href) return false; 
+    if (!href) return false;
     if (href === Routes.dashboard) return pathname === href;
     if (href === Routes.adminDashboard) return pathname.startsWith('/admin');
-    if (href === Routes.teacherDashboard && pathname.startsWith('/teacher/dashboard')) return true; 
+    if (href === Routes.teacherDashboard && pathname.startsWith('/teacher/dashboard')) return true;
     return pathname.startsWith(href);
   };
 
@@ -211,7 +210,7 @@ export function DashboardSidebar({
 
         <SidebarSeparator />
 
-        {user?.role === 'User' && ( 
+        {user?.role === 'User' && (
           <>
             <SidebarGroup className="p-2">
               <SidebarGroupLabel>Teacher Panel</SidebarGroupLabel>
@@ -256,7 +255,7 @@ export function DashboardSidebar({
           >
             <button className="flex items-center justify-between w-full text-left group-data-[collapsible=icon]:justify-center">
               <span className="group-data-[collapsible=icon]:sr-only">Connect & Compete</span>
-              <ChevronDown 
+              <ChevronDown
                 className={cn(
                   "h-4 w-4 transition-transform duration-200 group-data-[collapsible=icon]:hidden",
                   // No rotation class here as it's locked
@@ -283,7 +282,7 @@ export function DashboardSidebar({
           >
             <button className="flex items-center justify-between w-full text-left group-data-[collapsible=icon]:justify-center">
               <span className="group-data-[collapsible=icon]:sr-only">Support</span>
-              <ChevronDown 
+              <ChevronDown
                 className={cn(
                   "h-4 w-4 transition-transform duration-200 group-data-[collapsible=icon]:hidden",
                   isSupportOpen && "rotate-180"
@@ -325,7 +324,7 @@ export function DashboardSidebar({
               <SidebarGroupLabel>Administration</SidebarGroupLabel>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <Link href={Routes.adminDashboard} passHref legacyBehavior> 
+                  <Link href={Routes.adminDashboard} passHref legacyBehavior>
                     <SidebarMenuButton
                       asChild
                       isActive={isActive(Routes.adminDashboard)}
@@ -348,7 +347,7 @@ export function DashboardSidebar({
 
       <SidebarFooter className="p-2 border-t border-sidebar-border bg-card">
         {user && !isLoading && (
-          <div className="relative"> 
+          <div className="relative">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <div className="flex items-center gap-3 p-2 rounded-md hover:bg-sidebar-accent group cursor-pointer">
@@ -385,7 +384,7 @@ export function DashboardSidebar({
             </DropdownMenu>
 
             {showProfileHint && sidebarState === 'expanded' && (
-              <div 
+              <div
                 role="tooltip"
                 className="absolute bottom-[calc(100%+8px)] left-1/2 z-50 w-max max-w-[250px] -translate-x-1/2 transform rounded-md bg-primary p-3 text-primary-foreground shadow-lg animate-in fade-in-50 slide-in-from-bottom-2"
               >
@@ -398,8 +397,8 @@ export function DashboardSidebar({
                 </button>
                 <p className="text-xs text-center mb-2">Click your name above to access Profile, Settings &amp; Progress!</p>
                 <div className="flex items-center space-x-2 justify-center">
-                  <Checkbox 
-                    id="dismiss-hint-permanently" 
+                  <Checkbox
+                    id="dismiss-hint-permanently"
                     onCheckedChange={(checked) => {
                       if (checked) {
                         handleDismissHintPermanently();
@@ -428,7 +427,7 @@ export function DashboardSidebar({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Confirm Logout</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Do you really want to logout from {AppConfig.appName}?
+                    Do you really want to logout from {AppConfig.appName} - The Online Test Platform?
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
