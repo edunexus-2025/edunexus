@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -34,14 +33,15 @@ const TEST_PIN_SESSION_KEY_PREFIX = "teacherTestPinVerified_";
 interface TeacherTestDetailsRecord extends RecordModel {
   id: string;
   testName: string;
-  Admin_Password?: number; // PocketBase stores numbers, not strings for this typically
-  duration: string; // Duration in minutes as a string
+  Admin_Password?: number | string | null;
+  duration: string;
   teacherId: string;
   QBExam: string;
   model: "Chapterwise" | "Full Length";
-  questions_edunexus?: string[]; // Array of IDs from question_bank
-  questions_teachers?: string[]; // Array of IDs from teacher_question_data
+  questions_edunexus?: string[];
+  questions_teachers?: string[];
   status?: 'Draft' | 'Published' | 'Archived';
+  totalScore?: number; 
   expand?: {
     teacherId?: {
       id: string;
@@ -50,7 +50,49 @@ interface TeacherTestDetailsRecord extends RecordModel {
   };
 }
 
-// Unified interface for questions from both sources after normalization
+interface FetchedQuestionSourceRecord extends RecordModel {
+    // common or question_bank specific (lowercase 'o', 'q')
+    questionText?: string;
+    questionImage?: string | null; 
+    optionAText?: string; 
+    optionAImage?: string | null; // Filename if from question_bank
+    optionBText?: string; 
+    optionBImage?: string | null; // Filename
+    optionCText?: string; 
+    optionCImage?: string | null; // Filename
+    optionDText?: string; 
+    optionDImage?: string | null; // Filename
+    correctOption?: "A" | "B" | "C" | "D";
+    explanationText?: string;
+    explanationImage?: string | null; // Filename
+
+    // teacher_question_data specific (uppercase 'O', 'Q')
+    QuestionText?: string; 
+    QuestionImage?: string | null; // This is a URL if from teacher_question_data
+    OptionAText?: string; 
+    OptionAImage_teacher?: string | null; // Use a distinct name for direct URL for option A
+    OptionBText?: string; 
+    OptionBImage_teacher?: string | null; // Use a distinct name for direct URL for option B
+    OptionCText?: string; 
+    OptionCImage_teacher?: string | null; // Use a distinct name for direct URL for option C
+    OptionDText?: string; 
+    OptionDImage_teacher?: string | null; // Use a distinct name for direct URL for option D
+    CorrectOption?: "Option A" | "Option B" | "Option C" | "Option D";
+    ExplanationText?: string; 
+    ExplanationImage_teacher?: string | null; // Use a distinct name for direct URL for explanation
+
+    // Common metadata
+    difficulty?: 'Easy' | 'Medium' | 'Hard' | null;
+    marks?: number;
+    subject?: string | null;
+    lessonName?: string; 
+    LessonName?: string; 
+    teacher?: string; 
+    QBExam?: string; 
+}
+
+
+// Unified interface for questions after normalization for display
 interface QuestionRecord {
   id: string;
   displayQuestionText?: string | null;
@@ -63,37 +105,7 @@ interface QuestionRecord {
   subject?: string | null;
   difficulty?: 'Easy' | 'Medium' | 'Hard' | null;
   originalSourceCollection?: 'question_bank' | 'teacher_question_data';
-  rawRecord?: RecordModel;
-}
-
-// Source record structure from PocketBase (can be from question_bank or teacher_question_data)
-interface FetchedQuestionSourceRecord extends RecordModel {
-  // Common fields or fields that might exist in either
-  questionText?: string; // from question_bank
-  QuestionText?: string; // from teacher_question_data
-  questionImage?: string | null; // filename from question_bank
-  QuestionImage?: string | null; // URL from teacher_question_data
-  optionAText?: string; OptionAImage?: string | null;
-  OptionAText?: string; OptionAImage?: string | null; // teacher_question_data
-  optionBText?: string; optionBImage?: string | null;
-  OptionBText?: string; OptionBImage?: string | null; // teacher_question_data
-  optionCText?: string; optionCImage?: string | null;
-  OptionCText?: string; OptionCImage?: string | null; // teacher_question_data
-  optionDText?: string; optionDImage?: string | null;
-  OptionDText?: string; OptionDImage?: string | null; // teacher_question_data
-  correctOption?: "A" | "B" | "C" | "D"; // from question_bank
-  CorrectOption?: "Option A" | "Option B" | "Option C" | "Option D"; // from teacher_question_data
-  explanationText?: string; // from question_bank
-  ExplanationText?: string; // from teacher_question_data
-  explanationImage?: string | null; // filename from question_bank
-  ExplanationImage?: string | null; // URL from teacher_question_data
-  difficulty?: 'Easy' | 'Medium' | 'Hard' | null;
-  marks?: number;
-  subject?: string | null;
-  lessonName?: string; // from question_bank
-  LessonName?: string; // from teacher_question_data (this is a relation ID to teacher_tests)
-  teacher?: string; // from teacher_question_data (relation ID to teacher_data)
-  QBExam?: string; // from teacher_question_data
+  rawRecord?: RecordModel; 
 }
 
 
@@ -110,18 +122,18 @@ const getPbFileUrl = (record: RecordModel | null | undefined, fieldName: string,
     const fieldValue = record[fieldName] as string;
     if (isDirectUrl) {
       if (isValidHttpUrl(fieldValue)) return fieldValue;
-      console.warn(`Direct URL field '${fieldName}' for record ${record.id} is not a valid HTTP/S URL: ${fieldValue}`);
+      // console.warn(`Direct URL field '${fieldName}' for record ${record.id} is not a valid HTTP/S URL: ${fieldValue}`);
       return null;
     }
     if (record.collectionId && record.collectionName) {
       try {
         return pb.files.getUrl(record, fieldValue);
       } catch (e) {
-        console.warn(`Error getting PB file URL for ${fieldName} in record ${record.id} from ${record.collectionName}:`, e);
+        // console.warn(`Error getting PB file URL for ${fieldName} in record ${record.id} from ${record.collectionName}:`, e);
         return null;
       }
     } else {
-        console.warn(`Missing collectionId or collectionName for PB file field '${fieldName}' in record ${record.id}. Cannot resolve URL.`);
+        // console.warn(`Missing collectionId or collectionName for PB file field '${fieldName}' in record ${record.id}. Cannot resolve URL.`);
     }
   }
   return null;
@@ -154,7 +166,7 @@ export default function StudentTeacherTestLivePage() {
   const router = useRouter();
   const testId = typeof params.testId === 'string' ? params.testId : '';
 
-  const { user, isLoading: isAuthLoading } = useAuth(); // authRefresh removed as it's not used
+  const { user, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
 
   const [testDetails, setTestDetails] = useState<TeacherTestDetailsRecord | null>(null);
@@ -183,13 +195,13 @@ export default function StudentTeacherTestLivePage() {
   const fetchTestDataAndDecideStage = useCallback(async (isMountedGetter: () => boolean) => {
     if (!testId) { if (isMountedGetter()) { setError("Test ID is missing."); setIsLoadingPageData(false); setTestSessionState('terminated'); } return; }
     if (!user?.id && !isAuthLoading) { if (isMountedGetter()) { setError("User not authenticated. Please login."); setIsLoadingPageData(false); setTestSessionState('terminated'); } return; }
-    if (isAuthLoading && isMountedGetter()) { setIsLoadingPageData(true); return; } // Wait for auth to resolve
+    if (isAuthLoading && isMountedGetter()) { setIsLoadingPageData(true); return; } 
 
     if (isMountedGetter()) { setIsLoadingPageData(true); setError(null); }
 
     try {
       const fetchedTest = await pb.collection('teacher_tests').getOne<TeacherTestDetailsRecord>(testId, {
-        fields: 'id,testName,status,Admin_Password,duration,teacherId,model,QBExam,questions_edunexus,questions_teachers,expand.teacherId.name', 
+        fields: 'id,testName,status,Admin_Password,duration,teacherId,model,QBExam,questions_edunexus,questions_teachers,totalScore,expand.teacherId.name', 
         expand: 'teacherId',
         '$autoCancel': false,
       });
@@ -197,7 +209,7 @@ export default function StudentTeacherTestLivePage() {
       if (!isMountedGetter()) return;
       
       if (fetchedTest.status !== 'Published') {
-        if (isMountedGetter()) { setError(`This test ("${fetchedTest.testName}") is not currently published or available.`); setTestSessionState('terminated');}
+        if (isMountedGetter()) { setError(`This test ("${fetchedTest.testName}") is not currently published or available.`); setTestSessionState('terminated'); setIsLoadingPageData(false);}
         return;
       }
       setTestDetails(fetchedTest); 
@@ -208,9 +220,9 @@ export default function StudentTeacherTestLivePage() {
       const pinIsVerifiedInSession = sessionStorage.getItem(pinSessionKey) === 'true';
 
       if (pinRequired && !pinIsVerifiedInSession) {
-        setTestSessionState('pinEntry'); 
+        if (isMountedGetter()) { setTestSessionState('pinEntry'); setIsLoadingPageData(false); } // Set loading false here if PIN entry is next
       } else {
-        setTestSessionState('instructions');
+        if (isMountedGetter()) setTestSessionState('instructions'); // Loading questions will happen next
       }
       
     } catch (err: any) {
@@ -218,11 +230,10 @@ export default function StudentTeacherTestLivePage() {
         const clientError = err as PocketBaseClientResponseError;
         let errorMsg = `Could not load test details. Error: ${clientError.data?.message || clientError.message}.`;
         if (clientError.status === 404) errorMsg = "Test not found or not accessible. Please check the link or contact your teacher.";
-        setError(errorMsg); setTestSessionState('terminated');
+        setError(errorMsg); setTestSessionState('terminated'); setIsLoadingPageData(false);
       }
-    } finally {
-      if (isMountedGetter()) setIsLoadingPageData(false);
     }
+    // Removed setIsLoadingPageData(false) from finally to let loadQuestions handle it if testSessionState is 'instructions'
   }, [testId, user?.id, isAuthLoading]);
 
   useEffect(() => {
@@ -231,9 +242,59 @@ export default function StudentTeacherTestLivePage() {
     return () => { isMounted = false; };
   }, [fetchTestDataAndDecideStage]);
 
+
+  const normalizeFetchedQuestion = (q: FetchedQuestionSourceRecord, sourceCollection: 'question_bank' | 'teacher_question_data'): QuestionRecord => {
+    let correctOptLabel: "A" | "B" | "C" | "D" = "A"; 
+    let questionImageUrl: string | null = null;
+    let optionAImageUrl: string | null = null;
+    let optionBImageUrl: string | null = null;
+    let optionCImageUrl: string | null = null;
+    let optionDImageUrl: string | null = null;
+    let explanationImageUrl: string | null = null;
+
+    if (sourceCollection === 'question_bank') {
+      correctOptLabel = q.correctOption || "A";
+      questionImageUrl = getPbFileUrl(q, 'questionImage');
+      optionAImageUrl = getPbFileUrl(q, 'optionAImage');
+      optionBImageUrl = getPbFileUrl(q, 'optionBImage');
+      optionCImageUrl = getPbFileUrl(q, 'optionCImage');
+      optionDImageUrl = getPbFileUrl(q, 'optionDImage');
+      explanationImageUrl = getPbFileUrl(q, 'explanationImage');
+    } else if (sourceCollection === 'teacher_question_data') {
+      correctOptLabel = q.CorrectOption?.replace("Option ", "") as "A" | "B" | "C" | "D" || "A";
+      questionImageUrl = isValidHttpUrl(q.QuestionImage) ? q.QuestionImage : null;
+      optionAImageUrl = isValidHttpUrl(q.OptionAImage_teacher) ? q.OptionAImage_teacher : null;
+      optionBImageUrl = isValidHttpUrl(q.OptionBImage_teacher) ? q.OptionBImage_teacher : null;
+      optionCImageUrl = isValidHttpUrl(q.OptionCImage_teacher) ? q.OptionCImage_teacher : null;
+      optionDImageUrl = isValidHttpUrl(q.OptionDImage_teacher) ? q.OptionDImage_teacher : null;
+      explanationImageUrl = isValidHttpUrl(q.ExplanationImage_teacher) ? q.ExplanationImage_teacher : null;
+    }
+  
+    return {
+      id: q.id,
+      displayQuestionText: sourceCollection === 'question_bank' ? q.questionText : q.QuestionText,
+      displayQuestionImageUrl: questionImageUrl,
+      displayOptions: [
+        { label: 'A', text: sourceCollection === 'question_bank' ? q.optionAText : q.OptionAText, imageUrl: optionAImageUrl },
+        { label: 'B', text: sourceCollection === 'question_bank' ? q.optionBText : q.OptionBText, imageUrl: optionBImageUrl },
+        { label: 'C', text: sourceCollection === 'question_bank' ? q.optionCText : q.OptionCText, imageUrl: optionCImageUrl },
+        { label: 'D', text: sourceCollection === 'question_bank' ? q.optionDText : q.OptionDText, imageUrl: optionDImageUrl },
+      ],
+      displayCorrectOptionLabel: correctOptLabel,
+      displayExplanationText: sourceCollection === 'question_bank' ? q.explanationText : (q.ExplanationText || q.explanationText),
+      displayExplanationImageUrl: explanationImageUrl,
+      marks: typeof q.marks === 'number' ? q.marks : 1,
+      subject: q.subject || null,
+      difficulty: q.difficulty || null,
+      originalSourceCollection: sourceCollection,
+      rawRecord: q,
+    };
+  };
+  
+
   const loadQuestions = useCallback(async (isMountedGetter: () => boolean) => {
-    if (!testDetails || !user?.id) { if (isMountedGetter()) { setError("Test details or user ID missing, cannot load questions."); setIsLoadingPageData(false); setQuestions([]); } return; }
-    if (isMountedGetter()) setIsLoadingPageData(true); // Use main loader
+    if (!testDetails || !user?.id) { if (isMountedGetter()) { setError("Test details or user ID missing for loading questions."); setIsLoadingPageData(false); setQuestions([]); } return; }
+    if (isMountedGetter()) setIsLoadingPageData(true);
     
     let combinedQuestions: QuestionRecord[] = [];
 
@@ -242,24 +303,7 @@ export default function StudentTeacherTestLivePage() {
         if (eduNexusQuestionIds.length > 0) {
             const filter = eduNexusQuestionIds.map(id => `id = "${escapeForPbFilter(id)}"`).join(' || ');
             const records = await pb.collection('question_bank').getFullList<FetchedQuestionSourceRecord>({ filter, '$autoCancel': false });
-            records.forEach(q => {
-                combinedQuestions.push({
-                    id: q.id,
-                    displayQuestionText: q.questionText,
-                    displayQuestionImageUrl: getPbFileUrl(q, 'questionImage'),
-                    displayOptions: [
-                        { label: 'A', text: q.optionAText, imageUrl: getPbFileUrl(q, 'optionAImage') },
-                        { label: 'B', text: q.optionBText, imageUrl: getPbFileUrl(q, 'optionBImage') },
-                        { label: 'C', text: q.optionCText, imageUrl: getPbFileUrl(q, 'optionCImage') },
-                        { label: 'D', text: q.optionDText, imageUrl: getPbFileUrl(q, 'optionDImage') },
-                    ],
-                    displayCorrectOptionLabel: q.correctOption!,
-                    displayExplanationText: q.explanationText,
-                    displayExplanationImageUrl: getPbFileUrl(q, 'explanationImage'),
-                    marks: q.marks, subject: q.subject, difficulty: q.difficulty,
-                    originalSourceCollection: 'question_bank', rawRecord: q,
-                });
-            });
+            records.forEach(q => combinedQuestions.push(normalizeFetchedQuestion(q, 'question_bank')));
         }
         if (!isMountedGetter()) return;
 
@@ -267,33 +311,22 @@ export default function StudentTeacherTestLivePage() {
         if (teacherQuestionIds.length > 0) {
             const filter = teacherQuestionIds.map(id => `id = "${escapeForPbFilter(id)}"`).join(' || ');
             const records = await pb.collection('teacher_question_data').getFullList<FetchedQuestionSourceRecord>({ filter, '$autoCancel': false });
-            records.forEach(q => {
-                combinedQuestions.push({
-                    id: q.id,
-                    displayQuestionText: q.QuestionText,
-                    displayQuestionImageUrl: getPbFileUrl(q, 'QuestionImage', true),
-                    displayOptions: [
-                        { label: 'A', text: q.OptionAText, imageUrl: getPbFileUrl(q, 'OptionAImage', true) },
-                        { label: 'B', text: q.OptionBText, imageUrl: getPbFileUrl(q, 'OptionBImage', true) },
-                        { label: 'C', text: q.OptionCText, imageUrl: getPbFileUrl(q, 'OptionCImage', true) },
-                        { label: 'D', text: q.OptionDText, imageUrl: getPbFileUrl(q, 'OptionDImage', true) },
-                    ],
-                    displayCorrectOptionLabel: q.CorrectOption!.replace("Option ", "") as "A" | "B" | "C" | "D",
-                    displayExplanationText: q.ExplanationText || q.explanationText, // Prioritize specific if available
-                    displayExplanationImageUrl: getPbFileUrl(q, 'ExplanationImage', true) || getPbFileUrl(q, 'explanationImage', true),
-                    marks: q.marks, subject: q.subject || testDetails.QBExam, difficulty: q.difficulty,
-                    originalSourceCollection: 'teacher_question_data', rawRecord: q,
-                });
-            });
+            records.forEach(q => combinedQuestions.push(normalizeFetchedQuestion(q, 'teacher_question_data')));
         }
         if (!isMountedGetter()) return;
 
-        const originalOrder = [...(testDetails.questions_edunexus || []), ...(testDetails.questions_teachers || [])];
-        const orderedQuestions: QuestionRecord[] = [];
+        const originalOrderMap = new Map<string, number>();
+        [...(testDetails.questions_edunexus || []), ...(testDetails.questions_teachers || [])].forEach((id, index) => {
+            if(id) originalOrderMap.set(id, index);
+        });
         
-        originalOrder.forEach(id => {
-            const question = combinedQuestions.find(q => q.id === id);
-            if (question) orderedQuestions.push(question);
+        const orderedQuestions = combinedQuestions.sort((a, b) => {
+            const indexA = originalOrderMap.get(a.id);
+            const indexB = originalOrderMap.get(b.id);
+            if (indexA === undefined && indexB === undefined) return 0;
+            if (indexA === undefined) return 1; 
+            if (indexB === undefined) return -1;
+            return indexA - indexB;
         });
         
         if (isMountedGetter()) {
@@ -308,6 +341,7 @@ export default function StudentTeacherTestLivePage() {
                 const initialAnswers: Record<string, UserAnswer> = {};
                 orderedQuestions.forEach(q => { initialAnswers[q.id] = { questionId: q.id, selectedOption: null, isCorrect: null, markedForReview: false, timeSpentSeconds: 0 }; });
                 setUserAnswers(initialAnswers);
+                setError(null); 
             }
         }
     } catch (err: any) {
@@ -317,17 +351,17 @@ export default function StudentTeacherTestLivePage() {
         setQuestions([]);
       }
     } finally {
-        if (isMountedGetter()) setIsLoadingPageData(false); // Set main page loader false here
+        if (isMountedGetter()) setIsLoadingPageData(false);
     }
   }, [testDetails, user?.id, escapeForPbFilter]);
   
   useEffect(() => { 
     let isMounted = true;
-    if (testSessionState === 'instructions' && questions.length === 0 && !isLoadingPageData && testDetails) {
+    if (testSessionState === 'instructions' && questions.length === 0 && !isLoadingPageData && testDetails && !error) {
         loadQuestions(() => isMounted);
     }
     return () => { isMounted = false; };
-  }, [testSessionState, loadQuestions, questions.length, isLoadingPageData, testDetails]);
+  }, [testSessionState, loadQuestions, questions.length, isLoadingPageData, testDetails, error]);
 
   const handleSubmitTest = useCallback(async (autoSubmit = false, terminationReason?: string) => {
     if (!user || !testDetails || !testDetails.teacherId || isSubmittingTest || testSessionState === 'completed' || testSessionState === 'terminated') { return; }
@@ -345,12 +379,16 @@ export default function StudentTeacherTestLivePage() {
       if (selected) { attemptedCount++; if (selected === `Option ${correctOptionValue}`) { correctCount++; isCorrectAns = true; pointsEarnedFromTest += questionMarks;}}
       return { questionId: q.id, selectedOption: selected, correctOption: correctOptionValue ? `Option ${correctOptionValue}` : null, isCorrect: isCorrectAns, markedForReview: userAnswerRec?.markedForReview || false, timeSpentSeconds: userAnswerRec?.timeSpentSeconds || 0 };
     });
-    const maxScorePossible = questions.reduce((sum, q) => sum + (typeof q.marks === 'number' ? q.marks : 1), 0);
+    
+    const maxScorePossible = testDetails.totalScore && typeof testDetails.totalScore === 'number' && testDetails.totalScore > 0 
+    ? Number(testDetails.totalScore)
+    : questions.reduce((sum, q) => sum + (typeof q.marks === 'number' ? q.marks : 1), 0);
+
     const percentage = maxScorePossible > 0 ? (pointsEarnedFromTest / maxScorePossible) * 100 : 0;
     const finalTestStatusString: TeacherTestAttempt['status'] = terminationReason === 'time_up' ? 'terminated_time_up' : (terminationReason === 'manual' ? 'terminated_manual' : 'completed');
     const durationTakenSecs = testDetails?.duration ? parseInt(testDetails.duration, 10) * 60 - (timeLeft || 0) : 0;
     
-    const resultDataToSave: any = {
+    const resultDataToSave: Omit<TeacherTestAttempt, 'id' | 'created' | 'updated' | 'collectionId' | 'collectionName' | 'expand'> = {
       student: user.id,
       teacher_test: testDetails.id,
       teacher: testDetails.teacherId,
@@ -364,11 +402,11 @@ export default function StudentTeacherTestLivePage() {
       incorrect_answers: attemptedCount - correctCount,
       unattempted_questions: questions.length - attemptedCount,
       percentage: parseFloat(percentage.toFixed(2)),
-      duration_taken_seconds: durationTakenSecs,
+      duration_taken_seconds: durationTakenSecs > 0 ? durationTakenSecs : 0,
       answers_log: JSON.stringify(answersLogForDb),
       status: finalTestStatusString,
-      plan_context: user.studentSubscriptionTier || "Free Access",
-      started_at: new Date(Date.now() - durationTakenSecs * 1000).toISOString(),
+      plan_context: "Subscribed - Teacher Plan", 
+      started_at: new Date(Date.now() - (durationTakenSecs > 0 ? durationTakenSecs * 1000 : 0)).toISOString(),
       submitted_at: new Date().toISOString(),
       marked_for_review_without_selecting_option: answersLogForDb.filter(a => a.markedForReview && !a.selectedOption).length,
       marked_for_review_with_selecting_option: answersLogForDb.filter(a => a.markedForReview && a.selectedOption).length,
@@ -380,7 +418,7 @@ export default function StudentTeacherTestLivePage() {
       toast({ title: autoSubmit ? (terminationReason ? "Test Terminated" : "Test Auto-Submitted") : "Test Submitted Successfully!", description: `Your results for "${testDetails.testName}" have been recorded. ${terminationReason ? `Reason: ${terminationReason.replace(/_/g, ' ')}.` : ''}` });
       router.push(Routes.testResultTeacherTest(createdResultRecord.id));
     } catch (err: any) { 
-        console.error("Failed to submit teacher test results:", err.data || err.message, "Full Error:", err); 
+        console.error("Failed to submit teacher test results:", err.data || err.message, "Full Error:", err, "Data Sent:", resultDataToSave); 
         let errorMessage = "Could not save results.";
         if (err.data && err.data.data) { errorMessage += " Details: " + JSON.stringify(err.data.data); } 
         else if (err.data && err.data.message) { errorMessage += " " + err.data.message; } 
@@ -415,13 +453,13 @@ export default function StudentTeacherTestLivePage() {
 
   const handleStartTestAfterInstructions = () => {
     if (!testDetails || !testDetails.duration) { toast({ title: "Error", description: "Test duration not set.", variant: "destructive" }); return; }
-    const durationMinutes = parseInt(testDetails.duration || "0", 10);
     if(questions.length === 0 && !isLoadingPageData){
         toast({ title: "No Questions Loaded", description: "Cannot start test as no questions were found. Please contact the teacher.", variant: "destructive" });
         setError("No questions were found for this test. Please contact your teacher.");
         setTestSessionState('terminated');
         return;
     }
+    const durationMinutes = parseInt(testDetails.duration || "0", 10);
     setTimeLeft(isNaN(durationMinutes) || durationMinutes <=0 ? 3600 : durationMinutes * 60); 
     setTestSessionState('inProgress'); 
     questionStartTimeRef.current = Date.now();
@@ -487,7 +525,7 @@ export default function StudentTeacherTestLivePage() {
   if (isLoadingPageData || isAuthLoading || testSessionState === 'initialLoading') { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-4 text-white"> <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" /> <p className="text-lg">Loading test environment...</p> </div> ); }
   if (error) { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-4 text-white"> <Card className="w-full max-w-lg text-center shadow-xl bg-background text-foreground"> <CardHeader> <AlertCircle className="mx-auto h-12 w-12 text-destructive" /> <CardTitle className="text-destructive">Error Loading Test</CardTitle> </CardHeader> <CardContent><p className="text-muted-foreground whitespace-pre-wrap">{error}</p></CardContent> <CardFooter><Button onClick={() => router.back()} variant="outline" className="w-full">Go Back</Button></CardFooter> </Card> </div> ); }
   if (testSessionState === 'pinEntry') { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/80 p-4"> <Card className="w-full max-w-sm shadow-xl bg-card text-foreground"> <CardHeader><CardTitle className="text-xl flex items-center gap-2"><KeyRound className="text-primary"/>Enter Test PIN</CardTitle><CardDescription>This test by {teacherName} requires a PIN.</CardDescription></CardHeader> <CardContent className="space-y-4"> <Input type="password" placeholder="Enter PIN" value={enteredPin} onChange={(e) => setEnteredPin(e.target.value)} className="text-center text-lg tracking-widest" maxLength={6} autoFocus/> {pinError && <p className="text-sm text-destructive text-center">{pinError}</p>} </CardContent> <CardFooter className="flex-col gap-2"> <Button onClick={handlePinVerify} className="w-full" disabled={isVerifyingPin || enteredPin.length < 4}> {isVerifyingPin && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>} Verify PIN & Continue </Button> <Button variant="ghost" size="sm" onClick={() => router.back()} className="text-xs text-muted-foreground">Cancel & Go Back</Button> </CardFooter> </Card> </div> ); }
-  if (testSessionState === 'instructions') { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/80 p-4"> <Card className="w-full max-w-2xl shadow-xl bg-card text-foreground"> <CardHeader><CardTitle className="text-2xl">Test Instructions: {testDetails?.testName}</CardTitle><CardDescription>From: {teacherName}. Total Questions: {questions.length > 0 ? questions.length : (testDetails?.questions_edunexus?.length || 0) + (testDetails?.questions_teachers?.length || 0) }</CardDescription></CardHeader> <CardContent className="max-h-[60vh] overflow-y-auto prose prose-sm dark:prose-invert"> <p>Duration: {testDetails?.duration || 'N/A'} minutes</p><h4>General Instructions:</h4><ol><li>The clock will be set at the server. The countdown timer in the top right corner of screen will display the remaining time.</li><li>When the timer reaches zero, the examination will end by itself. You will not be required to end or submit your examination.</li><li>The Question Palette on the right shows question status.</li></ol> </CardContent> <CardFooter className="justify-center"> <Button onClick={handleStartTestAfterInstructions} size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={questions.length === 0 && !isLoadingPageData}>I'm Ready, Start Test!</Button> </CardFooter> </Card> </div> ); }
+  if (testSessionState === 'instructions') { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/80 p-4"> <Card className="w-full max-w-2xl shadow-xl bg-card text-foreground"> <CardHeader><CardTitle className="text-2xl">Test Instructions: {testDetails?.testName}</CardTitle><CardDescription>From: {teacherName}. Total Questions: {questions.length > 0 ? questions.length : (testDetails?.questions_edunexus?.length || 0) + (testDetails?.questions_teachers?.length || 0) }</CardDescription></CardHeader> <CardContent className="max-h-[60vh] overflow-y-auto prose prose-sm dark:prose-invert"> <p>Duration: {testDetails?.duration || 'N/A'} minutes</p><h4>General Instructions:</h4><ol><li>The clock will be set at the server. The countdown timer in the top right corner of screen will display the remaining time.</li><li>When the timer reaches zero, the examination will end by itself. You will not be required to end or submit your examination.</li><li>The Question Palette on the right shows question status.</li></ol> </CardContent> <CardFooter className="justify-center"> <Button onClick={handleStartTestAfterInstructions} size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={questions.length === 0 && !isLoadingPageData && testDetails != null}>I'm Ready, Start Test!</Button> </CardFooter> </Card> </div> ); }
   if (testSessionState === 'completed' || testSessionState === 'terminated') { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-4 text-white"> <Card className="w-full max-w-lg text-center shadow-xl bg-background text-foreground"> <CardHeader> {testSessionState === 'completed' ? <CheckCircle className="mx-auto h-12 w-12 text-green-500" /> : <XCircle className="mx-auto h-12 w-12 text-destructive" />} <CardTitle>{testSessionState === 'completed' ? "Test Completed" : "Test Terminated"}</CardTitle> </CardHeader> <CardContent><p className="text-muted-foreground">{testSessionState === 'completed' ? "Your responses have been submitted." : "This test session has been terminated."}</p></CardContent> <CardFooter> <Button onClick={() => { if (window.opener && !window.opener.closed) window.close(); else router.push(Routes.dashboard);}} className="w-full"> Close Window / Back to Dashboard </Button> </CardFooter> </Card> </div> ); }
   if (!currentQuestion && !isLoadingPageData && testSessionState === 'inProgress') { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-4 text-white"> <Card className="w-full max-w-lg text-center shadow-xl bg-background text-foreground"> <CardHeader> <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground" /> <CardTitle>No Questions</CardTitle> </CardHeader> <CardContent><p className="text-muted-foreground whitespace-pre-wrap">No questions loaded for this test, or you've finished. If this is unexpected, please contact your teacher. Error: {error}</p></CardContent> <CardFooter><Button onClick={() => handleSubmitTest(false, 'manual')} variant="outline" className="w-full">Submit & End Test</Button></CardFooter> </Card> </div> );}
   
@@ -530,5 +568,3 @@ export default function StudentTeacherTestLivePage() {
     </div>
   );
 }
-
-    

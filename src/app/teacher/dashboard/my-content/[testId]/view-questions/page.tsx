@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -70,7 +69,7 @@ const isValidHttpUrl = (string: string | null | undefined): string is string => 
 
 const getPbFileUrlOrDirectUrl = (record: RecordModel | null | undefined, fieldName: string, isDirectUrlField: boolean = false, sourceCollectionName?: 'question_bank' | 'teacher_question_data'): string | null => {
   if (!record) {
-    console.warn(`getPbFileUrlOrDirectUrl: Null record provided for field '${fieldName}'.`);
+    // console.warn(`getPbFileUrlOrDirectUrl: Null record provided for field '${fieldName}'.`);
     return null;
   }
   const fieldValue = record[fieldName] as string | undefined | null;
@@ -78,7 +77,7 @@ const getPbFileUrlOrDirectUrl = (record: RecordModel | null | undefined, fieldNa
 
   if (isDirectUrlField) {
     if (isValidHttpUrl(fieldValue)) return fieldValue;
-    console.warn(`getPbFileUrlOrDirectUrl: Field '${fieldName}' in teacher_question_data (ID: ${record.id}) expected a direct URL but got: '${fieldValue}'. It's not a valid HTTP/S URL.`);
+    // console.warn(`getPbFileUrlOrDirectUrl: Field '${fieldName}' in teacher_question_data (ID: ${record.id}) expected a direct URL but got: '${fieldValue}'. It's not a valid HTTP/S URL.`);
     return null;
   } else {
     const effectiveCollectionId = record.collectionId || (sourceCollectionName === 'question_bank' ? 'pbc_1874489316' : (sourceCollectionName === 'teacher_question_data' ? 'pbc_3669383003' : undefined));
@@ -93,9 +92,12 @@ const getPbFileUrlOrDirectUrl = (record: RecordModel | null | undefined, fieldNa
           [fieldName]: fieldValue
         };
         return pb.files.getUrl(minimalRecordForPb as RecordModel, fieldValue);
-      } catch (e) { console.warn(`getPbFileUrlOrDirectUrl: Error getting PB file URL for ${fieldName} in record ${record.id} (Collection: ${effectiveCollectionName}):`, e); return null; }
+      } catch (e) { 
+        // console.warn(`getPbFileUrlOrDirectUrl: Error getting PB file URL for ${fieldName} in record ${record.id} (Collection: ${effectiveCollectionName}):`, e); 
+        return null; 
+      }
     }
-    console.warn(`getPbFileUrlOrDirectUrl: Missing id, collectionId, or collectionName for PB file field '${fieldName}' in record '${record.id}'. Field value was: '${fieldValue}'. Cannot resolve URL.`);
+    // console.warn(`getPbFileUrlOrDirectUrl: Missing id, collectionId, or collectionName for PB file field '${fieldName}' in record '${record.id}'. Field value was: '${fieldValue}'. Cannot resolve URL.`);
     return null;
   }
 };
@@ -136,7 +138,7 @@ export default function ViewTestQuestionsDetailedPage() {
 
   const [isEditCorrectOptionModalOpen, setIsEditCorrectOptionModalOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<DisplayableQuestionDetailed | null>(null);
-  const [newCorrectOption, setNewCorrectOption] = useState<'A' | 'B' | 'C' | 'D' | ''>('');
+  const [newCorrectOption, setNewCorrectOption] = useState<'A' | 'B' | 'C' | 'D'>('A');
   const [isUpdatingCorrectOption, setIsUpdatingCorrectOption] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
@@ -198,7 +200,7 @@ export default function ViewTestQuestionsDetailedPage() {
         });
       });
       
-      const originalEduNexusIds = Array.isArray(fetchedTest.questions_edunexus) ? fetchedTest.questions_edunexus.map((item: any) => item.id || item) : []; // Ensure we get IDs
+      const originalEduNexusIds = Array.isArray(fetchedTest.questions_edunexus) ? fetchedTest.questions_edunexus.map((item: any) => item.id || item) : [];
       const originalTeacherIds = Array.isArray(fetchedTest.questions_teachers) ? fetchedTest.questions_teachers.map((item: any) => item.id || item) : [];
       const originalOrder = [...originalEduNexusIds, ...originalTeacherIds];
 
@@ -229,17 +231,29 @@ export default function ViewTestQuestionsDetailedPage() {
 
   const handleOpenEditCorrectOptionModal = (question: DisplayableQuestionDetailed) => {
     if (question.source === 'EduNexus QB') { toast({ title: "Cannot Edit", description: "EduNexus QB questions' correct options cannot be changed here.", variant: "default" }); return; }
-    setEditingQuestion(question); setNewCorrectOption(question.correctOptionEnum || ''); setIsEditCorrectOptionModalOpen(true);
+    setEditingQuestion(question); 
+    setNewCorrectOption(question.correctOptionEnum || 'A');
+    setIsEditCorrectOptionModalOpen(true);
   };
 
   const handleSaveCorrectOption = async () => {
-    if (!editingQuestion || !newCorrectOption || newCorrectOption === '') { toast({ title: "Error", description: "No question or new option selected.", variant: "destructive" }); return; }
+    if (!editingQuestion || !newCorrectOption ) { 
+        toast({ title: "Error", description: "No question or new option selected.", variant: "destructive" }); 
+        return; 
+    }
+    if (newCorrectOption === editingQuestion.correctOptionEnum) {
+        toast({ title: "No Change", description: "The selected option is already the correct answer.", variant: "default" });
+        setIsEditCorrectOptionModalOpen(false);
+        return;
+    }
     setIsUpdatingCorrectOption(true);
     try {
-      const collectionToUpdate = editingQuestion.rawCollectionName; const dataToUpdate = { CorrectOption: `Option ${newCorrectOption}` };
+      const collectionToUpdate = editingQuestion.rawCollectionName; 
+      const dataToUpdate = { CorrectOption: `Option ${newCorrectOption}` };
       await pb.collection(collectionToUpdate).update(editingQuestion.id, dataToUpdate);
       toast({ title: "Correct Option Updated", description: "The correct answer has been saved." });
-      setIsEditCorrectOptionModalOpen(false); setEditingQuestion(null); fetchTestAndQuestionsDetailed(() => true);
+      setIsEditCorrectOptionModalOpen(false); setEditingQuestion(null); 
+      fetchTestAndQuestionsDetailed(() => true); 
     } catch (err: any) { console.error("Error updating correct option:", err); toast({ title: "Update Failed", description: `Could not save: ${err.data?.message || err.message}`, variant: "destructive" });
     } finally { setIsUpdatingCorrectOption(false); }
   };
@@ -256,10 +270,9 @@ export default function ViewTestQuestionsDetailedPage() {
     let afterPrintHandler: () => void;
     if (isPrintPreviewActive) {
       const printTimeout = setTimeout(() => {
-        // Ensure the body attribute is set just before printing
         document.body.setAttribute('data-watermark-text', `EduNexus - ${testName || 'Test'}`);
         window.print();
-      }, 100); // A small delay for DOM updates
+      }, 100);
       
       afterPrintHandler = () => {
         setIsPrintPreviewActive(false);
@@ -271,7 +284,7 @@ export default function ViewTestQuestionsDetailedPage() {
       return () => {
         clearTimeout(printTimeout);
         window.removeEventListener('afterprint', afterPrintHandler);
-        document.body.removeAttribute('data-watermark-text'); // Cleanup in case component unmounts
+        document.body.removeAttribute('data-watermark-text'); 
       };
     }
   }, [isPrintPreviewActive, testName]);
@@ -317,15 +330,15 @@ export default function ViewTestQuestionsDetailedPage() {
   if (isPrintPreviewActive) return <PrintLayout />;
 
   return (
-    <div className="p-2 sm:p-4 md:p-6 h-[calc(100vh-var(--header-height,0px)-var(--tabs-height,0px)-theme(space.12))] flex flex-col">
+    <div className="p-2 sm:p-4 md:p-0 h-[calc(100vh-var(--header-height,0px)-var(--tabs-height,0px)-theme(space.12))] flex flex-col">
       <CardHeader className="px-0 pb-3 flex-shrink-0 hide-on-print">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
             <div><CardTitle className="text-xl font-semibold flex items-center gap-2"><EyeIcon className="h-5 w-5 text-primary"/> Review Test: {testName}</CardTitle><CardDescription>View question details. Total: {allQuestions.length} question(s).</CardDescription></div>
             <div className="flex gap-2 flex-col sm:flex-row w-full sm:w-auto">
-                <Button variant="outline" size="sm" onClick={() => setShowAnswersInPrint(prev => !prev)} className="text-xs">
+                 <Button variant="outline" size="sm" onClick={() => setShowAnswersInPrint(prev => !prev)} className="text-xs hide-on-print">
                     {showAnswersInPrint ? "Hide Answers for Print" : "Show Answers for Print"}
                 </Button>
-                <Sheet open={isMobileSheetOpen} onOpenChange={setIsMobileSheetOpen}><SheetTrigger asChild><Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary h-9 w-9 md:hidden" aria-label="Open Question Navigation"><ListOrdered className="h-5 w-5" /></Button></SheetTrigger><SheetContent side="right" className="w-3/4 p-0 flex flex-col"><ShadcnSheetHeader className="p-3 border-b text-center"><ShadcnSheetTitle className="text-lg">Navigate</ShadcnSheetTitle></ShadcnSheetHeader><div className="flex-grow p-2 flex flex-col"><QuestionPaletteContent/></div></SheetContent></Sheet>
+                <Sheet open={isMobileSheetOpen} onOpenChange={setIsMobileSheetOpen}><SheetTrigger asChild><Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary h-9 w-9 md:hidden hide-on-print" aria-label="Open Question Navigation"><Menu className="h-5 w-5" /></Button></SheetTrigger><SheetContent side="right" className="w-3/4 p-0 flex flex-col"><ShadcnSheetHeader className="p-3 border-b text-center"><ShadcnSheetTitle className="text-lg">Navigate</ShadcnSheetTitle></ShadcnSheetHeader><div className="flex-grow p-2 flex flex-col"><QuestionPaletteContent/></div></SheetContent></Sheet>
             </div>
         </div>
       </CardHeader>
@@ -403,7 +416,7 @@ export default function ViewTestQuestionsDetailedPage() {
               <SelectContent> <SelectItem value="A">Option A</SelectItem> <SelectItem value="B">Option B</SelectItem> <SelectItem value="C">Option C</SelectItem> <SelectItem value="D">Option D</SelectItem> </SelectContent>
             </Select>
           </div>
-          <DialogFooter><DialogClose asChild><Button variant="outline" disabled={isUpdatingCorrectOption}>Cancel</Button></DialogClose><Button onClick={handleSaveCorrectOption} disabled={isUpdatingCorrectOption || !newCorrectOption}>{isUpdatingCorrectOption && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save Change</Button></DialogFooter>
+          <DialogFooter><DialogClose asChild><Button variant="outline" disabled={isUpdatingCorrectOption}>Cancel</Button></DialogClose><Button onClick={handleSaveCorrectOption} disabled={isUpdatingCorrectOption || !newCorrectOption || newCorrectOption === editingQuestion?.correctOptionEnum}>{isUpdatingCorrectOption && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save Change</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
