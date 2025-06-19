@@ -103,8 +103,8 @@ interface FetchedQuestionSourceRecord extends RecordModel {
   optionDImage?: string | null;
   explanationImage?: string | null;
 
-  QuestionText?: string | null;
-  CorrectOption?: 'Option A' | 'Option B' | 'Option C' | 'Option D';
+  QuestionText?: string | null; // For teacher_question_data
+  CorrectOption?: 'Option A' | 'Option B' | 'Option C' | 'Option D'; // For teacher_question_data
   lesson_name?: string | null; // Used by teacher_question_data
   explanationText_teacher?: string | null; // Used by teacher_question_data
 
@@ -197,7 +197,7 @@ export default function StudentTakeTeacherTestLivePage() {
   const { toast } = useToast();
 
   const [initialLoading, setInitialLoading] = useState(true);
-  const [isLoadingPageData, setIsLoadingPageData] = useState(false); // For question loading after initial checks
+  const [isLoadingPageData, setIsLoadingPageData] = useState(false); 
 
   const [testDetails, setTestDetails] = useState<TeacherTestDetailsRecord | null>(null);
   const [teacherName, setTeacherName] = useState<string>('Educator');
@@ -228,8 +228,8 @@ export default function StudentTakeTeacherTestLivePage() {
 
   const normalizeFetchedQuestion = useCallback((q: FetchedQuestionSourceRecord, sourceCollection: 'question_bank' | 'teacher_question_data'): NormalizedQuestionRecord | null => {
     if (!q || !q.id) return null;
-    let displayCorrectOptionLabel: 'A' | 'B' | 'C' | 'D' = 'A'; // Default if parsing fails
-    let correctOptionStringFull: 'Option A' | 'Option B' | 'Option C' | 'Option D' = 'Option A'; // Default
+    let displayCorrectOptionLabel: 'A' | 'B' | 'C' | 'D' = 'A'; 
+    let correctOptionStringFull: 'Option A' | 'Option B' | 'Option C' | 'Option D' = 'Option A'; 
     let lessonNameToUse = '';
 
     if (sourceCollection === 'question_bank') {
@@ -239,14 +239,14 @@ export default function StudentTakeTeacherTestLivePage() {
       }
       lessonNameToUse = q.lessonName || '';
     } else if (sourceCollection === 'teacher_question_data') {
-      if (q.CorrectOption) { // This is from teacher_question_data's "CorrectOption" field
+      if (q.CorrectOption) { 
         const optStr = (q.CorrectOption).replace('Option ', '');
         if (['A', 'B', 'C', 'D'].includes(optStr)) {
           displayCorrectOptionLabel = optStr as 'A' | 'B' | 'C' | 'D';
           correctOptionStringFull = q.CorrectOption;
         }
       }
-      lessonNameToUse = q.lesson_name || testDetails?.testName || ''; // Using testDetails.testName as fallback for lesson context
+      lessonNameToUse = q.lesson_name || testDetails?.testName || ''; 
     }
 
     const normalized: NormalizedQuestionRecord = {
@@ -270,21 +270,21 @@ export default function StudentTakeTeacherTestLivePage() {
       correctOptionString: correctOptionStringFull,
       displayExplanationText: sourceCollection === 'question_bank' ? q.explanationText : q.explanationText_teacher,
       displayExplanationImageUrl: sourceCollection === 'question_bank' ? getPbFileUrl(q, 'explanationImage') : (isValidHttpUrl(q.explanationImage_teacher) ? q.explanationImage_teacher : null),
-      marks: typeof q.marks === 'number' ? q.marks : 1, // Default to 1 mark if not specified
-      subject: q.subject || null, // Ensure subject is present or null
+      marks: typeof q.marks === 'number' ? q.marks : 1,
+      subject: q.subject || null, 
       lessonName: lessonNameToUse,
-      difficulty: q.difficulty as NormalizedQuestionRecord['difficulty'] || null, // Handle potentially null difficulty
+      difficulty: q.difficulty as NormalizedQuestionRecord['difficulty'] || null, 
       originalSourceCollection: sourceCollection,
-      rawRecord: q as RecordModel, // Store the raw record
+      rawRecord: q as RecordModel, 
     };
     return normalized;
-  }, [testDetails?.testName]); // Added testDetails.testName as a dependency
+  }, [testDetails?.testName]); 
 
   const handleSubmitTest = useCallback(async (autoSubmit = false, terminationReason?: string) => {
     if (!currentUser || !testDetails || isSubmittingTest || testSessionState === 'completed' || testSessionState === 'terminated') {
       console.warn("handleSubmitTest (teacher test) blocked. Conditions not met:", {currentUser: !!currentUser, testDetails: !!testDetails, isSubmittingTest, testSessionState});
-      setIsSubmittingTest(false); // Ensure this is reset if bailing early
-      setIsSubmitConfirmOpen(false); // Close confirm dialog if open
+      setIsSubmittingTest(false); 
+      setIsSubmitConfirmOpen(false); 
       return;
     }
     setIsSubmittingTest(true);
@@ -298,22 +298,22 @@ export default function StudentTakeTeacherTestLivePage() {
     let correctCount = 0;
     let attemptedCount = 0;
     let pointsEarnedFromTest = 0;
-    let totalMarksForTest = 0;
+    let totalMarksForTest = 0; // Initialize here
 
     const answersLogForDb = questions.map(q => {
       const userAnswerRec = userAnswers[q.id];
       const selected = userAnswerRec?.selectedOption || null;
       let isCorrectAns = false;
-      const questionCorrectOptionString = q.correctOptionString; 
-      const questionMarks = typeof q.marks === 'number' ? q.marks : 1; 
-      totalMarksForTest += questionMarks; 
+      const questionCorrectOptionString = q.correctOptionString;
+      const questionMarks = typeof q.marks === 'number' ? q.marks : 1;
+      totalMarksForTest += questionMarks; // Calculate total marks before it's used
 
       if (selected) {
         attemptedCount++;
         if (selected === questionCorrectOptionString) {
           correctCount++;
           isCorrectAns = true;
-          pointsEarnedFromTest += questionMarks; 
+          pointsEarnedFromTest += questionMarks;
         }
       }
       return {
@@ -326,13 +326,13 @@ export default function StudentTakeTeacherTestLivePage() {
       };
     });
     
-    const maxScorePossible = (testDetails.totalScore && testDetails.totalScore > 0) ? testDetails.totalScore : totalMarksForTest;
+    const maxScorePossible = (testDetails.totalScore && testDetails.totalScore > 0) ? testDetails.totalScore : totalMarksForTest; // Now totalMarksForTest is defined
     const percentageScore = maxScorePossible > 0 ? (pointsEarnedFromTest / maxScorePossible) * 100 : 0;
 
 
     const finalTestStatusDbValue: TeacherTestAttempt['status'] = terminationReason === 'time_up'
         ? 'terminated_time_up'
-        : (terminationReason === 'manual' ? 'terminated_manual' : 'completed'); 
+        : (terminationReason === 'manual' ? 'terminated_manual' : 'completed');
 
     const durationTakenSecs = testStartTimeRef.current ? Math.round((Date.now() - testStartTimeRef.current) / 1000) : (timeLeft !== null && testDetails?.duration ? (parseInt(testDetails.duration, 10)*60 - timeLeft) : 0);
 
@@ -344,35 +344,44 @@ export default function StudentTakeTeacherTestLivePage() {
       test_name_cache: testDetails.testName,
       teacher_name_cache: testDetails.expand?.teacherId?.name || 'Educator',
       score: pointsEarnedFromTest,
-      max_score: maxScorePossible, 
+      max_score: maxScorePossible,
       total_questions_in_test_cache: questions.length,
       attempted_questions_count: attemptedCount,
       correct_answers_count: correctCount,
       incorrect_answers_count: attemptedCount - correctCount,
       unattempted_questions_count: questions.length - attemptedCount,
       percentage: parseFloat(percentageScore.toFixed(2)),
-      duration_taken_seconds: Math.max(0, durationTakenSecs), 
+      duration_taken_seconds: Math.max(0, durationTakenSecs),
       answers_log: JSON.stringify(answersLogForDb),
       status: finalTestStatusDbValue,
-      plan_context: "Subscribed - Teacher Plan", 
-      started_at: testStartTimeRef.current ? new Date(testStartTimeRef.current).toISOString() : new Date().toISOString(), 
+      plan_context: "Subscribed - Teacher Plan",
+      started_at: testStartTimeRef.current ? new Date(testStartTimeRef.current).toISOString() : new Date().toISOString(),
       submitted_at: new Date().toISOString(),
       marked_for_review_without_selecting_option: answersLogForDb.filter(a => a.markedForReview && !a.selectedOption).length,
       marked_for_review_with_selecting_option: answersLogForDb.filter(a => a.markedForReview && a.selectedOption).length,
     };
-    console.log("Submitting test data to teacher_test_history:", resultDataToSave);
+    
     try {
       const createdResultRecord = await pb.collection('teacher_test_history').create(resultDataToSave);
       setTestSessionState(finalTestStatusDbValue === 'completed' ? 'completed' : 'terminated');
-      setTimeLeft(0); 
+      setTimeLeft(0);
       toast({ title: autoSubmit ? (terminationReason ? "Test Terminated" : "Test Auto-Submitted") : "Test Submitted Successfully!", description: `Your results for "${testDetails.testName}" have been recorded. ${terminationReason ? `Reason: ${terminationReason.replace(/_/g, ' ')}.` : ''}` });
       router.push(Routes.testResultTeacherTest(createdResultRecord.id));
     } catch (err: any) {
-      console.error("Failed to submit teacher test results:", err.data || err.message, "Full Error:", err);
-      toast({ title: "Submission Failed", description: `Could not save your results. Error: ${err.data?.message || err.message}`, variant: "destructive" });
+      let detailedMessage = "Could not save your results.";
+      // Check for PocketBase's nested validation errors
+      if (err.data && err.data.data && typeof err.data.data === 'object' && Object.keys(err.data.data).length > 0) {
+        detailedMessage += " Details: " + Object.entries(err.data.data).map(([key, val]: [string, any]) => `${key}: ${val.message}`).join('; ');
+      } else if (err.data && err.data.message) {
+        detailedMessage += ` Server: ${err.data.message}`;
+      } else if (err.message) {
+        detailedMessage += ` ${err.message}`;
+      }
+      console.error("Failed to submit teacher test results. Full Error Object:", err, "Error Data (if any):", err.data, "Prepared Data:", JSON.stringify(resultDataToSave, null, 2));
+      toast({ title: "Submission Failed", description: detailedMessage, variant: "destructive", duration: 9000 });
     } finally {
       setIsSubmittingTest(false);
-      setIsSubmitConfirmOpen(false); 
+      setIsSubmitConfirmOpen(false);
     }
   }, [currentUser, testDetails, questions, userAnswers, timeLeft, router, toast, testSessionState, currentQuestion, isSubmittingTest]);
 
@@ -423,8 +432,8 @@ export default function StudentTakeTeacherTestLivePage() {
           setUserAnswers(initialAnswers);
           setTestSessionState('inProgress');
           const durationMinutes = parseInt(currentTestDetails.duration || "60", 10);
-          setTimeLeft(durationMinutes > 0 ? durationMinutes * 60 : 3600); 
-          testStartTimeRef.current = Date.now(); 
+          setTimeLeft(durationMinutes > 0 ? durationMinutes * 60 : 3600);
+          testStartTimeRef.current = Date.now();
           questionStartTimeRef.current = Date.now();
           toast({ title: "Test Started!", description: "Good luck!" });
         }
@@ -454,7 +463,7 @@ export default function StudentTakeTeacherTestLivePage() {
 
     try {
       const fetchedTest = await pb.collection('teacher_tests').getOne<TeacherTestDetailsRecord>(currentTestId, {
-        expand: 'teacherId', 
+        expand: 'teacherId',
         fields: 'id,testName,Admin_Password,duration,teacherId,QBExam,model,Test_Subject,questions_edunexus,questions_teachers,status,totalScore,Test_Description,expand.teacherId.name,expand.teacherId.EduNexus_Name',
         '$autoCancel': false
       });
@@ -476,7 +485,7 @@ export default function StudentTakeTeacherTestLivePage() {
         if (isMountedGetter()) setTestSessionState('pinEntry');
       } else {
         if (isMountedGetter()) {
-          setShowInstructionModal(true); 
+          setShowInstructionModal(true);
           setTestSessionState('instructions');
         }
       }
@@ -495,7 +504,7 @@ export default function StudentTakeTeacherTestLivePage() {
 
   useEffect(() => {
     let isMounted = true;
-    if (!isAuthLoading) { 
+    if (!isAuthLoading) {
       fetchTestDataAndDecideStage(() => isMounted);
     }
     return () => { isMounted = false; };
@@ -503,13 +512,13 @@ export default function StudentTakeTeacherTestLivePage() {
 
 
   useEffect(() => {
-    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current); 
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     if (testSessionState === 'inProgress' && timeLeft !== null && timeLeft > 0 && !isSubmitConfirmOpen) {
       timerIntervalRef.current = setInterval(() => {
         setTimeLeft(prev => {
-          if (prev === null || prev <= 1) { 
-            clearInterval(timerIntervalRef.current!);
-            handleSubmitTest(true, "time_up"); 
+          if (prev === null || prev <= 1) {
+            if(timerIntervalRef.current) clearInterval(timerIntervalRef.current!);
+            handleSubmitTest(true, "time_up");
             return 0;
           }
           return prev - 1;
@@ -517,7 +526,7 @@ export default function StudentTakeTeacherTestLivePage() {
       }, 1000);
     }
     return () => { if (timerIntervalRef.current) clearInterval(timerIntervalRef.current); };
-  }, [testSessionState, timeLeft, isSubmitConfirmOpen, handleSubmitTest]); 
+  }, [testSessionState, timeLeft, isSubmitConfirmOpen, handleSubmitTest]);
 
   const handlePinVerify = async () => {
     if (!testDetails || testDetails.Admin_Password === null || testDetails.Admin_Password === undefined) {
@@ -526,9 +535,9 @@ export default function StudentTakeTeacherTestLivePage() {
     setIsVerifyingPin(true); setPinError(null);
     if (enteredPin === String(testDetails.Admin_Password).trim()) {
       toast({ title: "PIN Verified!", description: "Loading test instructions..." });
-      sessionStorage.setItem(`${TEST_PIN_SESSION_KEY_PREFIX}${testId}`, 'true'); 
+      sessionStorage.setItem(`${TEST_PIN_SESSION_KEY_PREFIX}${testId}`, 'true');
       setTestSessionState('instructions');
-      setShowInstructionModal(true); 
+      setShowInstructionModal(true);
     } else {
       setPinError("Invalid PIN. Please try again.");
     }
@@ -536,9 +545,9 @@ export default function StudentTakeTeacherTestLivePage() {
   };
 
   const handleStartTestAfterInstructions = () => {
-    setShowInstructionModal(false); 
+    setShowInstructionModal(false);
     if (testDetails) {
-        loadQuestionsAndStartTest(testDetails, () => true); 
+        loadQuestionsAndStartTest(testDetails, () => true);
     } else {
         setError("Test details not available to start.");
         setTestSessionState('terminated');
@@ -551,7 +560,7 @@ export default function StudentTakeTeacherTestLivePage() {
 
   const navigateQuestion = (directionOrIndex: 'next' | 'prev' | number) => {
     if (testSessionState !== 'inProgress' || !currentQuestion) return;
-    if (userAnswers[currentQuestion.id]) { 
+    if (userAnswers[currentQuestion.id]) {
         const currentTime = Date.now();
         const timeSpentCurrentQuestion = Math.round((currentTime - questionStartTimeRef.current) / 1000);
         setUserAnswers(prev => ({ ...prev, [currentQuestion.id]: { ...prev[currentQuestion.id], timeSpentSeconds: Math.max(0, (prev[currentQuestion.id].timeSpentSeconds || 0) + timeSpentCurrentQuestion) }}));
@@ -561,7 +570,7 @@ export default function StudentTakeTeacherTestLivePage() {
     else if (directionOrIndex === 'prev') newIndex = Math.max(0, currentQuestionIndex - 1);
     else if (typeof directionOrIndex === 'number') newIndex = Math.max(0, Math.min(questions.length - 1, directionOrIndex));
     setCurrentQuestionIndex(newIndex);
-    questionStartTimeRef.current = Date.now(); 
+    questionStartTimeRef.current = Date.now();
   };
   const handleSaveAndNext = () => navigateQuestion('next');
   const formatTime = (seconds: number | null): string => { if (seconds === null || seconds < 0) seconds = 0; const h = Math.floor(seconds / 3600); const m = Math.floor((seconds % 3600) / 60); const s = seconds % 60; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`; };
@@ -715,7 +724,7 @@ export default function StudentTakeTeacherTestLivePage() {
             <div className="flex items-center gap-1 sm:gap-2">
                 <Sheet open={isMobileSheetOpen} onOpenChange={setIsMobileSheetOpen}><SheetTrigger asChild><Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary h-7 w-7 md:hidden" aria-label="Open Question Navigation"><ListOrdered className="h-5 w-5" /></Button></SheetTrigger><SheetContent side="right" className="w-3/4 p-0 flex flex-col"><ShadcnSheetHeader className="p-3 border-b text-center"><ShadcnSheetTitle className="text-lg">Navigation</ShadcnSheetTitle><ShadcnSheetDescription>Jump to any question or submit.</ShadcnSheetDescription></ShadcnSheetHeader><QuestionPaletteContent /></SheetContent></Sheet>
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary h-7 w-7 hidden md:inline-flex" onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} aria-label={isRightSidebarOpen ? "Hide Question Panel" : "Show Question Panel"}><Menu className="h-5 w-5" /></Button>
-                <Button variant="ghost" size="icon" asChild className="text-muted-foreground hover:text-primary h-7 w-7"><Link href={Routes.studentTestInstructions(testId as string)} target="_blank"><Info className="h-4 w-4" /></Link></Button>
+                <Button variant="ghost" size="icon" asChild className="text-muted-foreground hover:text-primary h-7 w-7"><Link href={Routes.studentTestInstructions(testId)} target="_blank"><Info className="h-4 w-4" /></Link></Button>
             </div>
         </div>
       </div>
@@ -735,7 +744,7 @@ export default function StudentTakeTeacherTestLivePage() {
             {currentQuestion ? (
               <ScrollArea className="flex-1 min-h-0"><CardContent className="p-3 sm:p-4 md:p-6 space-y-4">
                   <div className="p-2 border-b border-border/50 rounded-md bg-background min-h-[80px]">{currentQuestion.displayQuestionText && (<div className="prose prose-sm dark:prose-invert max-w-none mb-3 text-foreground leading-relaxed">{renderLatexHelper(currentQuestion.displayQuestionText)}</div>)}{currentQuestion.displayQuestionImageUrl && (<div className="my-2 text-center"><NextImage src={currentQuestion.displayQuestionImageUrl} alt="Question Image" width={400} height={300} className="rounded object-contain inline-block border" data-ai-hint="question diagram"/></div>)}{!(currentQuestion.displayQuestionText || currentQuestion.displayQuestionImageUrl) && (<p className="text-xs sm:text-sm text-muted-foreground italic py-3">Question content not provided.</p>)}</div>
-                  <RadioGroup value={userAnswers[currentQuestion.id]?.selectedOption || ""} onValueChange={handleOptionChange} className="space-y-2.5" disabled={testSessionState !== 'inProgress'}>{currentQuestion.displayOptions.map(opt => renderOption(opt))}</RadioGroup>
+                  <RadioGroup value={userAnswers[currentQuestion.id]?.selectedOption || ""} onValueChange={handleOptionChange} className="space-y-2.5" disabled={testSessionState !== 'inProgress'}>{(['A', 'B', 'C', 'D'] as const).map(optChar => renderOption(currentQuestion.displayOptions.find(o => o.label === optChar) || {label: optChar}))}</RadioGroup>
               </CardContent></ScrollArea>
             ) : (
                <CardContent className="p-3 sm:p-4 md:p-6 flex items-center justify-center h-full">
@@ -750,3 +759,4 @@ export default function StudentTakeTeacherTestLivePage() {
     </div>
   );
 }
+
