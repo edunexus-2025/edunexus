@@ -6,10 +6,10 @@ import React, { useEffect, useState, useCallback } from 'react';
 import pb from '@/lib/pocketbase';
 import type { RecordModel } from 'pocketbase';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'; // Added Card & CardContent
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area'; // Added ScrollArea import
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { ArrowLeft, Settings, ListChecks, PlusCircle, BarChart3, Send, Edit } from 'lucide-react';
 import Link from 'next/link';
 import { Routes } from '@/lib/constants';
@@ -20,12 +20,11 @@ interface TestDetailsLayout extends RecordModel {
   teacherId?: string;
 }
 
+// Reverted tab labels and icons to their state before the last change
 const TABS = [
   { value: 'settings', label: 'Settings & Details', icon: Settings, hrefSuffix: '/settings' },
-  // The page at /view-questions now handles adding questions via QbModal (or detailed review)
-  { value: 'view-questions', label: 'Add Questions', icon: PlusCircle, hrefSuffix: '/view-questions' },
-  // The page at /add-question now lists questions and has a "Browse QB" button
-  { value: 'add-question', label: 'View Questions', icon: ListChecks, hrefSuffix: '/add-question' },
+  { value: 'add-question', label: 'Add Questions', icon: PlusCircle, hrefSuffix: '/add-question' }, // Primary creation form here
+  { value: 'view-questions', label: 'View Questions', icon: ListChecks, hrefSuffix: '/view-questions' }, // Detailed viewer here
   { value: 'results', label: 'Student Results', icon: BarChart3, hrefSuffix: '/results' },
   { value: 'status', label: 'Status & Share', icon: Send, hrefSuffix: '/status' },
 ];
@@ -51,7 +50,7 @@ export default function TeacherTestPanelLayout({
     try {
       const record = await pb.collection('teacher_tests').getOne<TestDetailsLayout>(currentTestId, {
         fields: 'testName,teacherId',
-        '$autoCancel': false,
+        '$autoCancel': false, // Prevent auto-cancellation
       });
       if (record.teacherId !== currentTeacherId) {
         setError("You are not authorized to manage this test.");
@@ -78,7 +77,6 @@ export default function TeacherTestPanelLayout({
   }, [testId, teacher, isLoadingTeacher, fetchTestName]);
 
   const currentTabValue = TABS.find(tab => pathname === `/teacher/dashboard/my-content/${testId}${tab.hrefSuffix}`)?.value;
-  // Default to 'settings' if no specific tab matches or if on the base path for [testId]
   const activeTab = currentTabValue || (pathname === `/teacher/dashboard/my-content/${testId}` ? 'settings' : 'settings');
 
 
@@ -142,7 +140,6 @@ export default function TeacherTestPanelLayout({
           </TabsList>
         </ScrollArea>
         <div className="mt-4 rounded-lg border bg-card text-card-foreground shadow-sm">
-          {/* isLoadingTestName should be checked before rendering children if children depend on testName */}
           {isLoadingTestName ? <div className="p-6"><Skeleton className="h-[calc(100vh-250px)] w-full" /></div> : children}
         </div>
       </Tabs>
@@ -150,4 +147,3 @@ export default function TeacherTestPanelLayout({
   );
 }
     
-
