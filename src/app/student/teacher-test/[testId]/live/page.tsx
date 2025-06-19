@@ -40,8 +40,8 @@ interface TeacherTestDetailsRecord extends RecordModel {
   QBExam?: string;
   model?: "Chapterwise" | "Full Length";
   Test_Subject?: "Physics" | "Chemistry" | "Maths" | "Biology" | null;
-  questions_edunexus?: Array<{id: string}> | string[];
-  questions_teachers?: Array<{id: string}> | string[];
+  questions_edunexus?: string[]; // Array of IDs
+  questions_teachers?: string[]; // Array of IDs
   status?: 'Draft' | 'Published' | 'Archived';
   totalScore?: number;
   expand?: {
@@ -50,8 +50,7 @@ interface TeacherTestDetailsRecord extends RecordModel {
       name?: string;
       EduNexus_Name?: string;
     };
-    questions_edunexus?: FetchedQuestionSourceRecord[];
-    questions_teachers?: FetchedQuestionSourceRecord[];
+    // Note: We will fetch questions separately, so expand on question relations here is just for IDs.
   };
 }
 
@@ -65,35 +64,34 @@ interface FetchedQuestionSourceRecord extends RecordModel {
   optionDText?: string | null;
   correctOption?: "A" | "B" | "C" | "D" | null;
   explanationText?: string | null;
-  questionImage?: string | null; // Filename from PocketBase
-  optionAImage?: string | null;   // Filename from PocketBase
-  optionBImage?: string | null;   // Filename from PocketBase
-  optionCImage?: string | null;   // Filename from PocketBase
-  optionDImage?: string | null;   // Filename from PocketBase
-  explanationImage?: string | null; // Filename from PocketBase
+  questionImage?: string | null;         // Filename from PocketBase
+  optionAImage?: string | null;          // Filename from PocketBase
+  optionBImage?: string | null;          // Filename from PocketBase
+  optionCImage?: string | null;          // Filename from PocketBase
+  optionDImage?: string | null;          // Filename from PocketBase
+  explanationImage?: string | null;      // Filename from PocketBase
+  lessonName?: string | null;            // For question_bank
 
-  // Fields from teacher_question_data (might use uppercase)
-  QuestionText?: string | null;
-  QuestionImage?: string | null; // Direct URL if different handling is needed
-  OptionAText?: string | null;
-  OptionAImage_teacher?: string | null; // Direct URL
-  OptionBText?: string | null;
-  OptionBImage_teacher?: string | null; // Direct URL
-  OptionCText?: string | null;
-  OptionCImage_teacher?: string | null; // Direct URL
-  OptionDText?: string | null;
-  OptionDImage_teacher?: string | null; // Direct URL
-  CorrectOption?: "Option A" | "Option B" | "Option C" | "Option D" | null;
+  // Fields from teacher_question_data (might use uppercase or have _teacher suffix for clarity)
+  QuestionText?: string | null;          // Already present
+  QuestionImage_teacher?: string | null; // Direct URL if different handling is needed
+  OptionAText?: string | null;           // Already present
+  OptionAImage_teacher?: string | null;  // Direct URL
+  OptionBText?: string | null;           // Already present
+  OptionBImage_teacher?: string | null;  // Direct URL
+  OptionCText?: string | null;           // Already present
+  OptionCImage_teacher?: string | null;  // Direct URL
+  OptionDText?: string | null;           // Already present
+  OptionDImage_teacher?: string | null;  // Direct URL
+  CorrectOption?: "Option A" | "Option B" | "Option C" | "Option D" | null; // Already present
   explanationText_teacher?: string | null;
   explanationImage_teacher?: string | null; // Direct URL
+  lesson_name?: string | null;           // For teacher_question_data
 
   marks?: number | null;
   subject?: string | null;
   difficulty?: 'Easy' | 'Medium' | 'Hard' | null;
-  lesson_name?: string | null; 
-  lessonName?: string | null;  
 }
-
 
 interface NormalizedQuestionRecord {
   id: string;
@@ -109,6 +107,7 @@ interface NormalizedQuestionRecord {
   displayExplanationImageUrl?: string | null;
   marks: number;
   subject?: string | null;
+  lessonName?: string | null; // Added this field
   difficulty?: 'Easy' | 'Medium' | 'Hard' | null;
   originalSourceCollection: 'question_bank' | 'teacher_question_data';
   rawRecord: FetchedQuestionSourceRecord;
@@ -129,31 +128,35 @@ const isValidHttpUrl = (string: string | null | undefined): string is string => 
   catch (_) { return false; }
 };
 
-const getPbFileUrl = (record: FetchedQuestionSourceRecord, fieldName: keyof FetchedQuestionSourceRecord): string | null => {
+const getPbFileUrl = (record: FetchedQuestionSourceRecord, fieldName: keyof FetchedQuestionSourceRecord, sourceCollection: 'question_bank' | 'teacher_question_data'): string | null => {
     const fieldValue = record[fieldName] as string | undefined | null;
-    if (fieldValue && record.collectionId && record.collectionName) {
-        try { return pb.files.getUrl(record as RecordModel, fieldValue); }
-        catch (e) { console.warn(`StudentTeacherTestLivePage (getPbFileUrl): Error for field '${String(fieldName)}' in record '${record.id}'. Value: '${fieldValue}'. Collection: ${record.collectionName}. Error:`, e); return null; }
+    if (fieldValue && record.id && record.collectionId && record.collectionName) {
+      if (sourceCollection === 'teacher_question_data' && (fieldName.endsWith('Image_teacher') || fieldName === 'QuestionImage_teacher')) {
+        // For teacher_question_data, assume direct URLs (already validated by isValidHttpUrl if needed)
+        return isValidHttpUrl(fieldValue) ? fieldValue : null;
+      }
+      // For question_bank, resolve PocketBase file names
+      try { return pb.files.getUrl(record as RecordModel, fieldValue); }
+      catch (e) { console.warn(`StudentTeacherTestLivePage (getPbFileUrl): Error for field '${String(fieldName)}' in record '${record.id}'. Value: '${fieldValue}'. Collection: ${record.collectionName}. Error:`, e); return null; }
     }
     return null;
 };
 
-// LaTeX Rendering Function
+// LaTeX Rendering Function (reinstated)
 const renderLatex = (text: string | undefined | null): React.ReactNode => {
   if (!text) return null;
   const parts = text.split(/(\$\$[\s\S]*?\$\$|\$.*?\$|\\\(.*?\\\)|\\\[.*?\\\]|\\begin\{.*?\}[\s\S]*?\\end\{.*?\})/g);
   return parts.map((part, index) => {
     try {
-      if (part.startsWith('$$') && part.endsWith('$$')) return <BlockMath key={index} math={part.substring(2, part.length - 2)} />;
-      if (part.startsWith('$') && part.endsWith('$')) return <InlineMath key={index} math={part.substring(1, part.length - 1)} />;
-      if (part.startsWith('\\(') && part.endsWith('\\)')) return <InlineMath key={index} math={part.substring(2, part.length - 2)} />;
-      if (part.startsWith('\\[') && part.endsWith('\\]')) return <BlockMath key={index} math={part.substring(2, part.length - 2)} />;
-      if (part.startsWith('\\begin{') && part.includes('\\end{')) return <BlockMath key={index} math={part} />;
+      if (part.startsWith('$$') && part.endsWith('$$') && part.length > 4) { return <BlockMath key={index} math={part.substring(2, part.length - 2)} />; }
+      if (part.startsWith('$') && part.endsWith('$') && part.length > 2) { return <InlineMath key={index} math={part.substring(1, part.length - 1)} />; }
+      if (part.startsWith('\\(') && part.endsWith('\\)')) { return <InlineMath key={index} math={part.substring(2, part.length - 2)} />; }
+      if (part.startsWith('\\[') && part.endsWith('\\]')) { return <BlockMath key={index} math={part.substring(2, part.length - 2)} />; }
+      if (part.startsWith('\\begin{') && part.includes('\\end{')) { const envMatch = part.match(/^\\begin\{(.*?)\}/); if (envMatch && ['equation', 'align', 'gather', 'matrix', 'pmatrix', 'bmatrix', 'vmatrix', 'Vmatrix', 'cases', 'array', 'subequations'].includes(envMatch[1])) { return <BlockMath key={index} math={part} /> }}
     } catch (e) { return <span key={index} className="text-destructive" title="LaTeX Error">{part}</span>; }
     return <span key={index}>{part}</span>;
   });
 };
-
 
 export default function StudentTakeTeacherTestLivePage() {
   const params = useParams();
@@ -191,79 +194,42 @@ export default function StudentTakeTeacherTestLivePage() {
 
   const normalizeFetchedQuestion = (q: FetchedQuestionSourceRecord, sourceCollection: 'question_bank' | 'teacher_question_data'): NormalizedQuestionRecord | null => {
     if (!q || !q.id) { console.warn("normalizeFetchedQuestion: Received null or invalid question record:", q); return null; }
+    
     let displayCorrectOptionLabel: 'A' | 'B' | 'C' | 'D' = 'A'; 
     const correctOptionSource = sourceCollection === 'question_bank' ? q.correctOption : q.CorrectOption;
-    if (correctOptionSource) { const optStr = String(correctOptionSource).replace('Option ', ''); if (['A', 'B', 'C', 'D'].includes(optStr)) { displayCorrectOptionLabel = optStr as 'A' | 'B' | 'C' | 'D'; } else { console.warn(`normalizeFetchedQuestion: Invalid correctOption value '${correctOptionSource}' for QID ${q.id}. Defaulting to 'A'.`); }} else { console.warn(`normalizeFetchedQuestion: Missing correctOption for QID ${q.id}. Defaulting to 'A'.`);}
+    if (correctOptionSource) { 
+        const optStr = String(correctOptionSource).replace('Option ', ''); 
+        if (['A', 'B', 'C', 'D'].includes(optStr)) { displayCorrectOptionLabel = optStr as 'A' | 'B' | 'C' | 'D'; } 
+        else { console.warn(`normalizeFetchedQuestion: Invalid correctOption value '${correctOptionSource}' for QID ${q.id}. Defaulting to 'A'.`); }
+    } else { console.warn(`normalizeFetchedQuestion: Missing correctOption for QID ${q.id}. Defaulting to 'A'.`); }
+
     const normalized: NormalizedQuestionRecord = {
       id: q.id,
       displayQuestionText: sourceCollection === 'question_bank' ? q.questionText : q.QuestionText,
-      displayQuestionImageUrl: sourceCollection === 'question_bank' ? getPbFileUrl(q, 'questionImage') : (isValidHttpUrl(q.QuestionImage) ? q.QuestionImage : null),
+      displayQuestionImageUrl: sourceCollection === 'question_bank' ? getPbFileUrl(q, 'questionImage', sourceCollection) : (isValidHttpUrl(q.QuestionImage_teacher) ? q.QuestionImage_teacher : null),
       displayOptions: (['A', 'B', 'C', 'D'] as const).map(label => {
-        const textKeyQB = `option${label}Text` as keyof FetchedQuestionSourceRecord; const textKeyTeacher = `Option${label}Text` as keyof FetchedQuestionSourceRecord;
-        const imageKeyQB = `option${label}Image` as keyof FetchedQuestionSourceRecord; const imageKeyTeacher = `Option${label}Image_teacher` as keyof FetchedQuestionSourceRecord;
-        return { label: label, text: (sourceCollection === 'question_bank' ? q[textKeyQB] : q[textKeyTeacher]) as string | null || null, imageUrl: sourceCollection === 'question_bank' ? getPbFileUrl(q, imageKeyQB) : (isValidHttpUrl(q[imageKeyTeacher]) ? q[imageKeyTeacher] as string : null)};
+        const textKeyQB = `option${label}Text` as keyof FetchedQuestionSourceRecord; 
+        const textKeyTeacher = `Option${label}Text` as keyof FetchedQuestionSourceRecord;
+        const imageKeyQB = `option${label}Image` as keyof FetchedQuestionSourceRecord; 
+        const imageKeyTeacher = `Option${label}Image_teacher` as keyof FetchedQuestionSourceRecord;
+        return { 
+          label: label, 
+          text: (sourceCollection === 'question_bank' ? q[textKeyQB] : q[textKeyTeacher]) as string | null || null, 
+          imageUrl: sourceCollection === 'question_bank' ? getPbFileUrl(q, imageKeyQB, sourceCollection) : (isValidHttpUrl(q[imageKeyTeacher]) ? q[imageKeyTeacher] as string : null)
+        };
       }),
       displayCorrectOptionLabel,
       displayExplanationText: sourceCollection === 'question_bank' ? q.explanationText : (q.explanationText_teacher || null),
-      displayExplanationImageUrl: sourceCollection === 'question_bank' ? getPbFileUrl(q, 'explanationImage') : (isValidHttpUrl(q.explanationImage_teacher) ? q.explanationImage_teacher : null),
-      marks: typeof q.marks === 'number' ? q.marks : 1, subject: q.subject || null, difficulty: q.difficulty || null,
-      lessonName: (sourceCollection === 'question_bank' ? q.lessonName : q.lesson_name) || null,
-      originalSourceCollection: sourceCollection, rawRecord: q,
+      displayExplanationImageUrl: sourceCollection === 'question_bank' ? getPbFileUrl(q, 'explanationImage', sourceCollection) : (isValidHttpUrl(q.explanationImage_teacher) ? q.explanationImage_teacher : null),
+      marks: typeof q.marks === 'number' ? q.marks : 1, 
+      subject: q.subject || null, 
+      lessonName: (sourceCollection === 'question_bank' ? q.lessonName : q.lesson_name) || null, // Correctly assign lessonName
+      difficulty: q.difficulty || null,
+      originalSourceCollection: sourceCollection, 
+      rawRecord: q,
     };
     return normalized;
   };
-
-  const loadQuestions = useCallback(async (currentTestDetails: TeacherTestDetailsRecord, isMountedGetter: () => boolean) => {
-    if (!isMountedGetter()) return;
-    console.log("StudentTakeTeacherTestLivePage: loadQuestions called for testId:", currentTestDetails.id);
-    setIsLoadingPageData(true); 
-    
-    const eduNexusQuestionIds = (currentTestDetails.expand?.questions_edunexus || (Array.isArray(currentTestDetails.questions_edunexus) ? currentTestDetails.questions_edunexus : [])).map((item: any) => String(item?.id || item).trim()).filter(id => id);
-    const teacherQuestionIds = (currentTestDetails.expand?.questions_teachers || (Array.isArray(currentTestDetails.questions_teachers) ? currentTestDetails.questions_teachers : [])).map((item: any) => String(item?.id || item).trim()).filter(id => id);
-    
-    if (isMountedGetter()) console.log("StudentTakeTeacherTestLivePage: EduNexus QB IDs (from expand/relation):", eduNexusQuestionIds.length, "Teacher QB IDs (from expand/relation):", teacherQuestionIds.length);
-
-    let fetchedAndNormalizedQuestions: NormalizedQuestionRecord[] = [];
-
-    try {
-      if (eduNexusQuestionIds.length > 0) {
-        const filter = eduNexusQuestionIds.map(id => `id = "${escapeForPbFilter(id)}"`).join(' || ');
-        const records = await pb.collection('question_bank').getFullList<FetchedQuestionSourceRecord>({ filter, '$autoCancel': false });
-        fetchedAndNormalizedQuestions.push(...records.map(q => normalizeFetchedQuestion(q, 'question_bank')).filter(Boolean) as NormalizedQuestionRecord[]);
-      }
-      if (teacherQuestionIds.length > 0) {
-        const filter = teacherQuestionIds.map(id => `id = "${escapeForPbFilter(id)}"`).join(' || ');
-        const records = await pb.collection('teacher_question_data').getFullList<FetchedQuestionSourceRecord>({ filter, '$autoCancel': false });
-        fetchedAndNormalizedQuestions.push(...records.map(q => normalizeFetchedQuestion(q, 'teacher_question_data')).filter(Boolean) as NormalizedQuestionRecord[]);
-      }
-      
-      const originalOrder = [...eduNexusQuestionIds, ...teacherQuestionIds];
-      if (originalOrder.length > 0 && fetchedAndNormalizedQuestions.length > 0) {
-         fetchedAndNormalizedQuestions.sort((a, b) => { const indexA = originalOrder.indexOf(a.id); const indexB = originalOrder.indexOf(b.id); if (indexA === -1 && indexB === -1) return 0; if (indexA === -1) return 1; if (indexB === -1) return -1; return indexA - indexB; });
-      }
-      
-      if (isMountedGetter()) {
-        if (fetchedAndNormalizedQuestions.length === 0) {
-            let noQuestionsMsg = `No questions are currently linked to the test "${currentTestDetails.testName}". Please contact the teacher.`;
-            if (eduNexusQuestionIds.length > 0 || teacherQuestionIds.length > 0) noQuestionsMsg = `Although question IDs are linked to "${currentTestDetails.testName}", the full question data could not be loaded. This might be due to deleted questions or data inconsistencies. Please contact the teacher.`;
-            console.warn("StudentTakeTeacherTestLivePage: " + noQuestionsMsg); setError(noQuestionsMsg); setQuestions([]); setTestSessionState('terminated'); 
-        } else {
-          setQuestions(fetchedAndNormalizedQuestions);
-          const initialAnswers: Record<string, UserAnswerLog> = {};
-          fetchedAndNormalizedQuestions.forEach(q => { initialAnswers[q.id] = { questionId: q.id, selectedOption: null, correctOption: `Option ${q.displayCorrectOptionLabel}`, isCorrect: false, markedForReview: false, timeSpentSeconds: 0 }; });
-          setUserAnswers(initialAnswers); setError(null); 
-        }
-      }
-    } catch (err: any) {
-      if (isMountedGetter()) {
-        const clientError = err as PocketBaseClientResponseError;
-        let errorMsg = "Could not load questions for this test. An unexpected error occurred.";
-        if (clientError?.isAbort || (clientError?.name === 'ClientResponseError' && clientError?.status === 0)) { console.warn('StudentTakeTeacherTestLivePage: Fetch questions request was cancelled or network issue.'); errorMsg = "Network error or request cancelled while loading questions."; }
-        else { errorMsg = `Could not load test questions. Error: ${clientError.data?.message || clientError.message || 'Unknown error'}.`; console.error("StudentTakeTeacherTestLivePage: Error in loadQuestions: Full Error:", clientError); }
-        setError(errorMsg); setTestSessionState('terminated');
-      }
-    } finally { if (isMountedGetter()) setIsLoadingPageData(false); }
-  }, [normalizeFetchedQuestion, escapeForPbFilter]);
 
   const handleSubmitTest = useCallback(async (autoSubmit = false, terminationReason?: string) => {
     if (!user || !testDetails || !testDetails.teacherId || isSubmittingTest || testSessionState === 'completed' || testSessionState === 'terminated') {
@@ -285,9 +251,9 @@ export default function StudentTakeTeacherTestLivePage() {
     });
     const maxScorePossible = typeof testDetails.totalScore === 'number' && testDetails.totalScore > 0 ? testDetails.totalScore : totalTestMarksCalculated;
     const percentageScore = maxScorePossible > 0 ? (pointsEarnedFromTest / maxScorePossible) * 100 : 0;
-    const finalTestStatusDbValue: TeacherTestAttempt['status'] = terminationReason === 'time_up' ? 'terminated_time_up' : 'completed';
+    const finalTestStatusDbValue: TeacherTestAttempt['status'] = terminationReason === 'time_up' ? 'terminated_time_up' : (terminationReason === 'manual' ? 'terminated_manual' : 'completed');
     const durationTakenSecsNonNegative = testStartTimeRef.current ? Math.max(0, Math.round((Date.now() - testStartTimeRef.current) / 1000)) : 0;
-    const resultDataToSave: Omit<TeacherTestAttempt, 'id' | 'collectionId' | 'collectionName' | 'created' | 'updated' | 'expand'> = {
+    const resultDataToSave: Partial<TeacherTestAttempt> & {student: string; teacher_test: string; teacher: string;} = {
       student: user.id, teacher_test: testDetails.id, teacher: testDetails.teacherId, test_name_cache: testDetails.testName, teacher_name_cache: testDetails.expand?.teacherId?.name || 'Unknown Teacher',
       score: pointsEarnedFromTest, max_score: maxScorePossible, total_questions: questions.length, attempted_questions: attemptedCount, correct_answers: correctCount, incorrect_answers: attemptedCount - correctCount, unattempted_questions: questions.length - attemptedCount,
       percentage: parseFloat(percentageScore.toFixed(2)), duration_taken_seconds: durationTakenSecsNonNegative, answers_log: JSON.stringify(answersLogForDb), status: finalTestStatusDbValue,
@@ -304,15 +270,74 @@ export default function StudentTakeTeacherTestLivePage() {
       const clientError = err as PocketBaseClientResponseError; console.error("Failed to submit teacher test results:", clientError.data || clientError.message, "Full Error:", clientError);
       let errorMsg = "Could not save your results."; if (clientError.data?.data) { errorMsg += " Details: " + JSON.stringify(clientError.data.data); } else if (clientError.data?.message) { errorMsg += ` Server: ${clientError.data.message}`; } else if (clientError.message) { errorMsg += ` Error: ${clientError.message}`; }
       toast({ title: "Submission Failed", description: errorMsg, variant: "destructive", duration: 9000 }); setIsSubmitConfirmOpen(false); 
-    } finally { setIsSubmittingTest(false); }
-  }, [user, testDetails, questions, userAnswers, timeLeft, router, toast, testSessionState, currentQuestion, isSubmittingTest, authRefresh]); // Added isSubmittingTest, testSessionState, currentQuestion, authRefresh
+    } finally { setIsSubmittingTest(false); setIsSubmitConfirmOpen(false); }
+  }, [user, testDetails, questions, userAnswers, router, toast, testSessionState, currentQuestion]); 
+
+  const loadQuestions = useCallback(async (currentTestDetails: TeacherTestDetailsRecord, isMountedGetter: () => boolean) => {
+    if (!isMountedGetter()) return;
+    console.log("StudentTakeTeacherTestLivePage: loadQuestions called for testId:", currentTestDetails.id);
+    setIsLoadingPageData(true); // Ensure this is set at the start of loading questions
+
+    let eduNexusQuestionRecords: FetchedQuestionSourceRecord[] = [];
+    let teacherQuestionRecords: FetchedQuestionSourceRecord[] = [];
+
+    try {
+        const eduNexusQuestionIdsFromRelation = Array.isArray(currentTestDetails.questions_edunexus) ? currentTestDetails.questions_edunexus : [];
+        if (eduNexusQuestionIdsFromRelation.length > 0) {
+            const filter = eduNexusQuestionIdsFromRelation.map(id => `id = "${escapeForPbFilter(id)}"`).join(' || ');
+            eduNexusQuestionRecords = await pb.collection('question_bank').getFullList<FetchedQuestionSourceRecord>({ filter, '$autoCancel': false });
+        }
+
+        if (!isMountedGetter()) return;
+
+        const teacherQuestionIdsFromRelation = Array.isArray(currentTestDetails.questions_teachers) ? currentTestDetails.questions_teachers : [];
+        if (teacherQuestionIdsFromRelation.length > 0) {
+            const filter = teacherQuestionIdsFromRelation.map(id => `id = "${escapeForPbFilter(id)}"`).join(' || ');
+            teacherQuestionRecords = await pb.collection('teacher_question_data').getFullList<FetchedQuestionSourceRecord>({ filter, '$autoCancel': false });
+        }
+        
+        if (!isMountedGetter()) return;
+
+        let normalizedQuestions: NormalizedQuestionRecord[] = [];
+        eduNexusQuestionRecords.forEach(q => { const normQ = normalizeFetchedQuestion(q, 'question_bank'); if (normQ) normalizedQuestions.push(normQ); });
+        teacherQuestionRecords.forEach(q => { const normQ = normalizeFetchedQuestion(q, 'teacher_question_data'); if (normQ) normalizedQuestions.push(normQ); });
+        
+        const originalOrder = [...eduNexusQuestionIdsFromRelation, ...teacherQuestionIdsFromRelation];
+        const orderedQuestions = normalizedQuestions.sort((a, b) => {
+            const indexA = originalOrder.indexOf(a.id); const indexB = originalOrder.indexOf(b.id);
+            if (indexA === -1 && indexB === -1) return 0; if (indexA === -1) return 1; if (indexB === -1) return -1;
+            return indexA - indexB;
+        });
+      
+      if (isMountedGetter()) {
+        if (orderedQuestions.length === 0) {
+            let noQuestionsMsg = `No questions are currently linked to the test "${currentTestDetails.testName}". Please contact the teacher.`;
+            if (eduNexusQuestionIdsFromRelation.length > 0 || teacherQuestionIdsFromRelation.length > 0) noQuestionsMsg = `Although question IDs are linked to "${currentTestDetails.testName}", the full question data could not be loaded. This might be due to deleted questions or data inconsistencies. Please contact the teacher.`;
+            console.warn("StudentTakeTeacherTestLivePage: " + noQuestionsMsg); setError(noQuestionsMsg); setQuestions([]); setTestSessionState('terminated'); setIsLoadingPageData(false);
+        } else {
+          setQuestions(orderedQuestions);
+          const initialAnswers: Record<string, UserAnswerLog> = {};
+          orderedQuestions.forEach(q => { initialAnswers[q.id] = { questionId: q.id, selectedOption: null, correctOption: `Option ${q.displayCorrectOptionLabel}`, isCorrect: false, markedForReview: false, timeSpentSeconds: 0 }; });
+          setUserAnswers(initialAnswers); setError(null); setTestSessionState('inProgress'); questionStartTimeRef.current = Date.now(); testStartTimeRef.current = Date.now();
+        }
+      }
+    } catch (err: any) {
+      if (isMountedGetter()) {
+        const clientError = err as PocketBaseClientResponseError; 
+        let errorMsg = "Could not load questions for this test. An unexpected error occurred.";
+        if (clientError?.isAbort || (clientError?.name === 'ClientResponseError' && clientError?.status === 0)) { console.warn('StudentTakeTeacherTestLivePage: Fetch questions request was cancelled or network issue.'); errorMsg = "Network error or request cancelled while loading questions."; }
+        else { errorMsg = `Could not load test questions. Error: ${clientError.data?.message || clientError.message || 'Unknown error'}.`; console.error("StudentTakeTeacherTestLivePage: Error in loadQuestions: Full Error:", clientError); }
+        setError(errorMsg); setTestSessionState('terminated');
+      }
+    } finally { if (isMountedGetter()) setIsLoadingPageData(false); }
+  }, [normalizeFetchedQuestion, escapeForPbFilter]);
 
   const fetchTestDataAndDecideStage = useCallback(async (isMountedGetter: () => boolean) => {
     const currentTestId = typeof testId === 'string' ? testId : '';
     if (!currentTestId || !user?.id) { if (isMountedGetter()) { setError(currentTestId ? "User not authenticated." : "Invalid test ID."); setIsLoadingPageData(false); setTestSessionState('terminated'); } return; }
     if (isMountedGetter()) setIsLoadingPageData(true);
     try {
-      const fetchedTest = await pb.collection('teacher_tests').getOne<TeacherTestDetailsRecord>(currentTestId, { expand: 'teacherId,questions_edunexus,questions_teachers', '$autoCancel': false });
+      const fetchedTest = await pb.collection('teacher_tests').getOne<TeacherTestDetailsRecord>(currentTestId, { expand: 'teacherId', fields: 'id,testName,Admin_Password,duration,teacherId,QBExam,model,Test_Subject,questions_edunexus,questions_teachers,status,totalScore,expand.teacherId.name,expand.teacherId.EduNexus_Name', '$autoCancel': false });
       if (!isMountedGetter()) return;
       if (fetchedTest.status !== 'Published') { if (isMountedGetter()) { setError("This test is not currently published or available."); setIsLoadingPageData(false); setTestSessionState('terminated'); } return; }
       setTestDetails(fetchedTest); setTeacherName(fetchedTest.expand?.teacherId?.name || 'Educator');
@@ -324,8 +349,8 @@ export default function StudentTakeTeacherTestLivePage() {
         let errorMsg = `Could not load test. Error: ${clientError.data?.message || clientError.message || 'Unknown error'}.`; if (clientError.status === 404) errorMsg = "Test not found or not accessible.";
         setError(errorMsg); setTestSessionState('terminated');
       }
-    } finally { if (isMountedGetter() && (testSessionState === 'pinEntry' || testSessionState === 'terminated' || error) ) { setIsLoadingPageData(false); }}
-  }, [testId, user?.id, testSessionState, error]); // Added testSessionState and error dependencies
+    } finally { if (isMountedGetter() && (testSessionState === 'pinEntry' || testSessionState === 'terminated' || error || testSessionState === 'instructions')) { setIsLoadingPageData(false); }}
+  }, [testId, user?.id, testSessionState, error]); 
 
   useEffect(() => { let isMounted = true; if (!isAuthLoading) { fetchTestDataAndDecideStage(() => isMounted); } return () => { isMounted = false; }; }, [testId, isAuthLoading, fetchTestDataAndDecideStage]);
   useEffect(() => { let isMounted = true; if (testSessionState === 'instructions' && testDetails && questions.length === 0 && !isLoadingPageData && !error) { loadQuestions(testDetails, () => isMounted); } return () => { isMounted = false; }; }, [testSessionState, testDetails, questions.length, loadQuestions, isLoadingPageData, error]);
@@ -341,26 +366,7 @@ export default function StudentTakeTeacherTestLivePage() {
   const formatTime = (seconds: number | null): string => { if (seconds === null || seconds < 0) seconds = 0; const h = Math.floor(seconds / 3600); const m = Math.floor((seconds % 3600) / 60); const s = seconds % 60; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`; };
   const getQuestionStatusForPalette = (questionId: string): 'answered' | 'notAnswered' | 'markedForReview' | 'markedAndAnswered' | 'notVisited' => { const answer = userAnswers[questionId]; if (!answer || (answer.selectedOption === null && !answer.markedForReview)) return 'notVisited'; if (answer.selectedOption) { return answer.markedForReview ? 'markedAndAnswered' : 'answered'; } else { return answer.markedForReview ? 'markedForReview' : 'notAnswered'; }};
   const questionPaletteButtonClass = (status: ReturnType<typeof getQuestionStatusForPalette>, isActive: boolean) => { if (isActive) return "bg-primary text-primary-foreground border-primary ring-2 ring-offset-1 ring-primary"; switch (status) { case 'answered': return "bg-green-500 hover:bg-green-600 text-white border-green-500"; case 'notAnswered': return "bg-red-500 hover:bg-red-600 text-white border-red-500"; case 'markedForReview': return "bg-purple-500 hover:bg-purple-600 text-white border-purple-500"; case 'markedAndAnswered': return "bg-orange-500 hover:bg-orange-600 text-white border-orange-500"; case 'notVisited': default: return "bg-card hover:bg-muted/80 text-muted-foreground border-border"; }};
-  
-  const renderOption = (option: { label: 'A' | 'B' | 'C' | 'D'; text?: string | null; imageUrl?: string | null }): React.ReactNode => {
-    if(!currentQuestion) return null;
-    const optionValue = `Option ${option.label}`;
-    return (
-      <Label
-        key={optionValue}
-        htmlFor={`option-${currentQuestion.id}-${option.label}`}
-        className={cn("flex items-start space-x-3 rounded-lg border p-3 cursor-pointer transition-all hover:shadow-md", userAnswers[currentQuestion.id]?.selectedOption === optionValue ? 'bg-primary/10 border-primary ring-1 ring-primary' : 'bg-card border-border hover:border-primary/50')}
-      >
-        <RadioGroupItem value={optionValue} id={`option-${currentQuestion.id}-${option.label}`} className="mt-1 border-muted-foreground data-[state=checked]:border-primary shrink-0" />
-        <div className="flex-1 text-sm">
-          <div className="font-semibold">{option.label}.</div>
-          {option.text && <div className="prose prose-sm dark:prose-invert max-w-none mt-0.5">{renderLatex(option.text)}</div>}
-          {option.imageUrl && isValidHttpUrl(option.imageUrl) && (<div className="mt-1.5"><NextImage src={option.imageUrl} alt={`Option ${option.label}`} width={200} height={100} className="rounded object-contain border" data-ai-hint="option diagram"/></div>)}
-          {!(option.text || (option.imageUrl && isValidHttpUrl(option.imageUrl))) && <p className="text-muted-foreground italic">Option {option.label} content not available.</p>}
-        </div>
-      </Label>
-    );
-  };
+  const renderOption = (option: NormalizedQuestionRecord['displayOptions'][0]): React.ReactNode => { if (!currentQuestion) return null; const optionValue = `Option ${option.label}`; return ( <Label key={optionValue} htmlFor={`option-${currentQuestion.id}-${option.label}`} className={cn("flex items-start space-x-3 rounded-lg border p-3 cursor-pointer transition-all hover:shadow-md", userAnswers[currentQuestion.id]?.selectedOption === optionValue ? 'bg-primary/10 border-primary ring-1 ring-primary' : 'bg-card border-border hover:border-primary/50')}> <RadioGroupItem value={optionValue} id={`option-${currentQuestion.id}-${option.label}`} className="mt-1 border-muted-foreground data-[state=checked]:border-primary shrink-0" /> <div className="flex-1 text-sm"> <div className="font-semibold">{option.label}.</div> {option.text && <div className="prose prose-sm dark:prose-invert max-w-none mt-0.5">{renderLatex(option.text)}</div>} {option.imageUrl && isValidHttpUrl(option.imageUrl) && (<div className="mt-1.5"><NextImage src={option.imageUrl} alt={`Option ${option.label}`} width={200} height={100} className="rounded object-contain border" data-ai-hint="option diagram"/></div>)} {!(option.text || (option.imageUrl && isValidHttpUrl(option.imageUrl))) && <p className="text-muted-foreground italic">Option {option.label} content not available.</p>} </div> </Label> ); };
 
   const QuestionPaletteContent = () => ( <> <Card className="shadow-none border-0 md:border md:shadow-sm md:rounded-lg md:bg-card"> <CardHeader className="p-3 border-b text-center"> <UserCircleIcon className="mx-auto h-10 w-10 text-primary mb-1" /> <CardTitle className="text-base">{user?.name || "Student"}</CardTitle> <CardDescription className="text-xs truncate">{user?.email}</CardDescription> <CardDescription className="text-xs">{todayDate}</CardDescription> </CardHeader> </Card> <Card className="border-primary/30 bg-primary/5 flex-1 flex flex-col min-h-0 shadow-md rounded-lg md:mt-3"> <CardHeader className="p-2 text-center border-b border-primary/20"><CardTitle className="text-sm text-primary">QUESTION NAVIGATION</CardTitle></CardHeader> <CardContent className="p-2 flex-1 overflow-hidden"><ScrollArea className="h-full"><div className="grid grid-cols-5 sm:grid-cols-4 gap-1.5 p-1">{questions.map((q, index) => { const status = getQuestionStatusForPalette(q.id); const isActive = currentQuestionIndex === index; return ( <Button key={q.id} variant="outline" size="icon" className={cn("h-8 w-full text-xs rounded-md aspect-square", questionPaletteButtonClass(status, isActive))} onClick={() => { navigateQuestion(index); if (isMobileSheetOpen) setIsMobileSheetOpen(false); }} disabled={testSessionState !== 'inProgress'} aria-label={`Go to question ${index + 1}, Status: ${(status || 'Not Visited').replace(/([A-Z])/g, ' $1')}`}>{index + 1}{status === 'markedAndAnswered' && <Check className="absolute h-2.5 w-2.5 bottom-0.5 right-0.5 text-white" />}</Button> );})}</div></ScrollArea></CardContent> </Card> <div className="p-3 border-t bg-card md:bg-transparent rounded-b-lg md:shadow-md mt-auto md:mt-3"> <Button variant="destructive" className="w-full text-sm py-2.5" disabled={testSessionState !== 'inProgress' || isSubmittingTest} onClick={() => setIsSubmitConfirmOpen(true)}><CloseIcon className="mr-1.5 h-4 w-4" /> Submit Test</Button></div> </> );
 
