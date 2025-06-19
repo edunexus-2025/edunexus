@@ -10,42 +10,52 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, Eye as EyeIcon, Info, ListChecks, PlusCircle, Trash2, Edit2, Loader2, MessageSquare } from 'lucide-react';
+import { AlertCircle, Eye as EyeIcon, Info, ListChecks, PlusCircle, Trash2, Edit2, Loader2, MessageSquare, NotebookText, ListOrdered, ChevronLeft, ChevronRight } from 'lucide-react';
 import NextImage from 'next/image';
 import 'katex/dist/katex.min.css';
 import { InlineMath, BlockMath } from 'react-katex';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import Link from 'next/link';
-import { Routes } from '@/lib/constants';
-import { QuestionPreviewModal } from '@/components/admin/QuestionPreviewModal'; 
+import { cn } from '@/lib/utils';
+import { QuestionPreviewModal } from '@/components/admin/QuestionPreviewModal'; // Assuming this can be reused or adapted
 
-interface DisplayableQuestion {
+// More detailed interface for displaying full question details
+interface DisplayableQuestionDetailed {
   id: string;
-  text?: string | null;
-  imageUrl?: string | null;
-  options: Array<{ label: string; text?: string | null; imageUrl?: string | null; }>;
-  correctOptionLabel: string;
+  source: 'EduNexus QB' | 'My QB';
+  questionText?: string | null;
+  questionImageUrl?: string | null; // Resolved URL
+  options: Array<{
+    label: 'A' | 'B' | 'C' | 'D';
+    text?: string | null;
+    imageUrl?: string | null; // Resolved URL
+  }>;
+  correctOptionLabel: 'A' | 'B' | 'C' | 'D' | string; // Can be 'Option A' from My QB
   explanationText?: string | null;
-  explanationImageUrl?: string | null;
+  explanationImageUrl?: string | null; // Resolved URL
   difficulty?: 'Easy' | 'Medium' | 'Hard' | null;
   subject?: string | null;
   lessonName?: string | null;
-  source: 'EduNexus QB' | 'My QB';
   marks?: number;
   rawRecord: RecordModel;
+  // Fields needed for pb.files.getUrl for question_bank source
   collectionId?: string;
   collectionName?: string;
-  questionImage_filename?: string | null; 
-  // Fields for teacher_question_data specifically if needed for display or operations
-  QuestionText?: string; QuestionImage?: string | null; // direct URL
-  OptionAText?: string; OptionAImage?: string | null;
-  OptionBText?: string; OptionBImage?: string | null;
-  OptionCText?: string; OptionCImage?: string | null;
-  OptionDText?: string; OptionDImage?: string | null;
-  CorrectOption?: "Option A" | "Option B" | "Option C" | "Option D";
+  questionImage_filename?: string; // For question_bank image
+  optionAImage_filename?: string;
+  optionBImage_filename?: string;
+  optionCImage_filename?: string;
+  optionDImage_filename?: string;
+  explanationImage_filename?: string;
+  // Direct URL fields from teacher_question_data
+  QuestionImage_direct?: string | null;
+  OptionAImage_direct?: string | null;
+  OptionBImage_direct?: string | null;
+  OptionCImage_direct?: string | null;
+  OptionDImage_direct?: string | null;
   explanationImage_direct?: string | null;
 }
+
 
 const isValidHttpUrl = (string: string | null | undefined): string is string => {
   if (!string || typeof string !== 'string') return false;
@@ -55,60 +65,57 @@ const isValidHttpUrl = (string: string | null | undefined): string is string => 
 
 const getPbFileUrlOrDirectUrl = (record: RecordModel | null | undefined, fieldName: string, isDirectUrlField: boolean = false): string | null => {
     if (!record) return null;
-    if (!record[fieldName] || typeof record[fieldName] !== 'string') return null;
-    const fieldValue = (record[fieldName] as string).trim();
-    if (!fieldValue) return null;
+    const fieldValue = record[fieldName] as string | undefined | null;
+    if (!fieldValue || typeof fieldValue !== 'string' || !fieldValue.trim()) return null;
 
     if (isDirectUrlField) {
       if (isValidHttpUrl(fieldValue)) return fieldValue;
       return null;
     } else {
-      if (typeof record.id === 'string' && record.id.trim() !== '' &&
-          typeof record.collectionId === 'string' && record.collectionId.trim() !== '' &&
-          typeof record.collectionName === 'string' && record.collectionName.trim() !== '') {
+      if (record.id && record.collectionId && record.collectionName) {
         try {
           const minimalRecordForPb = { id: record.id, collectionId: record.collectionId, collectionName: record.collectionName, [fieldName]: fieldValue };
           return pb.files.getUrl(minimalRecordForPb as RecordModel, fieldValue);
-        } catch (e) { console.warn(`ViewTestQuestionsPage: Error getting PB file URL for ${fieldName} in record ${record.id}:`, e); return null; }
+        } catch (e) { console.warn(`ViewQuestionsDetailed: Error getting PB file URL for ${fieldName} in record ${record.id}:`, e); return null; }
       }
-      console.error(`ViewTestQuestionsPage: CRITICAL - Missing collectionId/collectionName for PB file field '${fieldName}' in record ID '${record.id}'.`);
+      console.error(`ViewQuestionsDetailed: Missing collectionId/Name for PB file field '${fieldName}' in record '${record.id}'.`);
       return null;
     }
 };
 
-const renderLatexSnippet = (text: string | undefined | null, maxLength: number = 70): React.ReactNode => {
-  if (!text) return <span className="italic text-xs text-muted-foreground">No text.</span>;
-  const snippet = text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
-  const parts = snippet.split(/(\$\$[\s\S]*?\$\$|\$.*?\$|\\\(.*?\\\)|\\\[.*?\\\])/g); // Added escaped parenthesis for LaTeX
+const renderLatexDetailed = (text: string | undefined | null): React.ReactNode => {
+  if (!text) return null;
+  const parts = text.split(/(\$\$[\s\S]*?\$\$|\$.*?\$|\\\(.*?\\\)|\\\[.*?\\\]|\\begin\{.*?\}[\s\S]*?\\end\{.*?\})/g);
   return parts.map((part, index) => {
     try {
-      if (part.startsWith('$$') && part.endsWith('$$')) return <BlockMath key={index} math={part.substring(2, part.length - 2)} />;
-      if (part.startsWith('$') && part.endsWith('$')) return <InlineMath key={index} math={part.substring(1, part.length - 1)} />;
-      if (part.startsWith('\\(') && part.endsWith('\\)')) return <InlineMath key={index} math={part.substring(2, part.length - 2)} />;
-      if (part.startsWith('\\[') && part.endsWith('\\]')) return <BlockMath key={index} math={part.substring(2, part.length - 2)} />;
-    } catch (e) { return <span key={index} className="text-destructive text-xs" title="LaTeX Error">{part}</span>; }
-    return <span key={index} className="text-xs">{part}</span>;
+      if (part.startsWith('$$') && part.endsWith('$$') && part.length > 4) { return <BlockMath key={index} math={part.substring(2, part.length - 2)} />; }
+      if (part.startsWith('$') && part.endsWith('$') && part.length > 2) { return <InlineMath key={index} math={part.substring(1, part.length - 1)} />; }
+      if (part.startsWith('\\(') && part.endsWith('\\)')) { return <InlineMath key={index} math={part.substring(2, part.length - 2)} />; }
+      if (part.startsWith('\\[') && part.endsWith('\\]')) { return <BlockMath key={index} math={part.substring(2, part.length - 2)} />; }
+      if (part.startsWith('\\begin{') && part.includes('\\end{')) { const envMatch = part.match(/^\\begin\{(.*?)\}/); if (envMatch && ['equation', 'align', 'gather', 'matrix', 'pmatrix', 'bmatrix', 'vmatrix', 'Vmatrix', 'cases', 'array', 'subequations'].includes(envMatch[1])) { return <BlockMath key={index} math={part} /> }}
+    } catch (e) { return <span key={index} className="text-destructive" title="LaTeX Error">{part}</span>; }
+    return <span key={index}>{part}</span>;
   });
 };
 
 
-export default function ViewTestQuestionsPage() {
+export default function ViewTestQuestionsDetailedPage() {
   const params = useParams();
   const { teacher } = useAuth();
-  const { toast } = useToast();
   const testId = typeof params.testId === 'string' ? params.testId : '';
 
   const [testName, setTestName] = useState<string | null>(null);
-  const [questions, setQuestions] = useState<DisplayableQuestion[]>([]);
+  const [questions, setQuestions] = useState<DisplayableQuestionDetailed[]>([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
-  const [currentPreviewQuestion, setCurrentPreviewQuestion] = useState<DisplayableQuestion | null>(null);
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
+  const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
 
+  const currentQuestionForDisplay = questions[currentQuestionIndex];
 
-  const fetchTestAndQuestions = useCallback(async (isMountedGetter: () => boolean) => {
+  const fetchTestAndQuestionsDetailed = useCallback(async (isMountedGetter: () => boolean) => {
     if (!testId || !teacher?.id) { if (isMountedGetter()) { setIsLoading(false); setError(testId ? "Auth error." : "Test ID missing."); } return; }
     if (isMountedGetter()) setIsLoading(true);
 
@@ -118,152 +125,158 @@ export default function ViewTestQuestionsPage() {
       });
 
       if (!isMountedGetter()) return;
-      if (fetchedTest.teacherId !== teacher.id) { if (isMountedGetter()) setError("Unauthorized."); return; }
+      if (fetchedTest.teacherId !== teacher.id) { if (isMountedGetter()) { setError("Unauthorized to view this test."); setIsLoading(false); } return; }
       setTestName(fetchedTest.testName || 'Untitled Test');
 
-      const combinedQuestions: DisplayableQuestion[] = [];
+      const combinedQuestions: DisplayableQuestionDetailed[] = [];
 
       (fetchedTest.expand?.questions_edunexus || []).forEach((q: RecordModel) => {
         combinedQuestions.push({
-          id: q.id, text: q.questionText, imageUrl: getPbFileUrlOrDirectUrl(q, 'questionImage', false),
+          id: q.id, source: 'EduNexus QB',
+          questionText: q.questionText,
+          questionImageUrl: getPbFileUrlOrDirectUrl(q, 'questionImage', false),
           options: [
             { label: 'A', text: q.optionAText, imageUrl: getPbFileUrlOrDirectUrl(q, 'optionAImage', false) },
             { label: 'B', text: q.optionBText, imageUrl: getPbFileUrlOrDirectUrl(q, 'optionBImage', false) },
             { label: 'C', text: q.optionCText, imageUrl: getPbFileUrlOrDirectUrl(q, 'optionCImage', false) },
             { label: 'D', text: q.optionDText, imageUrl: getPbFileUrlOrDirectUrl(q, 'optionDImage', false) },
           ],
-          correctOptionLabel: q.correctOption, explanationText: q.explanationText, explanationImageUrl: getPbFileUrlOrDirectUrl(q, 'explanationImage', false),
-          difficulty: q.difficulty, subject: q.subject, lessonName: q.lessonName, source: 'EduNexus QB', marks: q.marks, rawRecord: q,
-          collectionId: q.collectionId, collectionName: q.collectionName, questionImage_filename: q.questionImage,
+          correctOptionLabel: q.correctOption,
+          explanationText: q.explanationText,
+          explanationImageUrl: getPbFileUrlOrDirectUrl(q, 'explanationImage', false),
+          difficulty: q.difficulty, subject: q.subject, lessonName: q.lessonName, marks: q.marks, rawRecord: q,
+          collectionId: q.collectionId, collectionName: q.collectionName,
+          questionImage_filename: q.questionImage,
+          optionAImage_filename: q.optionAImage, optionBImage_filename: q.optionBImage, optionCImage_filename: q.optionCImage, optionDImage_filename: q.optionDImage,
+          explanationImage_filename: q.explanationImage,
         });
       });
 
       (fetchedTest.expand?.questions_teachers || []).forEach((q: RecordModel) => {
         combinedQuestions.push({
-          id: q.id, text: q.QuestionText, imageUrl: getPbFileUrlOrDirectUrl(q, 'QuestionImage', true),
+          id: q.id, source: 'My QB',
+          questionText: q.QuestionText,
+          questionImageUrl: getPbFileUrlOrDirectUrl(q, 'QuestionImage', true),
           options: [
             { label: 'A', text: q.OptionAText, imageUrl: getPbFileUrlOrDirectUrl(q, 'OptionAImage', true) },
             { label: 'B', text: q.OptionBText, imageUrl: getPbFileUrlOrDirectUrl(q, 'OptionBImage', true) },
             { label: 'C', text: q.OptionCText, imageUrl: getPbFileUrlOrDirectUrl(q, 'OptionCImage', true) },
             { label: 'D', text: q.OptionDText, imageUrl: getPbFileUrlOrDirectUrl(q, 'OptionDImage', true) },
           ],
-          correctOptionLabel: q.CorrectOption?.replace("Option ", "") as DisplayableQuestion['correctOptionLabel'],
-          explanationText: q.explanationText, explanationImageUrl: getPbFileUrlOrDirectUrl(q, 'explanationImage', true),
-          difficulty: q.difficulty, subject: q.subject || fetchedTest.QBExam, lessonName: fetchedTest.testName,
-          source: 'My QB', marks: q.marks, rawRecord: q,
-          QuestionText: q.QuestionText, QuestionImage: q.QuestionImage, OptionAText: q.OptionAText, OptionAImage: q.OptionAImage,
-          OptionBText: q.OptionBText, OptionBImage: q.OptionBImage, OptionCText: q.OptionCText, OptionCImage: q.OptionCImage,
-          OptionDText: q.OptionDText, OptionDImage: q.OptionDImage, CorrectOption: q.CorrectOption, explanationImage_direct: q.explanationImage,
+          correctOptionLabel: q.CorrectOption?.replace("Option ", "") || "N/A",
+          explanationText: q.explanationText,
+          explanationImageUrl: getPbFileUrlOrDirectUrl(q, 'explanationImage', true),
+          difficulty: q.difficulty, subject: q.subject || fetchedTest.QBExam, lessonName: fetchedTest.testName, marks: q.marks, rawRecord: q,
+          QuestionText: q.QuestionText, QuestionImage_direct: q.QuestionImage,
+          OptionAText: q.OptionAText, OptionAImage_direct: q.OptionAImage,
+          OptionBText: q.OptionBText, OptionBImage_direct: q.OptionBImage,
+          OptionCText: q.OptionCText, OptionCImage_direct: q.OptionCImage,
+          OptionDText: q.OptionDText, OptionDImage_direct: q.OptionDImage,
+          CorrectOption: q.CorrectOption, explanationImage_direct: q.explanationImage,
         });
       });
-      if (isMountedGetter()) setQuestions(combinedQuestions);
-
-    } catch (err: any) { if (isMountedGetter()) { const clientError = err as ClientResponseError; if (clientError?.isAbort || (clientError?.name === 'ClientResponseError' && clientError?.status === 0)) { console.warn('ViewTestQuestionsPage: Fetch test questions request was cancelled.'); } else { console.error("Error fetching test questions:", clientError.data || clientError); setError(`Could not load questions. Error: ${clientError.data?.message || clientError.message}`); }}}
+      if (isMountedGetter()) {
+        if (combinedQuestions.length === 0) { setError(`No questions are linked to "${fetchedTest.testName}". Please add questions via the "Add Questions" tab.`); }
+        setQuestions(combinedQuestions);
+      }
+    } catch (err: any) { if (isMountedGetter()) { const clientError = err as ClientResponseError; if (clientError?.isAbort || (clientError?.name === 'ClientResponseError' && clientError?.status === 0)) { console.warn('ViewTestQuestionsDetailed: Fetch test questions request was cancelled.'); } else { console.error("Error fetching test questions for detailed view:", clientError.data || clientError); setError(`Could not load questions. Error: ${clientError.data?.message || clientError.message}`); }}}
     finally { if (isMountedGetter()) setIsLoading(false); }
   }, [testId, teacher?.id]);
 
-  useEffect(() => { let isMounted = true; fetchTestAndQuestions(() => isMounted); return () => { isMounted = false; }; }, [fetchTestAndQuestions]);
+  useEffect(() => { let isMounted = true; fetchTestAndQuestionsDetailed(() => isMounted); return () => { isMounted = false; }; }, [fetchTestAndQuestionsDetailed]);
 
-  const handleRemoveQuestion = async (questionId: string, source: 'EduNexus QB' | 'My QB') => {
-    if (!testId) return;
-    setIsUpdating(true);
-    const fieldToUpdate = source === 'EduNexus QB' ? 'questions_edunexus' : 'questions_teachers';
-    try {
-      await pb.collection('teacher_tests').update(testId, { [`${fieldToUpdate}-`]: questionId });
-      toast({ title: "Question Removed", description: "Question removed from this test." });
-      fetchTestAndQuestions(() => true);
-    } catch (error: any) { toast({ title: "Error Removing Question", description: error.message, variant: "destructive" });
-    } finally { setIsUpdating(false); }
-  };
-  
-  const openPreview = (question: DisplayableQuestion) => {
-    const modalQuestionData = {
-      id: question.id,
-      questionText: question.text,
-      questionImage: question.source === 'EduNexus QB' ? question.questionImage_filename : question.imageUrl,
-      optionAText: question.options.find(o => o.label === 'A')?.text,
-      optionBText: question.options.find(o => o.label === 'B')?.text,
-      optionCText: question.options.find(o => o.label === 'C')?.text,
-      optionDText: question.options.find(o => o.label === 'D')?.text,
-      difficulty: question.difficulty,
-      marks: question.marks,
-      collectionId: question.source === 'EduNexus QB' ? question.collectionId : undefined,
-      collectionName: question.source === 'EduNexus QB' ? question.collectionName : undefined,
-    };
-    setCurrentPreviewQuestion(modalQuestionData as any); 
-    setIsPreviewModalOpen(true);
-  };
+  const navigateQuestion = (newIndex: number) => { setCurrentQuestionIndex(Math.max(0, Math.min(questions.length - 1, newIndex))); };
+  const questionPaletteButtonClass = (isActive: boolean) => isActive ? "bg-primary text-primary-foreground border-primary ring-2 ring-offset-1 ring-primary" : "bg-card hover:bg-muted/80 text-muted-foreground border-border";
 
+  const QuestionPaletteContent = () => (
+    <Card className="border-primary/30 bg-primary/5 flex-1 flex flex-col min-h-0 shadow-md rounded-lg md:mt-0">
+      <CardHeader className="p-2 text-center border-b border-primary/20"><CardTitle className="text-sm text-primary">QUESTIONS ({questions.length})</CardTitle></CardHeader>
+      <CardContent className="p-2 flex-1 overflow-hidden">
+        <ScrollArea className="h-full">
+          <div className="grid grid-cols-5 sm:grid-cols-4 md:grid-cols-3 lg:grid-cols-4 gap-1.5 p-1">
+            {questions.map((q, index) => (
+              <Button key={q.id} variant="outline" size="icon" className={cn("h-8 w-full text-xs rounded-md aspect-square", questionPaletteButtonClass(currentQuestionIndex === index))} onClick={() => { navigateQuestion(index); if (isMobileSheetOpen) setIsMobileSheetOpen(false); }} aria-label={`Go to question ${index + 1}`}>
+                {index + 1}
+              </Button>
+            ))}
+          </div>
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  );
 
   if (isLoading) { return (<div className="p-6 space-y-4"><Skeleton className="h-8 w-3/4 mb-2" /><Skeleton className="h-64 w-full" /></div>); }
-  if (error) { return (<Card className="text-center border-destructive bg-destructive/10 p-6"><AlertCircle className="mx-auto h-10 w-10 text-destructive mb-3" /><CardTitle className="text-destructive">Error</CardTitle><CardDescription className="text-destructive/80">{error}</CardDescription></Card>); }
+  if (error) { return (<Card className="text-center border-destructive bg-destructive/10 p-6"><AlertCircle className="mx-auto h-10 w-10 text-destructive mb-3" /><CardTitle className="text-destructive">Error</CardTitle><CardDescription className="text-destructive/80 whitespace-pre-wrap">{error}</CardDescription></Card>); }
 
   return (
-    <div className="p-4 md:p-6">
-      <CardHeader className="px-0 pb-4">
-        <CardTitle className="text-xl font-semibold flex items-center gap-2"><ListChecks className="h-5 w-5 text-primary"/>Questions for: {testName}</CardTitle>
-        <CardDescription>
-          Review and manage questions in this test. Total: {questions.length} question(s).
-           <Link href={Routes.teacherTestPanelAddQuestion(testId)} className="ml-2 text-sm text-primary hover:underline font-medium inline-flex items-center gap-1">
-            <PlusCircle size={14}/> Add More Questions
-          </Link>
-        </CardDescription>
+    <div className="p-2 sm:p-4 md:p-6 h-[calc(100vh-var(--header-height,0px)-var(--tabs-height,0px)-theme(space.12))] flex flex-col">
+      <CardHeader className="px-0 pb-3 flex-shrink-0">
+        <CardTitle className="text-xl font-semibold flex items-center gap-2"><EyeIcon className="h-5 w-5 text-primary"/> View Questions for: {testName}</CardTitle>
+        <CardDescription>Review full question details, options, and explanations. Total: {questions.length} question(s).</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3 px-0">
-        {questions.length === 0 ? (
-          <div className="text-center py-10 border-2 border-dashed rounded-lg">
+
+      {questions.length === 0 ? (
+          <div className="flex-grow flex flex-col items-center justify-center text-center py-10 border-2 border-dashed rounded-lg bg-card">
             <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
-            <p className="text-muted-foreground">No questions added yet. Go to "Add Questions" tab.</p>
+            <p className="text-muted-foreground">No questions currently in this test.</p>
+            <Button asChild variant="link" className="mt-2"><Link href={Routes.teacherTestPanelAddQuestion(testId)}>Add Questions Now</Link></Button>
           </div>
         ) : (
-          <ScrollArea className="max-h-[calc(100vh-350px)] pr-2">
-            <div className="space-y-2">
-              {questions.map((q, index) => (
-                <Card key={q.id} className="p-2.5 flex items-start justify-between gap-2 bg-card hover:shadow-sm">
-                  <div className="flex items-start gap-2 flex-grow min-w-0">
-                    <span className="text-xs font-medium text-muted-foreground pt-0.5">{index + 1}.</span>
-                    <div className="min-w-0">
-                      {q.imageUrl && <div className="mb-1 w-16 h-10 relative cursor-pointer" onClick={() => openPreview(q)}><NextImage src={q.imageUrl} alt="Q thumb" layout="fill" objectFit="contain" className="rounded border bg-muted" data-ai-hint="illustration diagram"/></div>}
-                      <div className="text-xs text-foreground line-clamp-2 prose prose-xs dark:prose-invert max-w-none cursor-pointer hover:text-primary" onClick={() => openPreview(q)} title={q.text || 'View Question'}>
-                          {renderLatexSnippet(q.text, 120)}
+        <div className="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden min-h-0">
+          <Card className="flex-1 flex flex-col bg-card shadow-md rounded-lg border border-border overflow-hidden">
+            <CardHeader className="p-3 sm:p-4 border-b border-border bg-muted/30 flex-shrink-0">
+              <div className="flex justify-between items-center">
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground">Question {currentQuestionIndex + 1} of {questions.length}</p>
+                <div className="flex items-center gap-1.5">
+                  <Badge variant="outline" className="text-xs px-1.5 py-0.5">{currentQuestionForDisplay.source}</Badge>
+                  {currentQuestionForDisplay.difficulty && <Badge variant={currentQuestionForDisplay.difficulty === 'Easy' ? 'secondary' : currentQuestionForDisplay.difficulty === 'Medium' ? 'default' : 'destructive'} className="text-xs px-1.5 py-0.5">{currentQuestionForDisplay.difficulty}</Badge>}
+                  {currentQuestionForDisplay.marks !== undefined && <Badge variant="outline" className="text-xs px-1.5 py-0.5">Marks: {currentQuestionForDisplay.marks}</Badge>}
+                </div>
+              </div>
+            </CardHeader>
+            <ScrollArea className="flex-1 min-h-0">
+              <CardContent className="p-3 sm:p-4 md:p-6 space-y-4">
+                <div className="p-2 border-b border-border/50 rounded-md bg-background min-h-[60px]">
+                  {currentQuestionForDisplay.questionText && (<div className="prose prose-sm dark:prose-invert max-w-none mb-3 text-foreground leading-relaxed">{renderLatexDetailed(currentQuestionForDisplay.questionText)}</div>)}
+                  {currentQuestionForDisplay.questionImageUrl && (<div className="my-2 text-center"><NextImage src={currentQuestionForDisplay.questionImageUrl} alt="Question Image" width={400} height={300} className="rounded object-contain inline-block border max-h-80" data-ai-hint="question diagram"/></div>)}
+                  {!(currentQuestionForDisplay.questionText || currentQuestionForDisplay.questionImageUrl) && (<p className="text-xs sm:text-sm text-muted-foreground italic py-3">Question content not provided.</p>)}
+                </div>
+                <div className="space-y-2.5">
+                  {currentQuestionForDisplay.options.map(opt => {
+                    const isCorrect = opt.label === currentQuestionForDisplay.correctOptionLabel || `Option ${opt.label}` === currentQuestionForDisplay.correctOptionLabel;
+                    return (
+                      <div key={opt.label} className={cn("p-3 border rounded-md flex items-start gap-3", isCorrect ? "bg-green-500/10 border-green-500/50 text-green-700 dark:text-green-300" : "bg-card border-border")}>
+                        <span className={cn("font-semibold", isCorrect ? "text-green-700 dark:text-green-300" : "text-primary")}>{opt.label}.</span>
+                        <div className={cn("flex-1 text-sm", isCorrect ? "text-green-700 dark:text-green-300" : "text-foreground")}>
+                          {(opt.text || opt.imageUrl) ? (<>{opt.text && <div className="prose prose-sm dark:prose-invert max-w-none">{renderLatexDetailed(opt.text)}</div>}{opt.imageUrl && <div className="mt-1.5"><NextImage src={opt.imageUrl} alt={`Option ${opt.label}`} width={150} height={80} className="rounded object-contain border" data-ai-hint="option illustration"/></div>}</>) : (<p className="italic">Option {opt.label} content not available.</p>)}
+                        </div>
+                        {isCorrect && <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />}
                       </div>
-                      <div className="text-[10px] text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                        <Badge variant="outline" className="px-1 py-0 text-[9px]">{q.source}</Badge>
-                        {q.difficulty && <Badge variant="outline" className="px-1 py-0 text-[9px]">{q.difficulty}</Badge>}
-                        {q.subject && <Badge variant="outline" className="px-1 py-0 text-[9px]">{q.subject}</Badge>}
-                        {q.lessonName && <Badge variant="outline" className="px-1 py-0 text-[9px] line-clamp-1" title={q.lessonName}>{q.lessonName}</Badge>}
-                        {q.marks !== undefined && <Badge variant="outline" className="px-1 py-0 text-[9px]">Marks: {q.marks}</Badge>}
-                      </div>
-                    </div>
+                    );
+                  })}
+                </div>
+                {(currentQuestionForDisplay.explanationText || currentQuestionForDisplay.explanationImageUrl) && (
+                  <div className="mt-6 pt-4 border-t">
+                    <h4 className="text-md font-semibold text-muted-foreground mb-2">Explanation:</h4>
+                    {currentQuestionForDisplay.explanationText && <div className="prose prose-sm dark:prose-invert max-w-none text-foreground leading-relaxed">{renderLatexDetailed(currentQuestionForDisplay.explanationText)}</div>}
+                    {currentQuestionForDisplay.explanationImageUrl && <div className="my-3 text-center"><NextImage src={currentQuestionForDisplay.explanationImageUrl} alt="Explanation Image" width={300} height={200} className="rounded object-contain inline-block border max-h-72" data-ai-hint="explanation diagram"/></div>}
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-1 flex-shrink-0 self-center">
-                    <Button variant="ghost" size="icon" onClick={() => openPreview(q)} className="text-blue-600 hover:bg-blue-100/50 h-7 w-7"><EyeIcon size={14}/></Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleRemoveQuestion(q.id, q.source)} disabled={isUpdating} className="text-destructive hover:bg-destructive/10 h-7 w-7">
-                      {isUpdating ? <Loader2 className="h-3.5 w-3.5 animate-spin"/> : <Trash2 size={14} />}
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </ScrollArea>
-        )}
-      </CardContent>
-      {currentPreviewQuestion && (
-        <QuestionPreviewModal
-            isOpen={isPreviewModalOpen}
-            onClose={() => setIsPreviewModalOpen(false)}
-            question={currentPreviewQuestion as any} 
-            onApproveAndNext={() => setIsPreviewModalOpen(false)} 
-            onApproveAndClose={() => setIsPreviewModalOpen(false)}
-            onSkipAndNext={() => setIsPreviewModalOpen(false)}
-            onPrevious={() => {}} 
-            hasNext={false} 
-            hasPrevious={false}
-            isApproved={true} 
-        />
+                )}
+                {!(currentQuestionForDisplay.explanationText || currentQuestionForDisplay.explanationImageUrl) && <p className="text-sm text-muted-foreground mt-4 text-center italic">No explanation available for this question.</p>}
+              </CardContent>
+            </ScrollArea>
+            <CardFooter className="p-3 sm:p-4 border-t border-border bg-muted/30 flex-wrap justify-between items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => navigateQuestion(currentQuestionIndex - 1)} disabled={currentQuestionIndex === 0}><ChevronLeft className="mr-1.5 h-4 w-4" /> Previous</Button>
+              <Button variant="outline" size="sm" onClick={() => navigateQuestion(currentQuestionIndex + 1)} disabled={currentQuestionIndex === questions.length - 1}>Next <ChevronRight className="ml-1.5 h-4 w-4" /></Button>
+            </CardFooter>
+          </Card>
+
+          {isRightSidebarOpen && ( <div className="hidden md:flex w-64 lg:w-72 flex-shrink-0 flex-col space-y-0"> <QuestionPaletteContent /> </div> )}
+        </div>
       )}
     </div>
   );
 }
 
+    
     

@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useParams, useRouter } from 'next/navigation'; // Added useRouter
+import { useParams, useRouter } from 'next/navigation';
 import React, { useEffect, useState, useCallback } from 'react';
 import pb from '@/lib/pocketbase';
 import type { RecordModel, ClientResponseError } from 'pocketbase';
@@ -9,9 +10,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, BookOpen, PlusCircle, Trash2, Eye as EyeIcon, Loader2, Info } from 'lucide-react';
+import { AlertCircle, BookOpen, PlusCircle, Trash2, Eye as EyeIcon, Loader2, Info, MessageSquare } from 'lucide-react';
 import { QbModal } from '@/components/teacher/QbModal';
-import Link from 'next/link'; // Added Link import
+import Link from 'next/link';
 import { Routes, escapeForPbFilter } from '@/lib/constants';
 import NextImage from 'next/image';
 import 'katex/dist/katex.min.css';
@@ -19,17 +20,18 @@ import { InlineMath, BlockMath } from 'react-katex';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-interface DisplayableQuestion {
+// Interface for how questions will be displayed on this page
+interface DisplayableQuestionSummary {
   id: string;
   textSnippet?: string | null;
-  imageUrl?: string | null;
+  imageUrl?: string | null; // This will be the resolved URL
   source: 'EduNexus QB' | 'My QB';
   difficulty?: string | null;
-  rawRecord: RecordModel;
-  // Fields for image URL resolution for question_bank images
+  rawRecord: RecordModel; // Keep the original record for potential full view or other ops
+  // Fields specifically for PocketBase file URL construction from question_bank
   collectionId?: string;
   collectionName?: string;
-  questionImage_filename?: string | null; // Original filename for question_bank
+  questionImage_filename?: string | null; // Original filename if source is question_bank
 }
 
 const isValidHttpUrl = (string: string | null | undefined): string is string => {
@@ -38,45 +40,29 @@ const isValidHttpUrl = (string: string | null | undefined): string is string => 
   catch (_) { return false; }
 };
 
+// Helper to get file URL, distinguishing between PB files and direct URLs
 const getPbFileUrlOrDirectUrl = (record: RecordModel | null | undefined, fieldName: string, isDirectUrlField: boolean = false): string | null => {
-    if (!record) {
-      return null;
-    }
-    if (!record[fieldName] || typeof record[fieldName] !== 'string') {
-      return null;
-    }
+    if (!record) return null;
+    if (!record[fieldName] || typeof record[fieldName] !== 'string') return null;
     const fieldValue = (record[fieldName] as string).trim();
-    if (!fieldValue) {
-        return null;
-    }
+    if (!fieldValue) return null;
 
     if (isDirectUrlField) {
-      if (isValidHttpUrl(fieldValue)) {
-        return fieldValue;
-      }
+      if (isValidHttpUrl(fieldValue)) return fieldValue;
       return null;
     } else {
       if (typeof record.id === 'string' && record.id.trim() !== '' &&
           typeof record.collectionId === 'string' && record.collectionId.trim() !== '' &&
           typeof record.collectionName === 'string' && record.collectionName.trim() !== '') {
         try {
-          const minimalRecordForPb = {
-              id: record.id,
-              collectionId: record.collectionId,
-              collectionName: record.collectionName,
-              [fieldName]: fieldValue
-          };
+          const minimalRecordForPb = { id: record.id, collectionId: record.collectionId, collectionName: record.collectionName, [fieldName]: fieldValue };
           return pb.files.getUrl(minimalRecordForPb as RecordModel, fieldValue);
-        } catch (e) {
-          console.warn(`AddQuestionPage: Error getting PB file URL for ${fieldName} in record ${record.id}:`, e);
-          return null;
-        }
+        } catch (e) { console.warn(`AddQuestionPage: Error getting PB file URL for ${fieldName} in record ${record.id}:`, e); return null; }
       }
-      console.error(`AddQuestionPage: CRITICAL - Missing or invalid collectionId/collectionName for PB file field '${fieldName}' in record ID '${record.id}'. Cannot call pb.files.getUrl. Record details: collectionId='${record.collectionId}', collectionName='${record.collectionName}'.`);
+      console.error(`AddQuestionPage: CRITICAL - Missing collectionId/collectionName for PB file field '${fieldName}' in record ID '${record.id}'.`);
       return null;
     }
 };
-
 
 const renderLatexSnippet = (text: string | undefined | null, maxLength: number = 70): React.ReactNode => {
   if (!text) return <span className="italic text-xs text-muted-foreground">No text.</span>;
@@ -84,54 +70,32 @@ const renderLatexSnippet = (text: string | undefined | null, maxLength: number =
   const parts = snippet.split(/(\$\$[\s\S]*?\$\$|\$.*?\$|\\\(.*?\\\)|\\\[.*?\\\]|\\begin\{.*?\}[\s\S]*?\\end\{.*?\})/g);
   return parts.map((part, index) => {
     try {
-      if (part.startsWith('$$') && part.endsWith('$$') && part.length > 4) {
-        return <BlockMath key={index} math={part.substring(2, part.length - 2)} />;
-      }
-      if (part.startsWith('$') && part.endsWith('$') && part.length > 2) {
-        return <InlineMath key={index} math={part.substring(1, part.length - 1)} />;
-      }
-      if (part.startsWith('\\(') && part.endsWith('\\)')) {
-        return <InlineMath key={index} math={part.substring(2, part.length - 2)} />;
-      }
-      if (part.startsWith('\\[') && part.endsWith('\\]')) {
-         return <BlockMath key={index} math={part.substring(2, part.length - 2)} />;
-      }
-       if (part.startsWith('\\begin{') && part.includes('\\end{')) {
-        const envMatch = part.match(/^\\begin\{(.*?)\}/);
-        if (envMatch && ['equation', 'align', 'gather', 'matrix', 'pmatrix', 'bmatrix', 'vmatrix', 'Vmatrix', 'cases', 'array', 'subequations'].includes(envMatch[1])) {
-          return <BlockMath key={index} math={part} />
-        }
-      }
-    } catch (e) {
-      return <span key={index} className="text-destructive text-xs" title="LaTeX Error">{part}</span>;
-    }
+      if (part.startsWith('$$') && part.endsWith('$$') && part.length > 4) { return <BlockMath key={index} math={part.substring(2, part.length - 2)} />; }
+      if (part.startsWith('$') && part.endsWith('$') && part.length > 2) { return <InlineMath key={index} math={part.substring(1, part.length - 1)} />; }
+      if (part.startsWith('\\(') && part.endsWith('\\)')) { return <InlineMath key={index} math={part.substring(2, part.length - 2)} />; }
+      if (part.startsWith('\\[') && part.endsWith('\\]')) { return <BlockMath key={index} math={part.substring(2, part.length - 2)} />; }
+      if (part.startsWith('\\begin{') && part.includes('\\end{')) { const envMatch = part.match(/^\\begin\{(.*?)\}/); if (envMatch && ['equation', 'align', 'gather', 'matrix', 'pmatrix', 'bmatrix', 'vmatrix', 'Vmatrix', 'cases', 'array', 'subequations'].includes(envMatch[1])) { return <BlockMath key={index} math={part} /> }}
+    } catch (e) { return <span key={index} className="text-destructive text-xs" title="LaTeX Error">{part}</span>; }
     return <span key={index} className="text-xs">{part}</span>;
   });
 };
-
 
 export default function TeacherAddQuestionToTestPage() {
   const params = useParams();
   const { teacher } = useAuth();
   const { toast } = useToast();
   const testId = typeof params.testId === 'string' ? params.testId : '';
+  const router = useRouter();
 
   const [testName, setTestName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isQbModalOpen, setIsQbModalOpen] = useState(false);
-  const [currentDisplayableQuestions, setCurrentDisplayableQuestions] = useState<DisplayableQuestion[]>([]);
-
+  const [currentDisplayableQuestions, setCurrentDisplayableQuestions] = useState<DisplayableQuestionSummary[]>([]);
 
   const fetchTestAndQuestionDetails = useCallback(async (isMountedGetter: () => boolean) => {
-    if (!testId || !teacher?.id) {
-      if (isMountedGetter()) {
-        setIsLoading(false);
-        setError(testId ? "Teacher not found or not authenticated." : "Test ID missing.");
-      }
-      return;
-    }
+    if (!testId || !teacher?.id) { if (isMountedGetter()) { setIsLoading(false); setError(testId ? "Teacher not authenticated." : "Test ID missing."); } return; }
     if (isMountedGetter()) setIsLoading(true);
 
     try {
@@ -141,13 +105,10 @@ export default function TeacherAddQuestionToTestPage() {
       });
 
       if (!isMountedGetter()) return;
-      if (fetchedTest.teacherId !== teacher.id) {
-        if (isMountedGetter()) setError("Unauthorized to manage this test.");
-        return;
-      }
+      if (fetchedTest.teacherId !== teacher.id) { if (isMountedGetter()) { setError("Unauthorized to manage this test."); setIsLoading(false); } return; }
       setTestName(fetchedTest.testName || 'Untitled Test');
 
-      const combinedQuestions: DisplayableQuestion[] = [];
+      const combinedQuestions: DisplayableQuestionSummary[] = [];
 
       (fetchedTest.expand?.questions_edunexus || []).forEach((q: RecordModel) => {
         combinedQuestions.push({
@@ -159,15 +120,15 @@ export default function TeacherAddQuestionToTestPage() {
           rawRecord: q,
           collectionId: q.collectionId,
           collectionName: q.collectionName,
-          questionImage_filename: q.questionImage, 
+          questionImage_filename: q.questionImage,
         });
       });
 
       (fetchedTest.expand?.questions_teachers || []).forEach((q: RecordModel) => {
         combinedQuestions.push({
           id: q.id,
-          textSnippet: q.QuestionText, 
-          imageUrl: getPbFileUrlOrDirectUrl(q, 'QuestionImage', true), 
+          textSnippet: q.QuestionText,
+          imageUrl: getPbFileUrlOrDirectUrl(q, 'QuestionImage', true),
           source: 'My QB',
           difficulty: q.difficulty || (q.CorrectOption ? q.CorrectOption.replace("Option ", "") : 'N/A'),
           rawRecord: q,
@@ -175,33 +136,18 @@ export default function TeacherAddQuestionToTestPage() {
       });
       if (isMountedGetter()) setCurrentDisplayableQuestions(combinedQuestions);
 
-    } catch (err: any) {
-      if (isMountedGetter()) {
-        const clientError = err as ClientResponseError;
-        if (clientError?.isAbort || (clientError?.name === 'ClientResponseError' && clientError?.status === 0)) {
-          console.warn('AddQuestionPage: Fetch test/question details request was cancelled.');
-        } else {
-          console.error("Error fetching test/question details:", clientError.data || clientError);
-          setError("Could not load test or question details. Ensure API rules for 'question_bank' and 'teacher_question_data' allow access and test data is correctly linked.");
-        }
-      }
-    } finally {
-      if (isMountedGetter()) setIsLoading(false);
-    }
+    } catch (err: any) { if (isMountedGetter()) { const clientError = err as ClientResponseError; if (clientError?.isAbort || (clientError?.name === 'ClientResponseError' && clientError?.status === 0)) { console.warn('AddQuestionPage: Fetch test/question details request was cancelled.'); } else { console.error("Error fetching test/question details:", clientError.data || clientError); setError("Could not load test or question details. Ensure API rules for 'question_bank' and 'teacher_question_data' allow access and test data is correctly linked."); } } }
+    finally { if (isMountedGetter()) setIsLoading(false); }
   }, [testId, teacher?.id]);
 
-  useEffect(() => {
-    let isMounted = true;
-    fetchTestAndQuestionDetails(() => isMounted);
-    return () => { isMounted = false; };
-  }, [fetchTestAndQuestionDetails]);
+  useEffect(() => { let isMounted = true; fetchTestAndQuestionDetails(() => isMounted); return () => { isMounted = false; }; }, [fetchTestAndQuestionDetails]);
 
   const handleQuestionSelectFromModal = async (questionId: string) => {
     if (!testId || !teacher?.id) return;
     setIsUpdating(true);
 
     let sourceCollectionName: 'question_bank' | 'teacher_question_data' | null = null;
-    let questionDataForDisplay: Partial<DisplayableQuestion> = { id: questionId, source: 'EduNexus QB' }; 
+    let questionDataForDisplay: Partial<DisplayableQuestionSummary> = { id: questionId, source: 'EduNexus QB' };
 
     try {
         const qbRecord = await pb.collection('question_bank').getOne(questionId, {fields: 'id,questionText,questionImage,difficulty,collectionId,collectionName'});
@@ -213,43 +159,28 @@ export default function TeacherAddQuestionToTestPage() {
         };
     } catch (qbError) {
         try {
-            const tqdRecord = await pb.collection('teacher_question_data').getOne(questionId, {fields: 'id,QuestionText,QuestionImage,CorrectOption,difficulty'}); 
+            const tqdRecord = await pb.collection('teacher_question_data').getOne(questionId, {fields: 'id,QuestionText,QuestionImage,CorrectOption,difficulty'});
             sourceCollectionName = 'teacher_question_data';
             questionDataForDisplay = {
               id: tqdRecord.id, textSnippet: tqdRecord.QuestionText, imageUrl: getPbFileUrlOrDirectUrl(tqdRecord, 'QuestionImage', true),
-              source: 'My QB', difficulty: tqdRecord.difficulty || (tqdRecord.CorrectOption ? 'Correct: ' + tqdRecord.CorrectOption.replace("Option ","") : 'N/A'), rawRecord: tqdRecord
+              source: 'My QB', difficulty: tqdRecord.difficulty || (tqdRecord.CorrectOption ? 'Ans: ' + tqdRecord.CorrectOption.replace("Option ","") : 'N/A'), rawRecord: tqdRecord
             };
-        } catch (tqdError) {
-            toast({title: "Error", description: "Selected question not found in any bank.", variant: "destructive"});
-            setIsUpdating(false);
-            return;
-        }
+        } catch (tqdError) { toast({title: "Error", description: "Selected question not found in any bank.", variant: "destructive"}); setIsUpdating(false); return; }
     }
 
-    if (!sourceCollectionName) {
-        toast({title: "Error", description: "Could not determine question source.", variant: "destructive"});
-        setIsUpdating(false);
-        return;
-    }
+    if (!sourceCollectionName) { toast({title: "Error", description: "Could not determine question source.", variant: "destructive"}); setIsUpdating(false); return; }
 
     const fieldToUpdate = sourceCollectionName === 'question_bank' ? 'questions_edunexus' : 'questions_teachers';
     const alreadyAdded = currentDisplayableQuestions.some(q => q.id === questionId);
 
-    if (alreadyAdded) {
-        toast({ title: "Already Added", description: "This question is already in the test.", variant: "default" });
-        setIsUpdating(false);
-        return;
-    }
+    if (alreadyAdded) { toast({ title: "Already Added", description: "This question is already in the test.", variant: "default" }); setIsUpdating(false); return; }
 
     try {
       await pb.collection('teacher_tests').update(testId, { [`${fieldToUpdate}+`]: questionId });
       toast({ title: "Question Added", description: `Question from ${questionDataForDisplay.source} added to "${testName}".` });
-      setCurrentDisplayableQuestions(prev => [...prev, questionDataForDisplay as DisplayableQuestion]);
-    } catch (error: any) {
-      toast({ title: "Error Adding Question", description: error.data?.message || error.message || "Could not add question.", variant: "destructive" });
-    } finally {
-      setIsUpdating(false);
-    }
+      setCurrentDisplayableQuestions(prev => [...prev, questionDataForDisplay as DisplayableQuestionSummary]);
+    } catch (error: any) { toast({ title: "Error Adding Question", description: error.data?.message || error.message || "Could not add question.", variant: "destructive" });
+    } finally { setIsUpdating(false); }
   };
   
   const handleRemoveQuestionFromTest = async (questionId: string, source: 'EduNexus QB' | 'My QB') => {
@@ -261,48 +192,26 @@ export default function TeacherAddQuestionToTestPage() {
         await pb.collection('teacher_tests').update(testId, { [`${fieldToUpdate}-`]: questionId });
         toast({ title: "Question Removed" });
         setCurrentDisplayableQuestions(prev => prev.filter(q => q.id !== questionId));
-    } catch (error: any) {
-        toast({ title: "Error Removing Question", description: error.message, variant: "destructive" });
-    } finally {
-        setIsUpdating(false);
-    }
+    } catch (error: any) { toast({ title: "Error Removing Question", description: error.message, variant: "destructive" });
+    } finally { setIsUpdating(false); }
   };
 
-  if (isLoading) {
-    return (
-      <div className="p-6 space-y-4">
-        <Skeleton className="h-8 w-3/4 mb-2" />
-        <Skeleton className="h-10 w-40 mb-4" />
-        <Skeleton className="h-20 w-full mb-4" /> 
-        <Skeleton className="h-64 w-full" /> 
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card className="text-center border-destructive bg-destructive/10 p-6">
-        <AlertCircle className="mx-auto h-10 w-10 text-destructive mb-3" />
-        <CardTitle className="text-destructive">Error</CardTitle>
-        <CardDescription className="text-destructive/80 whitespace-pre-wrap">{error}</CardDescription>
-      </Card>
-    );
-  }
+  if (isLoading) { return ( <div className="p-6 space-y-4"><Skeleton className="h-8 w-3/4 mb-2" /><Skeleton className="h-10 w-40 mb-4" /><Skeleton className="h-20 w-full mb-4" /><Skeleton className="h-64 w-full" /></div> ); }
+  if (error) { return ( <Card className="text-center border-destructive bg-destructive/10 p-6"><AlertCircle className="mx-auto h-10 w-10 text-destructive mb-3" /><CardTitle className="text-destructive">Error</CardTitle><CardDescription className="text-destructive/80 whitespace-pre-wrap">{error}</CardDescription></Card> ); }
 
   return (
     <div className="p-4 md:p-6">
       <CardHeader className="px-0 pb-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
-            <PlusCircle className="h-5 w-5 text-primary"/> Add Questions to Test
+            <PlusCircle className="h-5 w-5 text-primary"/> Add Questions to: {testName}
           </CardTitle>
           <Button onClick={() => setIsQbModalOpen(true)} disabled={isUpdating} size="sm">
             <BookOpen className="mr-2 h-4 w-4" /> Browse Question Banks
           </Button>
         </div>
-        <CardDescription>
-          Test: <span className="font-medium text-foreground">{testName}</span>. 
-          Added: <span className="font-medium text-foreground">{currentDisplayableQuestions.length}</span> question(s).
+        <CardDescription className="text-sm text-muted-foreground mt-1">
+          Questions added: <span className="font-medium text-foreground">{currentDisplayableQuestions.length}</span>.
         </CardDescription>
       </CardHeader>
 
@@ -315,15 +224,16 @@ export default function TeacherAddQuestionToTestPage() {
                     <ol className="list-decimal list-inside text-xs text-blue-600/90 dark:text-blue-300/90 space-y-0.5 mt-1">
                         <li>Click "Browse Question Banks".</li>
                         <li>Select "My Teacher QB" (your questions) or "EduNexus QB" (if Pro plan).</li>
-                        <li>Filter by Exam and Lesson (Test Name for your QB).</li>
-                        <li>Click "Select" on desired questions. They will be added here.</li>
+                        <li>Filter by Exam and Lesson/Test Name.</li>
+                        <li>Click "Select" on desired questions. They will appear below.</li>
                     </ol>
                 </div>
             </div>
         </Card>
 
         {currentDisplayableQuestions.length === 0 ? (
-          <div className="text-center py-10 border-2 border-dashed rounded-lg mt-4">
+          <div className="text-center py-10 border-2 border-dashed rounded-lg mt-4 bg-card">
+            <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
             <p className="text-muted-foreground">No questions added yet. Click "Browse Question Banks" to start.</p>
           </div>
         ) : (
@@ -334,28 +244,15 @@ export default function TeacherAddQuestionToTestPage() {
                   <div className="flex items-start gap-2 flex-grow min-w-0">
                     <span className="text-xs font-medium text-muted-foreground pt-0.5">{index + 1}.</span>
                     <div className="min-w-0">
-                      {q.imageUrl && (
-                        <div className="mb-1 w-16 h-10 relative">
-                          <NextImage src={q.imageUrl} alt="Q thumb" layout="fill" objectFit="contain" className="rounded border bg-muted" data-ai-hint="preview"/>
-                        </div>
-                      )}
-                      <div className="text-xs text-foreground line-clamp-2 prose prose-xs dark:prose-invert max-w-none">
-                        {renderLatexSnippet(q.textSnippet, 120)}
-                      </div>
+                      {q.imageUrl && ( <div className="mb-1 w-16 h-10 relative"> <NextImage src={q.imageUrl} alt="Q thumb" layout="fill" objectFit="contain" className="rounded border bg-muted" data-ai-hint="preview"/></div> )}
+                      <div className="text-xs text-foreground line-clamp-2 prose prose-xs dark:prose-invert max-w-none"> {renderLatexSnippet(q.textSnippet, 120)} </div>
                       <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1.5">
                         <span><Badge variant="outline" className="px-1 py-0 text-[9px]">{q.source}</Badge></span>
                         {q.difficulty && <Badge variant="outline" className="px-1 py-0 text-[9px]">{q.difficulty}</Badge>}
                       </div>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleRemoveQuestionFromTest(q.id, q.source)}
-                    disabled={isUpdating}
-                    className="text-destructive hover:bg-destructive/10 h-7 w-7 flex-shrink-0"
-                    aria-label="Remove question from test"
-                  >
+                  <Button variant="ghost" size="icon" onClick={() => handleRemoveQuestionFromTest(q.id, q.source)} disabled={isUpdating} className="text-destructive hover:bg-destructive/10 h-7 w-7 flex-shrink-0" aria-label="Remove question">
                     {isUpdating ? <Loader2 className="h-3.5 w-3.5 animate-spin"/> : <Trash2 size={13} />}
                   </Button>
                 </Card>
@@ -364,11 +261,10 @@ export default function TeacherAddQuestionToTestPage() {
           </ScrollArea>
         )}
       </CardContent>
-      <QbModal
-        isOpen={isQbModalOpen}
-        onOpenChange={setIsQbModalOpen}
-        onQuestionSelect={handleQuestionSelectFromModal}
-      />
+      <QbModal isOpen={isQbModalOpen} onOpenChange={setIsQbModalOpen} onQuestionSelect={handleQuestionSelectFromModal} />
     </div>
   );
 }
+    
+    
+    
