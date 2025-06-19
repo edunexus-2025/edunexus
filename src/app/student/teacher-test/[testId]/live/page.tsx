@@ -34,13 +34,13 @@ const TEST_PIN_SESSION_KEY_PREFIX = "teacherTestPinVerified_";
 interface TeacherTestDetailsRecord extends RecordModel {
   id: string;
   testName: string;
-  Admin_Password?: number;
-  duration: string;
+  Admin_Password?: number; // PocketBase stores numbers, not strings for this typically
+  duration: string; // Duration in minutes as a string
   teacherId: string;
   QBExam: string;
   model: "Chapterwise" | "Full Length";
-  questions_edunexus?: string[];
-  questions_teachers?: string[];
+  questions_edunexus?: string[]; // Array of IDs from question_bank
+  questions_teachers?: string[]; // Array of IDs from teacher_question_data
   status?: 'Draft' | 'Published' | 'Archived';
   expand?: {
     teacherId?: {
@@ -50,57 +50,52 @@ interface TeacherTestDetailsRecord extends RecordModel {
   };
 }
 
+// Unified interface for questions from both sources after normalization
 interface QuestionRecord {
   id: string;
-  displayQuestionText?: string;
+  displayQuestionText?: string | null;
   displayQuestionImageUrl?: string | null;
-  displayOptions: { label: string; text?: string; imageUrl?: string | null }[];
+  displayOptions: { label: string; text?: string | null; imageUrl?: string | null }[];
   displayCorrectOptionLabel: "A" | "B" | "C" | "D";
-  displayExplanationText?: string;
+  displayExplanationText?: string | null;
   displayExplanationImageUrl?: string | null;
   marks?: number;
-  subject?: string;
-  difficulty?: 'Easy' | 'Medium' | 'Hard';
+  subject?: string | null;
+  difficulty?: 'Easy' | 'Medium' | 'Hard' | null;
   originalSourceCollection?: 'question_bank' | 'teacher_question_data';
   rawRecord?: RecordModel;
 }
 
-
+// Source record structure from PocketBase (can be from question_bank or teacher_question_data)
 interface FetchedQuestionSourceRecord extends RecordModel {
-  questionText?: string;
-  questionImage?: string | null;
-  optionAText?: string;
-  optionAImage?: string | null;
-  optionBText?: string;
-  optionBImage?: string | null;
-  optionCText?: string;
-  optionCImage?: string | null;
-  optionDText?: string;
-  optionDImage?: string | null;
-  correctOption?: "A" | "B" | "C" | "D";
-  explanationText?: string;
-  explanationImage?: string | null;
-  difficulty?: 'Easy' | 'Medium' | 'Hard';
+  // Common fields or fields that might exist in either
+  questionText?: string; // from question_bank
+  QuestionText?: string; // from teacher_question_data
+  questionImage?: string | null; // filename from question_bank
+  QuestionImage?: string | null; // URL from teacher_question_data
+  optionAText?: string; OptionAImage?: string | null;
+  OptionAText?: string; OptionAImage?: string | null; // teacher_question_data
+  optionBText?: string; optionBImage?: string | null;
+  OptionBText?: string; OptionBImage?: string | null; // teacher_question_data
+  optionCText?: string; optionCImage?: string | null;
+  OptionCText?: string; OptionCImage?: string | null; // teacher_question_data
+  optionDText?: string; optionDImage?: string | null;
+  OptionDText?: string; OptionDImage?: string | null; // teacher_question_data
+  correctOption?: "A" | "B" | "C" | "D"; // from question_bank
+  CorrectOption?: "Option A" | "Option B" | "Option C" | "Option D"; // from teacher_question_data
+  explanationText?: string; // from question_bank
+  ExplanationText?: string; // from teacher_question_data
+  explanationImage?: string | null; // filename from question_bank
+  ExplanationImage?: string | null; // URL from teacher_question_data
+  difficulty?: 'Easy' | 'Medium' | 'Hard' | null;
   marks?: number;
-  subject?: string;
-  lessonName?: string;
-  QBExam?: string;
-  QuestionText?: string;
-  QuestionImage?: string | null;
-  OptionAText?: string;
-  OptionAImage?: string | null;
-  OptionBText?: string;
-  OptionBImage?: string | null;
-  OptionCText?: string;
-  OptionCImage?: string | null;
-  OptionDText?: string;
-  OptionDImage?: string | null;
-  CorrectOption?: "Option A" | "Option B" | "Option C" | "Option D";
-  ExplanationText?: string;
-  ExplanationImage?: string | null;
-  LessonName?: string;
-  teacher?: string;
+  subject?: string | null;
+  lessonName?: string; // from question_bank
+  LessonName?: string; // from teacher_question_data (this is a relation ID to teacher_tests)
+  teacher?: string; // from teacher_question_data (relation ID to teacher_data)
+  QBExam?: string; // from teacher_question_data
 }
+
 
 interface UserAnswer {
   questionId: string;
@@ -110,20 +105,23 @@ interface UserAnswer {
   timeSpentSeconds: number;
 }
 
-const getPbFileUrl = (record: RecordModel | null | undefined, fieldName: string, sourceCollection?: 'question_bank' | 'teacher_question_data'): string | null => {
+const getPbFileUrl = (record: RecordModel | null | undefined, fieldName: string, isDirectUrl: boolean = false): string | null => {
   if (record && record[fieldName] && typeof record[fieldName] === 'string') {
-    // For teacher_question_data, if it's already a URL, return it
-    if (sourceCollection === 'teacher_question_data' && (record[fieldName] as string).startsWith('http')) {
-      return record[fieldName] as string;
+    const fieldValue = record[fieldName] as string;
+    if (isDirectUrl) {
+      if (isValidHttpUrl(fieldValue)) return fieldValue;
+      console.warn(`Direct URL field '${fieldName}' for record ${record.id} is not a valid HTTP/S URL: ${fieldValue}`);
+      return null;
     }
-    // For question_bank or if not a full URL for teacher_question_data, try pb.files.getUrl
     if (record.collectionId && record.collectionName) {
       try {
-        return pb.files.getUrl(record, record[fieldName] as string);
+        return pb.files.getUrl(record, fieldValue);
       } catch (e) {
-        console.warn(`Error getting PB file URL for ${fieldName} in record ${record.id} from ${sourceCollection || record.collectionName}:`, e);
+        console.warn(`Error getting PB file URL for ${fieldName} in record ${record.id} from ${record.collectionName}:`, e);
         return null;
       }
+    } else {
+        console.warn(`Missing collectionId or collectionName for PB file field '${fieldName}' in record ${record.id}. Cannot resolve URL.`);
     }
   }
   return null;
@@ -156,7 +154,7 @@ export default function StudentTeacherTestLivePage() {
   const router = useRouter();
   const testId = typeof params.testId === 'string' ? params.testId : '';
 
-  const { user, isLoading: isAuthLoading, authRefresh } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth(); // authRefresh removed as it's not used
   const { toast } = useToast();
 
   const [testDetails, setTestDetails] = useState<TeacherTestDetailsRecord | null>(null);
@@ -185,7 +183,7 @@ export default function StudentTeacherTestLivePage() {
   const fetchTestDataAndDecideStage = useCallback(async (isMountedGetter: () => boolean) => {
     if (!testId) { if (isMountedGetter()) { setError("Test ID is missing."); setIsLoadingPageData(false); setTestSessionState('terminated'); } return; }
     if (!user?.id && !isAuthLoading) { if (isMountedGetter()) { setError("User not authenticated. Please login."); setIsLoadingPageData(false); setTestSessionState('terminated'); } return; }
-    if (isAuthLoading) { if (isMountedGetter()) setIsLoadingPageData(true); return; }
+    if (isAuthLoading && isMountedGetter()) { setIsLoadingPageData(true); return; } // Wait for auth to resolve
 
     if (isMountedGetter()) { setIsLoadingPageData(true); setError(null); }
 
@@ -199,7 +197,7 @@ export default function StudentTeacherTestLivePage() {
       if (!isMountedGetter()) return;
       
       if (fetchedTest.status !== 'Published') {
-        if (isMountedGetter()) { setError(`This test ("${fetchedTest.testName}") is not currently published or available.`); setTestSessionState('terminated'); setIsLoadingPageData(false); }
+        if (isMountedGetter()) { setError(`This test ("${fetchedTest.testName}") is not currently published or available.`); setTestSessionState('terminated');}
         return;
       }
       setTestDetails(fetchedTest); 
@@ -210,9 +208,10 @@ export default function StudentTeacherTestLivePage() {
       const pinIsVerifiedInSession = sessionStorage.getItem(pinSessionKey) === 'true';
 
       if (pinRequired && !pinIsVerifiedInSession) {
-        setTestSessionState('pinEntry'); setIsLoadingPageData(false); return; 
+        setTestSessionState('pinEntry'); 
+      } else {
+        setTestSessionState('instructions');
       }
-      setTestSessionState('instructions');
       
     } catch (err: any) {
       if (isMountedGetter()) {
@@ -234,7 +233,7 @@ export default function StudentTeacherTestLivePage() {
 
   const loadQuestions = useCallback(async (isMountedGetter: () => boolean) => {
     if (!testDetails || !user?.id) { if (isMountedGetter()) { setError("Test details or user ID missing, cannot load questions."); setIsLoadingPageData(false); setQuestions([]); } return; }
-    if (isMountedGetter()) setIsLoadingPageData(true);
+    if (isMountedGetter()) setIsLoadingPageData(true); // Use main loader
     
     let combinedQuestions: QuestionRecord[] = [];
 
@@ -245,20 +244,20 @@ export default function StudentTeacherTestLivePage() {
             const records = await pb.collection('question_bank').getFullList<FetchedQuestionSourceRecord>({ filter, '$autoCancel': false });
             records.forEach(q => {
                 combinedQuestions.push({
-                    ...q, // Spreading the raw record
                     id: q.id,
                     displayQuestionText: q.questionText,
-                    displayQuestionImageUrl: getPbFileUrl(q, 'questionImage', 'question_bank'),
+                    displayQuestionImageUrl: getPbFileUrl(q, 'questionImage'),
                     displayOptions: [
-                        { label: 'A', text: q.optionAText, imageUrl: getPbFileUrl(q, 'optionAImage', 'question_bank') },
-                        { label: 'B', text: q.optionBText, imageUrl: getPbFileUrl(q, 'optionBImage', 'question_bank') },
-                        { label: 'C', text: q.optionCText, imageUrl: getPbFileUrl(q, 'optionCImage', 'question_bank') },
-                        { label: 'D', text: q.optionDText, imageUrl: getPbFileUrl(q, 'optionDImage', 'question_bank') },
+                        { label: 'A', text: q.optionAText, imageUrl: getPbFileUrl(q, 'optionAImage') },
+                        { label: 'B', text: q.optionBText, imageUrl: getPbFileUrl(q, 'optionBImage') },
+                        { label: 'C', text: q.optionCText, imageUrl: getPbFileUrl(q, 'optionCImage') },
+                        { label: 'D', text: q.optionDText, imageUrl: getPbFileUrl(q, 'optionDImage') },
                     ],
                     displayCorrectOptionLabel: q.correctOption!,
                     displayExplanationText: q.explanationText,
-                    displayExplanationImageUrl: getPbFileUrl(q, 'explanationImage', 'question_bank'),
-                    originalSourceCollection: 'question_bank',
+                    displayExplanationImageUrl: getPbFileUrl(q, 'explanationImage'),
+                    marks: q.marks, subject: q.subject, difficulty: q.difficulty,
+                    originalSourceCollection: 'question_bank', rawRecord: q,
                 });
             });
         }
@@ -270,20 +269,20 @@ export default function StudentTeacherTestLivePage() {
             const records = await pb.collection('teacher_question_data').getFullList<FetchedQuestionSourceRecord>({ filter, '$autoCancel': false });
             records.forEach(q => {
                 combinedQuestions.push({
-                    ...q, // Spreading the raw record
                     id: q.id,
                     displayQuestionText: q.QuestionText,
-                    displayQuestionImageUrl: q.QuestionImage, // Direct URL
+                    displayQuestionImageUrl: getPbFileUrl(q, 'QuestionImage', true),
                     displayOptions: [
-                        { label: 'A', text: q.OptionAText, imageUrl: q.OptionAImage },
-                        { label: 'B', text: q.OptionBText, imageUrl: q.OptionBImage },
-                        { label: 'C', text: q.OptionCText, imageUrl: q.OptionCImage },
-                        { label: 'D', text: q.OptionDText, imageUrl: q.OptionDImage },
+                        { label: 'A', text: q.OptionAText, imageUrl: getPbFileUrl(q, 'OptionAImage', true) },
+                        { label: 'B', text: q.OptionBText, imageUrl: getPbFileUrl(q, 'OptionBImage', true) },
+                        { label: 'C', text: q.OptionCText, imageUrl: getPbFileUrl(q, 'OptionCImage', true) },
+                        { label: 'D', text: q.OptionDText, imageUrl: getPbFileUrl(q, 'OptionDImage', true) },
                     ],
                     displayCorrectOptionLabel: q.CorrectOption!.replace("Option ", "") as "A" | "B" | "C" | "D",
-                    displayExplanationText: q.explanationText, 
-                    displayExplanationImageUrl: q.explanationImage, 
-                    originalSourceCollection: 'teacher_question_data',
+                    displayExplanationText: q.ExplanationText || q.explanationText, // Prioritize specific if available
+                    displayExplanationImageUrl: getPbFileUrl(q, 'ExplanationImage', true) || getPbFileUrl(q, 'explanationImage', true),
+                    marks: q.marks, subject: q.subject || testDetails.QBExam, difficulty: q.difficulty,
+                    originalSourceCollection: 'teacher_question_data', rawRecord: q,
                 });
             });
         }
@@ -312,22 +311,23 @@ export default function StudentTeacherTestLivePage() {
             }
         }
     } catch (err: any) {
-        if (isMountedGetter()) {
-            const clientError = err as PocketBaseClientResponseError;
-            setError(`Error loading question content: ${clientError.data?.message || clientError.message}.`);
-        }
+      if (isMountedGetter()) {
+        const clientError = err as PocketBaseClientResponseError;
+        setError(`Error loading question content: ${clientError.data?.message || clientError.message}.`);
+        setQuestions([]);
+      }
     } finally {
-        if (isMountedGetter()) setIsLoadingPageData(false);
+        if (isMountedGetter()) setIsLoadingPageData(false); // Set main page loader false here
     }
   }, [testDetails, user?.id, escapeForPbFilter]);
   
   useEffect(() => { 
     let isMounted = true;
-    if (testSessionState === 'instructions' && questions.length === 0 && !isLoadingPageData) { // Load questions when instructions are shown
+    if (testSessionState === 'instructions' && questions.length === 0 && !isLoadingPageData && testDetails) {
         loadQuestions(() => isMounted);
     }
     return () => { isMounted = false; };
-  }, [testSessionState, loadQuestions, questions.length, isLoadingPageData]);
+  }, [testSessionState, loadQuestions, questions.length, isLoadingPageData, testDetails]);
 
   const handleSubmitTest = useCallback(async (autoSubmit = false, terminationReason?: string) => {
     if (!user || !testDetails || !testDetails.teacherId || isSubmittingTest || testSessionState === 'completed' || testSessionState === 'terminated') { return; }
@@ -355,7 +355,7 @@ export default function StudentTeacherTestLivePage() {
       teacher_test: testDetails.id,
       teacher: testDetails.teacherId,
       test_name_cache: testDetails.testName,
-      teacher_name_cache: teacherName, // Assuming teacherName state is set
+      teacher_name_cache: teacherName,
       score: pointsEarnedFromTest,
       max_score: maxScorePossible,
       total_questions: questions.length,
@@ -367,7 +367,7 @@ export default function StudentTeacherTestLivePage() {
       duration_taken_seconds: durationTakenSecs,
       answers_log: JSON.stringify(answersLogForDb),
       status: finalTestStatusString,
-      plan_context: user.studentSubscriptionTier || "Free Access", // Example, adjust as needed
+      plan_context: user.studentSubscriptionTier || "Free Access",
       started_at: new Date(Date.now() - durationTakenSecs * 1000).toISOString(),
       submitted_at: new Date().toISOString(),
       marked_for_review_without_selecting_option: answersLogForDb.filter(a => a.markedForReview && !a.selectedOption).length,
@@ -391,14 +391,13 @@ export default function StudentTeacherTestLivePage() {
   }, [user, testDetails, questions, userAnswers, timeLeft, router, toast, isSubmittingTest, testSessionState, currentQuestion, teacherName]);
 
   useEffect(() => {
-    let isMounted = true;
     if (testSessionState === 'inProgress' && timeLeft !== null && timeLeft > 0) {
-      timerIntervalRef.current = setInterval(() => { if(isMounted) setTimeLeft(prev => (prev !== null && prev > 0 ? prev - 1 : 0)); }, 1000);
+      timerIntervalRef.current = setInterval(() => { setTimeLeft(prev => (prev !== null && prev > 0 ? prev - 1 : 0)); }, 1000);
     } else if (timeLeft === 0 && testSessionState === 'inProgress') {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
       handleSubmitTest(true, "time_up");
     }
-    return () => { isMounted = false; if (timerIntervalRef.current) clearInterval(timerIntervalRef.current); };
+    return () => { if (timerIntervalRef.current) clearInterval(timerIntervalRef.current); };
   }, [testSessionState, timeLeft, handleSubmitTest]);
 
   const handlePinVerify = async () => {
@@ -417,6 +416,12 @@ export default function StudentTeacherTestLivePage() {
   const handleStartTestAfterInstructions = () => {
     if (!testDetails || !testDetails.duration) { toast({ title: "Error", description: "Test duration not set.", variant: "destructive" }); return; }
     const durationMinutes = parseInt(testDetails.duration || "0", 10);
+    if(questions.length === 0 && !isLoadingPageData){
+        toast({ title: "No Questions Loaded", description: "Cannot start test as no questions were found. Please contact the teacher.", variant: "destructive" });
+        setError("No questions were found for this test. Please contact your teacher.");
+        setTestSessionState('terminated');
+        return;
+    }
     setTimeLeft(isNaN(durationMinutes) || durationMinutes <=0 ? 3600 : durationMinutes * 60); 
     setTestSessionState('inProgress'); 
     questionStartTimeRef.current = Date.now();
@@ -482,7 +487,7 @@ export default function StudentTeacherTestLivePage() {
   if (isLoadingPageData || isAuthLoading || testSessionState === 'initialLoading') { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-4 text-white"> <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" /> <p className="text-lg">Loading test environment...</p> </div> ); }
   if (error) { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-4 text-white"> <Card className="w-full max-w-lg text-center shadow-xl bg-background text-foreground"> <CardHeader> <AlertCircle className="mx-auto h-12 w-12 text-destructive" /> <CardTitle className="text-destructive">Error Loading Test</CardTitle> </CardHeader> <CardContent><p className="text-muted-foreground whitespace-pre-wrap">{error}</p></CardContent> <CardFooter><Button onClick={() => router.back()} variant="outline" className="w-full">Go Back</Button></CardFooter> </Card> </div> ); }
   if (testSessionState === 'pinEntry') { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/80 p-4"> <Card className="w-full max-w-sm shadow-xl bg-card text-foreground"> <CardHeader><CardTitle className="text-xl flex items-center gap-2"><KeyRound className="text-primary"/>Enter Test PIN</CardTitle><CardDescription>This test by {teacherName} requires a PIN.</CardDescription></CardHeader> <CardContent className="space-y-4"> <Input type="password" placeholder="Enter PIN" value={enteredPin} onChange={(e) => setEnteredPin(e.target.value)} className="text-center text-lg tracking-widest" maxLength={6} autoFocus/> {pinError && <p className="text-sm text-destructive text-center">{pinError}</p>} </CardContent> <CardFooter className="flex-col gap-2"> <Button onClick={handlePinVerify} className="w-full" disabled={isVerifyingPin || enteredPin.length < 4}> {isVerifyingPin && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>} Verify PIN & Continue </Button> <Button variant="ghost" size="sm" onClick={() => router.back()} className="text-xs text-muted-foreground">Cancel & Go Back</Button> </CardFooter> </Card> </div> ); }
-  if (testSessionState === 'instructions') { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/80 p-4"> <Card className="w-full max-w-2xl shadow-xl bg-card text-foreground"> <CardHeader><CardTitle className="text-2xl">Test Instructions: {testDetails?.testName}</CardTitle><CardDescription>From: {teacherName}. Total Questions: {questions.length}</CardDescription></CardHeader> <CardContent className="max-h-[60vh] overflow-y-auto prose prose-sm dark:prose-invert"> <p>Duration: {testDetails?.duration || 'N/A'} minutes</p><h4>General Instructions:</h4><ol><li>The clock will be set at the server. The countdown timer in the top right corner of screen will display the remaining time.</li><li>When the timer reaches zero, the examination will end by itself.</li><li>The Question Palette on the right shows question status.</li></ol> </CardContent> <CardFooter className="justify-center"> <Button onClick={handleStartTestAfterInstructions} size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">I'm Ready, Start Test!</Button> </CardFooter> </Card> </div> ); }
+  if (testSessionState === 'instructions') { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/80 p-4"> <Card className="w-full max-w-2xl shadow-xl bg-card text-foreground"> <CardHeader><CardTitle className="text-2xl">Test Instructions: {testDetails?.testName}</CardTitle><CardDescription>From: {teacherName}. Total Questions: {questions.length > 0 ? questions.length : (testDetails?.questions_edunexus?.length || 0) + (testDetails?.questions_teachers?.length || 0) }</CardDescription></CardHeader> <CardContent className="max-h-[60vh] overflow-y-auto prose prose-sm dark:prose-invert"> <p>Duration: {testDetails?.duration || 'N/A'} minutes</p><h4>General Instructions:</h4><ol><li>The clock will be set at the server. The countdown timer in the top right corner of screen will display the remaining time.</li><li>When the timer reaches zero, the examination will end by itself. You will not be required to end or submit your examination.</li><li>The Question Palette on the right shows question status.</li></ol> </CardContent> <CardFooter className="justify-center"> <Button onClick={handleStartTestAfterInstructions} size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={questions.length === 0 && !isLoadingPageData}>I'm Ready, Start Test!</Button> </CardFooter> </Card> </div> ); }
   if (testSessionState === 'completed' || testSessionState === 'terminated') { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-4 text-white"> <Card className="w-full max-w-lg text-center shadow-xl bg-background text-foreground"> <CardHeader> {testSessionState === 'completed' ? <CheckCircle className="mx-auto h-12 w-12 text-green-500" /> : <XCircle className="mx-auto h-12 w-12 text-destructive" />} <CardTitle>{testSessionState === 'completed' ? "Test Completed" : "Test Terminated"}</CardTitle> </CardHeader> <CardContent><p className="text-muted-foreground">{testSessionState === 'completed' ? "Your responses have been submitted." : "This test session has been terminated."}</p></CardContent> <CardFooter> <Button onClick={() => { if (window.opener && !window.opener.closed) window.close(); else router.push(Routes.dashboard);}} className="w-full"> Close Window / Back to Dashboard </Button> </CardFooter> </Card> </div> ); }
   if (!currentQuestion && !isLoadingPageData && testSessionState === 'inProgress') { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-4 text-white"> <Card className="w-full max-w-lg text-center shadow-xl bg-background text-foreground"> <CardHeader> <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground" /> <CardTitle>No Questions</CardTitle> </CardHeader> <CardContent><p className="text-muted-foreground whitespace-pre-wrap">No questions loaded for this test, or you've finished. If this is unexpected, please contact your teacher. Error: {error}</p></CardContent> <CardFooter><Button onClick={() => handleSubmitTest(false, 'manual')} variant="outline" className="w-full">Submit & End Test</Button></CardFooter> </Card> </div> );}
   
@@ -513,7 +518,7 @@ export default function StudentTeacherTestLivePage() {
       </div>
       <div className={cn("flex-1 flex max-w-full p-2 sm:p-4 gap-2 sm:gap-4 overflow-hidden")}>
         <Card className="flex-1 flex flex-col bg-card shadow-xl rounded-lg border border-border overflow-hidden">
-            <CardHeader className="p-3 sm:p-4 border-b border-border bg-muted/30"><div className="flex justify-between items-center"><p className="text-xs sm:text-sm font-medium text-muted-foreground">Question {currentQuestionIndex + 1} of {questions.length}</p><div className="flex items-center gap-1">{currentQuestion?.difficulty && <Badge variant={currentQuestion.difficulty === 'Easy' ? 'secondary' : currentQuestion.difficulty === 'Medium' ? 'default' : 'destructive'} className="text-xs px-1.5 py-0.5">{currentQuestion.difficulty}</Badge>}{currentQuestion?.marks && <Badge variant="outline" className="text-xs px-1.5 py-0.5">Marks: {currentQuestion.marks}</Badge>}</div></div></CardHeader>
+            <CardHeader className="p-3 sm:p-4 border-b border-border bg-muted/30"><div className="flex justify-between items-center"><p className="text-xs sm:text-sm font-medium text-muted-foreground">Question {currentQuestionIndex + 1} of {questions.length}</p><div className="flex items-center gap-1">{currentQuestion.difficulty && <Badge variant={currentQuestion.difficulty === 'Easy' ? 'secondary' : currentQuestion.difficulty === 'Medium' ? 'default' : 'destructive'} className="text-xs px-1.5 py-0.5">{currentQuestion.difficulty}</Badge>}{currentQuestion.marks && <Badge variant="outline" className="text-xs px-1.5 py-0.5">Marks: {currentQuestion.marks}</Badge>}</div></div></CardHeader>
             <ScrollArea className="flex-1 min-h-0"><CardContent className="p-3 sm:p-4 md:p-6 space-y-4">
                 <div className="p-2 border-b border-border/50 rounded-md bg-background min-h-[80px]">{currentQuestion.displayQuestionText && (<div className="prose prose-sm dark:prose-invert max-w-none mb-3 text-foreground leading-relaxed">{renderLatex(currentQuestion.displayQuestionText)}</div>)}{currentQuestion.displayQuestionImageUrl && (<div className="my-2 text-center"><NextImage src={currentQuestion.displayQuestionImageUrl} alt="Question Image" width={400} height={300} className="rounded object-contain inline-block border" data-ai-hint="question diagram"/></div>)}{!(currentQuestion.displayQuestionText || currentQuestion.displayQuestionImageUrl) && (<p className="text-xs sm:text-sm text-muted-foreground italic py-3">Question content not provided.</p>)}</div>
                 <RadioGroup value={userAnswers[currentQuestion.id]?.selectedOption || ""} onValueChange={handleOptionChange} className="space-y-2.5" disabled={testSessionState !== 'inProgress'}>{renderOption("A")} {renderOption("B")} {renderOption("C")} {renderOption("D")}</RadioGroup>
