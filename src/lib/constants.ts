@@ -66,7 +66,7 @@ export const Routes = {
   refundPolicy: '/refund-policy',
   contactUs: '/contact-us',
   activatePlan: (token: string, planSlug: string) => `/activate-plan/${token}/${planSlug}`,
-  collegeCutoffs: '/college-cutoffs',
+  collegeCutoffs: '/college-cutoffs', // This remains for public viewing
   ownerInfo: '/owner-info',
   paymentStatusPage: (orderId: string, status: 'success' | 'failure' | 'error' | 'info', planName?: string, message?: string) => {
     const params = new URLSearchParams();
@@ -77,14 +77,15 @@ export const Routes = {
     return `/payment/status?${params.toString()}`;
   },
 
+
   // Student Test Taking Routes
   studentTestInstructions: (testId: string) => `/student/test/${testId}/instructions`, // For platform tests
   studentTestChapterwise: (testId: string) => `/student/test/${testId}/chapterwise`, // For platform tests
 
   // Routes for student taking a teacher-created test
   studentTakeTeacherTestLive: (testId: string) => `/student/teacher-test/${testId}/live`,
-  studentTestEnterPin: (testId: string) => `/student/teacher-test/${testId}/enter-pin`, // May become obsolete if PIN handled in /live
-  testResultTeacherTest: (attemptId: string) => `/student/teacher-test/results/${attemptId}`, // For teacher test results
+  studentTestEnterPin: (testId: string) => `/student/teacher-test/${testId}/enter-pin`,
+  testResultTeacherTest: (attemptId: string) => `/student/teacher-test/results/${attemptId}`,
 
 
   // Unified Question Bank view
@@ -134,6 +135,11 @@ export const Routes = {
   teacherManageDiscussion: '/teacher/dashboard/manage-discussion',
   teacherWallet: '/teacher/dashboard/wallet',
   teacherManageReferrals: '/teacher/dashboard/manage-referrals',
+
+  // College Details Section Routes
+  collegeDetailsLogin: '/college-details/login',
+  collegeDetailsSignup: '/college-details/signup',
+  collegeDetailsDashboard: '/college-details/dashboard',
 };
 
 // Helper to convert display names to URL-friendly slugs

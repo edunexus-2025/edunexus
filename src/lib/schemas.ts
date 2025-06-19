@@ -247,7 +247,7 @@ export const CreateTestSchema = z.object({
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "At least one question must be selected for the chosen subject in a Chapterwise test.",
-        path: ["testSubject"], 
+        path: ["testSubject"],
       });
     }
   }
@@ -344,8 +344,6 @@ export const TeacherAddQuestionSchema = z.object({
       const expectedCorrectOptionValue = `Option ${String.fromCharCode(65 + correctIndex)}` as const;
       if (data.CorrectOption !== expectedCorrectOptionValue) {
         // This can be auto-set, so maybe not a validation error, but a transform or ensure logic.
-        // For now, we'll require it to be consistent if provided.
-        // Or, better, auto-set it in the onSubmit logic based on the checkbox.
         // If it's not provided, it should be set before saving.
       }
     }
@@ -521,3 +519,22 @@ export const TeacherReferralCodeSchema = z.object({
   expiry_date: z.string().optional().nullable().refine(val => !val || !isNaN(Date.parse(val)), { message: "Invalid date format for expiry date." }),
 });
 export type TeacherReferralCodeInput = z.infer<typeof TeacherReferralCodeSchema>;
+
+// College Details Auth Schemas
+export const CollegeDetailsLoginSchema = z.object({
+  email: z.string().email({ message: 'Invalid email address.' }),
+  password: z.string().min(8, { message: 'Password must be at least 8 characters.' }),
+});
+export type CollegeDetailsLoginInput = z.infer<typeof CollegeDetailsLoginSchema>;
+
+export const CollegeDetailsSignupSchema = z.object({
+  name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
+  email: z.string().email({ message: 'Invalid email address.' }),
+  password: z.string().min(8, { message: 'Password must be at least 8 characters.' }),
+  confirmPassword: z.string(),
+  date_of_last_mht_cet_exam: z.string().optional().nullable().refine(val => !val || !isNaN(Date.parse(val)), { message: "Invalid date format."}),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match.",
+  path: ['confirmPassword'],
+});
+export type CollegeDetailsSignupInput = z.infer<typeof CollegeDetailsSignupSchema>;

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Navbar } from '@/components/layout/Navbar';
 import Link from 'next/link';
-import { BarChart3, Lightbulb, ListChecks, FileText, ShieldCheck, Zap, Star, ShoppingCart } from 'lucide-react';
+import { BarChart3, Lightbulb, ListChecks, FileText, ShieldCheck, Zap, Star, ShoppingCart, GraduationCap } from 'lucide-react';
 import { AppLogo } from '@/components/layout/AppLogo';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -55,12 +55,17 @@ function LandingPageContent() {
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
               Your ultimate companion for MHT CET, JEE, and NEET. Access high-quality test series, daily practice problems, and AI-powered guidance to ace your exams.
             </p>
-            <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
               <Button size="lg" asChild className="shadow-lg hover:shadow-xl transition-shadow">
                 <Link href={Routes.signup}>Get Started Free</Link>
               </Button>
               <Button size="lg" variant="outline" asChild className="shadow-lg hover:shadow-xl transition-shadow">
                 <Link href={Routes.teacherLogin}>Teacher Sign up</Link>
+              </Button>
+              <Button size="lg" variant="secondary" asChild className="shadow-lg hover:shadow-xl transition-shadow bg-accent text-accent-foreground hover:bg-accent/90">
+                <Link href={Routes.collegeDetailsLogin} className="flex items-center gap-2">
+                  <GraduationCap className="h-5 w-5" /> College Details
+                </Link>
               </Button>
             </div>
           </div>
@@ -123,16 +128,25 @@ function LandingPageContent() {
 }
 
 export default function RootPageSwitcher() {
-  const { user, isLoading } = useAuth();
+  const { user, teacher, collegeUser, isLoading, isLoadingTeacher, isLoadingCollegeUser } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && user) {
-      router.replace(Routes.dashboard);
+    if (!isLoading && !isLoadingTeacher && !isLoadingCollegeUser) {
+      if (user && !user.needsProfileCompletion) {
+        router.replace(Routes.dashboard);
+      } else if (user && user.needsProfileCompletion) {
+        router.replace(Routes.completeProfile);
+      } else if (teacher) {
+        router.replace(Routes.teacherDashboard);
+      } else if (collegeUser) {
+        router.replace(Routes.collegeDetailsDashboard);
+      }
+      // If none are logged in, it remains on the landing page.
     }
-  }, [user, isLoading, router]);
+  }, [user, teacher, collegeUser, isLoading, isLoadingTeacher, isLoadingCollegeUser, router]);
 
-  if (isLoading || user) { 
+  if (isLoading || isLoadingTeacher || isLoadingCollegeUser || user || teacher || collegeUser) { 
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background">
         <div className="space-y-4 p-8 rounded-lg shadow-xl bg-card">

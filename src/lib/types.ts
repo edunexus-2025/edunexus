@@ -35,7 +35,7 @@ export type User = {
   studentSubscriptionTier?: UserSubscriptionTierStudent;
   teacherSubscriptionTier?: UserSubscriptionTierTeacher; // Updated
 
-  role: 'User' | 'Admin' | 'Teacher';
+  role: 'User' | 'Admin' | 'Teacher' | 'CollegeDetailsUser'; // Added CollegeDetailsUser role
   avatarUrl?: string;
   avatar?: string;
   profile_picture?: string;
@@ -63,10 +63,13 @@ export type User = {
   max_content_plans_allowed?: number;
   wallet_money?: number; // Added for teacher's current balance
 
+  // College Details User specific fields
+  date_of_last_mht_cet_exam?: string;
+
   created?: string;
   updated?: string;
   collectionId?: string;
-  collectionName?: string;
+  collectionName?: string; // Will be 'users', 'teacher_data', or 'college_details_users'
   subscription_by_teacher?: string[]; // Ensure this is always an array
   needsProfileCompletion?: boolean;
 };
@@ -363,7 +366,3 @@ export interface TestPagesRecord extends RecordModel {
   BiologyQuestion?: string[];
   derivedSubject?: string; // For client-side inference
 }
-
-```
-  </change>
-  <change
