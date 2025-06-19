@@ -12,8 +12,36 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription }
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription as RadixAlertDialogDescription, AlertDialogFooter as RadixAlertDialogFooter, AlertDialogHeader as RadixAlertDialogHeader, AlertDialogTitle as RadixAlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Sheet, SheetContent, SheetHeader as ShadcnSheetHeader, SheetTitle as ShadcnSheetTitle, SheetDescription as ShadcnSheetDescription, SheetTrigger, SheetClose, SheetFooter as ShadcnSheetFooter } from '@/components/ui/sheet';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription as RadixAlertDialogDescription, // Renamed to avoid conflict
+  AlertDialogFooter as RadixAlertDialogFooter,           // Renamed to avoid conflict
+  AlertDialogHeader as RadixAlertDialogHeader,           // Renamed to avoid conflict
+  AlertDialogTitle as RadixAlertDialogTitle,             // Renamed to avoid conflict
+  AlertDialogTrigger
+} from "@/components/ui/alert-dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader as ShadcnSheetHeader,
+  SheetTitle as ShadcnSheetTitle,
+  SheetDescription as ShadcnSheetDescription,
+  SheetTrigger,
+  SheetClose,
+  SheetFooter as ShadcnSheetFooter
+} from '@/components/ui/sheet';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription, // This is the one used for the instruction modal
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog"; // Added missing imports
 import { Input } from '@/components/ui/input';
 import { AlertCircle, CheckCircle, ChevronLeft, ChevronRight, Clock, Flag, Image as ImageIconLucide, Loader2, Minimize, Send, XCircle, ArrowLeft as BackArrowIcon, Settings as SettingsIcon, Bookmark as BookmarkIconLucide, Check, PlusCircle, Info, ListOrdered, UserCircle as UserCircleIcon, CalendarDays, NotebookText, BarChart, PieChart as PieChartIcon, UserCheck, ListChecks, Eye, X as CloseIcon, MoreVertical, Menu, PanelRightOpen, KeyRound, Lock } from 'lucide-react';
 import NextImage from 'next/image';
@@ -45,6 +73,7 @@ interface TeacherTestDetailsRecord extends RecordModel {
   questions_teachers?: string[];
   status?: 'Draft' | 'Published' | 'Archived';
   totalScore?: number;
+  Test_Description?: string; // Added for instructions
   expand?: {
     teacherId?: {
       id: string;
@@ -59,8 +88,6 @@ interface FetchedQuestionSourceRecord extends RecordModel {
   marks?: number;
   subject?: string;
   difficulty?: 'Easy' | 'Medium' | 'Hard' | null;
-
-  // question_bank specific (lowercase filenames)
   questionText?: string | null;
   optionAText?: string | null;
   optionBText?: string | null;
@@ -68,25 +95,24 @@ interface FetchedQuestionSourceRecord extends RecordModel {
   optionDText?: string | null;
   correctOption?: 'A' | 'B' | 'C' | 'D';
   explanationText?: string | null;
-  lessonName?: string | null;
+  lessonName?: string | null; // For question_bank
+  lesson_name?: string | null; // For teacher_question_data (if it exists, though schema shows LessonName as relation)
   questionImage?: string | null;
   optionAImage?: string | null;
   optionBImage?: string | null;
   optionCImage?: string | null;
   optionDImage?: string | null;
   explanationImage?: string | null;
-
-  // teacher_question_data specific (uppercase field names, images are direct URLs)
   QuestionText?: string | null;
   CorrectOption?: 'Option A' | 'Option B' | 'Option C' | 'Option D';
-  LessonName?: string;
-  explanationText_teacher?: string | null; // Using a distinct name for clarity
-  QuestionImage_teacher?: string | null; // Using distinct name
-  OptionAImage_teacher?: string | null;  // Using distinct name
-  OptionBImage_teacher?: string | null;  // Using distinct name
-  OptionCImage_teacher?: string | null;  // Using distinct name
-  OptionDImage_teacher?: string | null;  // Using distinct name
-  explanationImage_teacher?: string | null; // Using distinct name
+  LessonName?: string; // Relation ID or actual name from teacher_question_data (schema has it as relation)
+  explanationText_teacher?: string | null;
+  QuestionImage_teacher?: string | null;
+  OptionAImage_teacher?: string | null;
+  OptionBImage_teacher?: string | null;
+  OptionCImage_teacher?: string | null;
+  OptionDImage_teacher?: string | null;
+  explanationImage_teacher?: string | null;
 }
 
 
@@ -105,7 +131,7 @@ interface NormalizedQuestionRecord {
   displayExplanationImageUrl?: string | null;
   marks: number;
   subject?: string | null;
-  lessonName?: string | null;
+  lessonName?: string | null; // Added this field
   difficulty?: 'Easy' | 'Medium' | 'Hard' | null;
   originalSourceCollection: 'question_bank' | 'teacher_question_data';
   rawRecord: RecordModel;
@@ -194,16 +220,20 @@ export default function StudentTakeTeacherTestLivePage() {
   const todayDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-
   const normalizeFetchedQuestion = (q: FetchedQuestionSourceRecord, sourceCollection: 'question_bank' | 'teacher_question_data'): NormalizedQuestionRecord | null => {
     if (!q || !q.id) return null;
     let displayCorrectOptionLabel: 'A' | 'B' | 'C' | 'D' = 'A';
     let correctOptionStringFull: 'Option A' | 'Option B' | 'Option C' | 'Option D' = 'Option A';
+    let lessonNameToUse = '';
 
     if (sourceCollection === 'question_bank') {
       if (q.correctOption) { displayCorrectOptionLabel = q.correctOption; correctOptionStringFull = `Option ${q.correctOption}` as any;}
+      lessonNameToUse = q.lessonName || '';
     } else if (sourceCollection === 'teacher_question_data') {
       if (q.CorrectOption) { const optStr = (q.CorrectOption).replace('Option ', ''); if (['A', 'B', 'C', 'D'].includes(optStr)) { displayCorrectOptionLabel = optStr as 'A' | 'B' | 'C' | 'D'; correctOptionStringFull = q.CorrectOption;}}
+      // For teacher_question_data, 'LessonName' is the ID of the related 'teacher_tests' record.
+      // We can use the parent test's name as the lesson context if specific lesson_name field isn't on teacher_question_data.
+      lessonNameToUse = q.lesson_name || testDetails?.testName || '';
     }
 
     const normalized: NormalizedQuestionRecord = {
@@ -212,7 +242,7 @@ export default function StudentTakeTeacherTestLivePage() {
       displayQuestionImageUrl: sourceCollection === 'question_bank' ? getPbFileUrl(q, 'questionImage') : (isValidHttpUrl(q.QuestionImage_teacher) ? q.QuestionImage_teacher : null),
       displayOptions: (['A', 'B', 'C', 'D'] as const).map(label => {
         const textKey = sourceCollection === 'question_bank' ? `option${label}Text` : `Option${label}Text`;
-        const imageFieldKey = sourceCollection === 'question_bank' ? `option${label}Image` : `Option${label}Image_teacher`; // Corrected: was Option${label}Image
+        const imageFieldKey = sourceCollection === 'question_bank' ? `option${label}Image` : `Option${label}Image_teacher`;
         return {
           label: label,
           text: q[textKey] as string | null || null,
@@ -225,7 +255,7 @@ export default function StudentTakeTeacherTestLivePage() {
       displayExplanationImageUrl: sourceCollection === 'question_bank' ? getPbFileUrl(q, 'explanationImage') : (isValidHttpUrl(q.explanationImage_teacher) ? q.explanationImage_teacher : null),
       marks: typeof q.marks === 'number' ? q.marks : 1,
       subject: q.subject || null,
-      lessonName: sourceCollection === 'question_bank' ? q.lessonName : q.LessonName,
+      lessonName: lessonNameToUse,
       difficulty: q.difficulty as NormalizedQuestionRecord['difficulty'] || null,
       originalSourceCollection: sourceCollection,
       rawRecord: q,
@@ -236,6 +266,8 @@ export default function StudentTakeTeacherTestLivePage() {
   const handleSubmitTest = useCallback(async (autoSubmit = false, terminationReason?: string) => {
     if (!currentUser || !testDetails || isSubmittingTest || testSessionState === 'completed' || testSessionState === 'terminated') {
       console.warn("handleSubmitTest (teacher test) blocked. Conditions not met:", {currentUser: !!currentUser, testDetails: !!testDetails, isSubmittingTest, testSessionState});
+      setIsSubmittingTest(false); // Ensure this is reset if we bail early
+      setIsSubmitConfirmOpen(false);
       return;
     }
     setIsSubmittingTest(true);
@@ -302,7 +334,7 @@ export default function StudentTakeTeacherTestLivePage() {
       duration_taken_seconds: Math.max(0, durationTakenSecs),
       answers_log: JSON.stringify(answersLogForDb),
       status: finalTestStatusDbValue,
-      plan_context: "Subscribed - Teacher Plan",
+      plan_context: "Subscribed - Teacher Plan", // Placeholder or determine dynamically
       started_at: testStartTimeRef.current ? new Date(testStartTimeRef.current).toISOString() : new Date().toISOString(),
       submitted_at: new Date().toISOString(),
       marked_for_review_without_selecting_option: answersLogForDb.filter(a => a.markedForReview && !a.selectedOption).length,
@@ -386,7 +418,7 @@ export default function StudentTakeTeacherTestLivePage() {
     } finally {
       if (isMountedGetter()) setIsLoadingPageData(false);
     }
-  }, [escapeForPbFilter, toast]);
+  }, [escapeForPbFilter, toast, normalizeFetchedQuestion]); // Added normalizeFetchedQuestion
 
   const fetchTestDataAndDecideStage = useCallback(async (isMountedGetter: () => boolean) => {
     const currentTestId = typeof testId === 'string' ? testId : '';
@@ -398,7 +430,7 @@ export default function StudentTakeTeacherTestLivePage() {
     try {
       const fetchedTest = await pb.collection('teacher_tests').getOne<TeacherTestDetailsRecord>(currentTestId, {
         expand: 'teacherId',
-        fields: 'id,testName,Admin_Password,duration,teacherId,QBExam,model,Test_Subject,questions_edunexus,questions_teachers,status,totalScore,expand.teacherId.name,expand.teacherId.EduNexus_Name',
+        fields: 'id,testName,Admin_Password,duration,teacherId,QBExam,model,Test_Subject,questions_edunexus,questions_teachers,status,totalScore,Test_Description,expand.teacherId.name,expand.teacherId.EduNexus_Name',
         '$autoCancel': false
       });
       if (!isMountedGetter()) return;
@@ -406,7 +438,7 @@ export default function StudentTakeTeacherTestLivePage() {
       const isOwningTeacher = currentTeacherUser?.id === fetchedTest.teacherId || currentTeacherUser?.id === fetchedTest.expand?.teacherId?.id;
 
       if (!isOwningTeacher && fetchedTest.status !== 'Published') {
-        if (isMountedGetter()) { setError("This test is not currently published or available."); setInitialLoading(false); setIsLoadingPageData(false); setTestSessionState('terminated'); }
+        if (isMountedGetter()) { setError("This test is not currently published or available."); setTestSessionState('terminated'); }
         return;
       }
       setTestDetails(fetchedTest);
@@ -415,7 +447,7 @@ export default function StudentTakeTeacherTestLivePage() {
       const pinSessionKey = `${TEST_PIN_SESSION_KEY_PREFIX}${currentTestId}`;
       const pinIsVerifiedInSession = sessionStorage.getItem(pinSessionKey) === 'true';
 
-      if (fetchedTest.Admin_Password && String(fetchedTest.Admin_Password).trim() !== '' && !pinIsVerifiedInSession) {
+      if (fetchedTest.Admin_Password && String(fetchedTest.Admin_Password).trim() !== '' && !pinIsVerifiedInSession && !isOwningTeacher) {
         if (isMountedGetter()) setTestSessionState('pinEntry');
       } else {
         if (isMountedGetter()) { setShowInstructionModal(true); setTestSessionState('instructions'); }
@@ -510,7 +542,7 @@ export default function StudentTakeTeacherTestLivePage() {
     if(!currentQuestion) return null;
     const optionValue = `Option ${option.label}`;
     return (
-        <Label key={optionValue} htmlFor={`option-${currentQuestion.id}-${option.label}`} className={cn("flex items-start space-x-3 rounded-lg border p-3 cursor-pointer transition-all hover:shadow-md", userAnswers[currentQuestion.id]?.selectedOption === optionValue ? 'bg-primary/10 border-primary ring-1 ring-primary' : 'bg-card border-border hover:border-primary/50')}>
+        <Label key={`${currentQuestion.id}-opt-${option.label}`} htmlFor={`option-${currentQuestion.id}-${option.label}`} className={cn("flex items-start space-x-3 rounded-lg border p-3 cursor-pointer transition-all hover:shadow-md", userAnswers[currentQuestion.id]?.selectedOption === optionValue ? 'bg-primary/10 border-primary ring-1 ring-primary' : 'bg-card border-border hover:border-primary/50')}>
             <RadioGroupItem value={optionValue} id={`option-${currentQuestion.id}-${option.label}`} className="mt-1 border-muted-foreground data-[state=checked]:border-primary shrink-0" />
             <div className="flex-1 text-sm">
                 <div className="font-semibold">{option.label}.</div>
@@ -542,7 +574,7 @@ export default function StudentTakeTeacherTestLivePage() {
               const isActive = currentQuestionIndex === index;
               return (
                 <Button
-                  key={`${q.id}-${index}`} // Changed key
+                  key={`${q.id}-${index}`}
                   variant="outline"
                   size="icon"
                   className={cn("h-8 w-full text-xs rounded-md aspect-square", questionPaletteButtonClass(status, isActive))}
@@ -610,7 +642,7 @@ export default function StudentTakeTeacherTestLivePage() {
 
   if (testSessionState === 'instructions' && showInstructionModal) {
     return (
-      <Dialog open={showInstructionModal} onOpenChange={(open) => { if (!open) { setShowInstructionModal(false); if (testDetails) handleStartTestAfterInstructions(); else { setError("Cannot start test, test details missing."); setTestSessionState('terminated');}} else { setShowInstructionModal(open); }}}>
+      <Dialog open={showInstructionModal} onOpenChange={(openState: boolean) => { if (!openState) { setShowInstructionModal(false); if (testDetails) handleStartTestAfterInstructions(); else { setError("Cannot start test, test details missing."); setTestSessionState('terminated');}} else { setShowInstructionModal(openState); }}}>
         <DialogContent className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl max-h-[80vh] flex flex-col">
           <DialogHeader><DialogTitle className="text-2xl">Test Instructions: {testDetails?.testName}</DialogTitle><DialogDescription>Read carefully before starting. Test by {teacherName}.</DialogDescription></DialogHeader>
           <ScrollArea className="flex-grow my-4 min-h-0"><div className="prose prose-sm dark:prose-invert p-1">
@@ -653,7 +685,7 @@ export default function StudentTakeTeacherTestLivePage() {
             <div className="flex items-center gap-1 sm:gap-2">
                 <Sheet open={isMobileSheetOpen} onOpenChange={setIsMobileSheetOpen}><SheetTrigger asChild><Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary h-7 w-7 md:hidden" aria-label="Open Question Navigation"><ListOrdered className="h-5 w-5" /></Button></SheetTrigger><SheetContent side="right" className="w-3/4 p-0 flex flex-col"><ShadcnSheetHeader className="p-3 border-b text-center"><ShadcnSheetTitle className="text-lg">Navigation</ShadcnSheetTitle><ShadcnSheetDescription>Jump to any question or submit.</ShadcnSheetDescription></ShadcnSheetHeader><QuestionPaletteContent /></SheetContent></Sheet>
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary h-7 w-7 hidden md:inline-flex" onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} aria-label={isRightSidebarOpen ? "Hide Question Panel" : "Show Question Panel"}><MoreVertical className="h-5 w-5" /></Button>
-                <Button variant="ghost" size="icon" asChild className="text-muted-foreground hover:text-primary h-7 w-7"><Link href={Routes.studentTestInstructions(testId)} target="_blank"><Info className="h-4 w-4" /></Link></Button>
+                {/* <Button variant="ghost" size="icon" asChild className="text-muted-foreground hover:text-primary h-7 w-7"><Link href={Routes.studentTestInstructions(testId)} target="_blank"><Info className="h-4 w-4" /></Link></Button> */}
             </div>
         </div>
       </div>
