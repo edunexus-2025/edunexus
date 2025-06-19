@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -16,14 +17,14 @@ import {
   AlertDialogAction, 
   AlertDialogCancel, 
   AlertDialogContent, 
-  AlertDialogDescription as RadixAlertDialogDescription, // Aliased
-  AlertDialogFooter as RadixAlertDialogFooter,         // Aliased
-  AlertDialogHeader as RadixAlertDialogHeader,           // Aliased
-  AlertDialogTitle as RadixAlertDialogTitle,             // Aliased
+  AlertDialogDescription as RadixAlertDialogDescription, 
+  AlertDialogFooter as RadixAlertDialogFooter,        
+  AlertDialogHeader as RadixAlertDialogHeader,          
+  AlertDialogTitle as RadixAlertDialogTitle,            
   AlertDialogTrigger 
 } from "@/components/ui/alert-dialog";
 import {
-  Dialog, // Root Dialog for instructions
+  Dialog, 
   DialogContent as InstructionDialogContent,
   DialogDescription as InstructionDialogDescription,
   DialogFooter as InstructionDialogFooter,
@@ -37,7 +38,7 @@ import {
   SheetTitle as ShadcnSheetTitle,
   SheetDescription as ShadcnSheetDescription,
   SheetTrigger,
-} from '@/components/ui/sheet'; // SheetClose and SheetFooter removed as not used here
+} from '@/components/ui/sheet'; 
 import { Input } from '@/components/ui/input';
 import { AlertCircle, CheckCircle, ChevronLeft, ChevronRight, Clock, Flag, Image as ImageIconLucide, Loader2, Minimize, Send, XCircle, ArrowLeft as BackArrowIcon, Settings as SettingsIcon, Bookmark as BookmarkIconLucide, Check, PlusCircle, Info, ListOrdered, UserCircle as UserCircleIcon, Menu, PanelRightOpen, KeyRound, Lock, X as CloseIcon } from 'lucide-react';
 import NextImage from 'next/image';
@@ -90,25 +91,26 @@ interface FetchedQuestionSourceRecord extends RecordModel {
   optionDText?: string | null;
   correctOption?: 'A' | 'B' | 'C' | 'D';
   explanationText?: string | null;
-  lessonName?: string | null; // For question_bank
-  lesson_name?: string | null; // For teacher_question_data
+  explanationText_teacher?: string | null;
+  lessonName?: string | null; 
+  lesson_name?: string | null; 
 
-  questionImage?: string | null; // For question_bank (filename)
-  optionAImage?: string | null;  // For question_bank (filename)
-  optionBImage?: string | null;  // For question_bank (filename)
-  optionCImage?: string | null;  // For question_bank (filename)
-  optionDImage?: string | null;  // For question_bank (filename)
-  explanationImage?: string | null; // For question_bank (filename)
+  questionImage?: string | null; 
+  optionAImage?: string | null;  
+  optionBImage?: string | null;  
+  optionCImage?: string | null;  
+  optionDImage?: string | null; 
+  explanationImage?: string | null; 
 
-  QuestionText?: string | null; // For teacher_question_data
-  CorrectOption?: 'Option A' | 'Option B' | 'Option C' | 'Option D'; // For teacher_question_data
+  QuestionText?: string | null; 
+  CorrectOption?: 'Option A' | 'Option B' | 'Option C' | 'Option D'; 
   
-  QuestionImage_teacher?: string | null; // For teacher_question_data (direct URL)
-  OptionAImage_teacher?: string | null;  // For teacher_question_data (direct URL)
-  OptionBImage_teacher?: string | null;  // For teacher_question_data (direct URL)
-  OptionCImage_teacher?: string | null;  // For teacher_question_data (direct URL)
-  OptionDImage_teacher?: string | null;  // For teacher_question_data (direct URL)
-  explanationImage_teacher?: string | null; // For teacher_question_data (direct URL)
+  QuestionImage_teacher?: string | null; 
+  OptionAImage_teacher?: string | null;  
+  OptionBImage_teacher?: string | null;  
+  OptionCImage_teacher?: string | null;  
+  OptionDImage_teacher?: string | null; 
+  explanationImage_teacher?: string | null; 
 
   collectionId?: string;
   collectionName?: string;
@@ -269,26 +271,42 @@ export default function StudentTakeTeacherTestLivePage() {
       const currentTime = Date.now(); const timeSpentCurrentQuestion = Math.round((currentTime - questionStartTimeRef.current) / 1000);
       userAnswers[currentQuestion.id].timeSpentSeconds = (userAnswers[currentQuestion.id].timeSpentSeconds || 0) + timeSpentCurrentQuestion;
     }
-    let correctCount = 0; let attemptedCount = 0; let pointsEarnedFromTest = 0; let totalMarksForTest = 0;
+    let correctCount = 0; let attemptedCount = 0; let pointsEarnedFromTest = 0; 
+    let totalMarksForTest = 0;
+    
     const answersLogForDb = questions.map(q => {
       const userAnswerRec = userAnswers[q.id]; const selected = userAnswerRec?.selectedOption || null; let isCorrectAns = false;
-      const questionCorrectOptionString = q.correctOptionString; const questionMarks = typeof q.marks === 'number' ? q.marks : 1; 
+      const questionCorrectOptionString = q.correctOptionString; 
+      const questionMarks = typeof q.marks === 'number' ? q.marks : 1; 
       totalMarksForTest += questionMarks; 
       if (selected) { attemptedCount++; if (selected === questionCorrectOptionString) { correctCount++; isCorrectAns = true; pointsEarnedFromTest += questionMarks; }}
       return { questionId: q.id, selectedOption: selected, correctOption: questionCorrectOptionString, isCorrect: isCorrectAns, markedForReview: userAnswerRec?.markedForReview || false, timeSpentSeconds: userAnswerRec?.timeSpentSeconds || 0, };
     });
+
     const maxScorePossible = (testDetails.totalScore && testDetails.totalScore > 0) ? testDetails.totalScore : totalMarksForTest;
     const percentageScore = maxScorePossible > 0 ? (pointsEarnedFromTest / maxScorePossible) * 100 : 0;
     const finalTestStatusDbValue: TeacherTestAttempt['status'] = terminationReason === 'time_up' ? 'terminated_time_up' : (terminationReason === 'manual' ? 'terminated_manual' : 'completed');
     const durationTakenSecs = testStartTimeRef.current ? Math.round((Date.now() - testStartTimeRef.current) / 1000) : (timeLeft !== null && testDetails?.duration ? (parseInt(testDetails.duration, 10)*60 - timeLeft) : 0);
+    
     const resultDataToSave: Partial<TeacherTestAttempt> = {
-      student: currentUser.id, teacher_test: testDetails.id, teacher: testDetails.teacherId, test_name_cache: testDetails.testName,
-      teacher_name_cache: testDetails.expand?.teacherId?.name || 'Educator', score: pointsEarnedFromTest, max_score: maxScorePossible, 
-      total_questions_in_test_cache: questions.length, attempted_questions_count: attemptedCount, correct_answers_count: correctCount,
-      incorrect_answers_count: attemptedCount - correctCount, unattempted_questions_count: questions.length - attemptedCount,
-      percentage: parseFloat(percentageScore.toFixed(2)), duration_taken_seconds: Math.max(0, durationTakenSecs), 
-      answers_log: JSON.stringify(answersLogForDb), status: finalTestStatusDbValue, plan_context: "Subscribed - Teacher Plan", 
-      started_at: testStartTimeRef.current ? new Date(testStartTimeRef.current).toISOString() : new Date().toISOString(), 
+      student: currentUser.id,
+      teacher_test: testDetails.id,
+      teacher: testDetails.teacherId,
+      test_name_cache: testDetails.testName,
+      teacher_name_cache: testDetails.expand?.teacherId?.name || 'Educator',
+      score: pointsEarnedFromTest,
+      max_score: maxScorePossible,
+      total_questions_in_test_cache: questions.length,
+      attempted_questions_count: attemptedCount,
+      correct_answers_count: correctCount,
+      incorrect_answers_count: attemptedCount - correctCount,
+      unattempted_questions_count: questions.length - attemptedCount,
+      percentage: parseFloat(percentageScore.toFixed(2)),
+      duration_taken_seconds: Math.max(0, durationTakenSecs),
+      answers_log: JSON.stringify(answersLogForDb),
+      status: finalTestStatusDbValue,
+      // plan_context: "Subscribed - Teacher Plan", // This was commented out
+      started_at: testStartTimeRef.current ? new Date(testStartTimeRef.current).toISOString() : new Date().toISOString(),
       submitted_at: new Date().toISOString(),
       marked_for_review_without_selecting_option: answersLogForDb.filter(a => a.markedForReview && !a.selectedOption).length,
       marked_for_review_with_selecting_option: answersLogForDb.filter(a => a.markedForReview && a.selectedOption).length,
@@ -300,12 +318,21 @@ export default function StudentTakeTeacherTestLivePage() {
       router.push(Routes.testResultTeacherTest(createdResultRecord.id));
     } catch (err: any) {
       let detailedMessage = "Could not save your results.";
-      if (err.data && err.data.data && typeof err.data.data === 'object' && Object.keys(err.data.data).length > 0) { detailedMessage += " Details: " + Object.entries(err.data.data).map(([key, val]: [string, any]) => `${key}: ${val.message}`).join('; '); } 
-      else if (err.data && err.data.message) { detailedMessage += ` Server: ${err.data.message}`; } 
-      else if (err.message) { detailedMessage += ` ${err.message}`; }
-      console.error("Failed to submit teacher test results. Full Error Object:", err, "Error Data (if any):", err.data, "Prepared Data:", JSON.stringify(resultDataToSave, null, 2));
+      if (err.data && err.data.data && typeof err.data.data === 'object' && Object.keys(err.data.data).length > 0) { 
+        detailedMessage += " Details: " + Object.entries(err.data.data).map(([key, val]: [string, any]) => `${key}: ${val.message}`).join('; ');
+      } else if (err.data && err.data.message) { 
+        detailedMessage += ` Server: ${err.data.message}`; 
+      } else if (err.message) { 
+        detailedMessage += ` ${err.message}`; 
+      } else if (err.originalError && err.originalError.message) {
+        detailedMessage += ` OriginalError: ${err.originalError.message}`;
+      }
+      console.error("Failed to submit teacher test results. Full Error Object:", err, "Original Error (if any):", err.originalError, "Error Data (if any):", err.data, "Prepared Data:", JSON.stringify(resultDataToSave, null, 2));
       toast({ title: "Submission Failed", description: detailedMessage, variant: "destructive", duration: 9000 });
-    } finally { setIsSubmittingTest(false); setIsSubmitConfirmOpen(false); }
+    } finally { 
+      setIsSubmittingTest(false); 
+      setIsSubmitConfirmOpen(false); 
+    }
   }, [currentUser, testDetails, questions, userAnswers, timeLeft, router, toast, testSessionState, currentQuestion, isSubmittingTest]);
 
   const loadQuestionsAndStartTest = useCallback(async (currentTestDetails: TeacherTestDetailsRecord, isMountedGetter: () => boolean) => {
@@ -339,7 +366,10 @@ export default function StudentTakeTeacherTestLivePage() {
       }
     } catch (err: any) {
       if (isMountedGetter()) {
-        console.error("Full error object in loadQuestionsAndStartTest:", err); console.error("Error name:", err?.name); console.error("Error message:", err?.message); console.error("Error data:", err?.data); console.error("Error stack:", err?.stack);
+        console.error("Full error object in loadQuestionsAndStartTest:", JSON.stringify(err, Object.getOwnPropertyNames(err)));
+        console.error("Error name:", err?.name); console.error("Error message:", err?.message); 
+        console.error("Error data (if PocketBaseClientResponseError):", JSON.stringify(err?.data)); 
+        console.error("Error stack:", err?.stack);
         let errorMsg = `Could not load questions. Error: ${err?.data?.message || err?.message || 'Unknown error'}.`; setError(errorMsg); setTestSessionState('terminated');
       }
     } finally { if (isMountedGetter()) setIsLoadingPageData(false); }
@@ -353,16 +383,30 @@ export default function StudentTakeTeacherTestLivePage() {
     try {
       const fetchedTest = await pb.collection('teacher_tests').getOne<TeacherTestDetailsRecord>(currentTestId, { expand: 'teacherId', fields: 'id,testName,Admin_Password,duration,teacherId,QBExam,model,Test_Subject,questions_edunexus,questions_teachers,status,totalScore,Test_Description,expand.teacherId.name,expand.teacherId.EduNexus_Name', '$autoCancel': false });
       if (!isMountedGetter()) return;
+      
       const isOwningTeacher = currentTeacherUser?.id === fetchedTest.teacherId || currentTeacherUser?.id === fetchedTest.expand?.teacherId?.id;
-      if (!isOwningTeacher && fetchedTest.status !== 'Published') { if (isMountedGetter()) { setError("This test is not currently published or available."); setTestSessionState('terminated'); } return; }
+
+      if (!isOwningTeacher && fetchedTest.status !== 'Published') { 
+        if (isMountedGetter()) { setError("This test is not currently published or available."); setTestSessionState('terminated'); } 
+        return; 
+      }
       setTestDetails(fetchedTest); setTeacherName(fetchedTest.expand?.teacherId?.name || 'Educator');
       const pinSessionKey = `${TEST_PIN_SESSION_KEY_PREFIX}${currentTestId}`; const pinIsVerifiedInSession = sessionStorage.getItem(pinSessionKey) === 'true';
-      if (fetchedTest.Admin_Password && String(fetchedTest.Admin_Password).trim() !== '' && !pinIsVerifiedInSession && !isOwningTeacher) { if (isMountedGetter()) setTestSessionState('pinEntry'); } 
-      else { if (isMountedGetter()) { setShowInstructionModal(true); setTestSessionState('instructions'); } }
+      
+      if (fetchedTest.Admin_Password && String(fetchedTest.Admin_Password).trim() !== '' && !pinIsVerifiedInSession && !isOwningTeacher) { 
+        if (isMountedGetter()) setTestSessionState('pinEntry'); 
+      } else { 
+        if (isMountedGetter()) { 
+          setShowInstructionModal(true); 
+          setTestSessionState('instructions'); 
+        } 
+      }
     } catch (err: any) {
       if (isMountedGetter()) {
-        console.error("Error in fetchTestDataAndDecideStage:", err); let errorMsg = `Could not load test. Error: ${err.data?.message || err.message}.`;
-        if (err.status === 404) errorMsg = "Test not found or not accessible."; setError(errorMsg); setTestSessionState('terminated');
+        console.error("Error in fetchTestDataAndDecideStage:", err); 
+        let errorMsg = `Could not load test. Error: ${err.data?.message || err.message}.`;
+        if (err.status === 404) errorMsg = "Test not found or not accessible."; 
+        setError(errorMsg); setTestSessionState('terminated');
       }
     } finally { if (isMountedGetter()) { setInitialLoading(false); setIsLoadingPageData(false); } }
   }, [testId, currentUser?.id, currentTeacherUser?.id]);
@@ -401,6 +445,7 @@ export default function StudentTakeTeacherTestLivePage() {
     else if (typeof directionOrIndex === 'number') newIndex = Math.max(0, Math.min(questions.length - 1, directionOrIndex));
     setCurrentQuestionIndex(newIndex); questionStartTimeRef.current = Date.now();
   };
+  
   const formatTime = (seconds: number | null): string => { if (seconds === null || seconds < 0) seconds = 0; const h = Math.floor(seconds / 3600); const m = Math.floor((seconds % 3600) / 60); const s = seconds % 60; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`; };
   const getQuestionStatusForPalette = (questionId: string): 'answered' | 'notAnswered' | 'markedForReview' | 'markedAndAnswered' | 'notVisited' => { const answer = userAnswers[questionId]; if (!answer || (answer.selectedOption === null && !answer.markedForReview)) return 'notVisited'; if (answer.selectedOption) { return answer.markedForReview ? 'markedAndAnswered' : 'answered'; } else { return answer.markedForReview ? 'markedForReview' : 'notAnswered'; }};
   const questionPaletteButtonClass = (status: ReturnType<typeof getQuestionStatusForPalette>, isActive: boolean) => { if (isActive) return "bg-primary text-primary-foreground border-primary ring-2 ring-offset-1 ring-primary"; switch (status) { case 'answered': return "bg-green-500 hover:bg-green-600 text-white border-green-500"; case 'notAnswered': return "bg-red-500 hover:bg-red-600 text-white border-red-500"; case 'markedForReview': return "bg-purple-500 hover:bg-purple-600 text-white border-purple-500"; case 'markedAndAnswered': return "bg-orange-500 hover:bg-orange-600 text-white border-orange-500"; case 'notVisited': default: return "bg-card hover:bg-muted/80 text-muted-foreground border-border"; }};
@@ -438,23 +483,37 @@ export default function StudentTakeTeacherTestLivePage() {
       </div>
       <div className={cn("flex-1 flex max-w-full p-2 sm:p-4 gap-2 sm:gap-4 overflow-hidden")}>
         <Card className="flex-1 flex flex-col bg-card shadow-xl rounded-lg border border-border overflow-hidden">
-            <CardHeader className="p-3 sm:p-4 border-b border-border bg-muted/30"> <div className="flex justify-between items-center"> <p className="text-xs sm:text-sm font-medium text-muted-foreground">Question {currentQuestionIndex + 1} of {questions.length}</p> {currentQuestion && (<div className="flex items-center gap-1"> {currentQuestion.difficulty && <Badge variant={currentQuestion.difficulty === 'Easy' ? 'secondary' : currentQuestion.difficulty === 'Medium' ? 'default' : 'destructive'} className="text-xs px-1.5 py-0.5">{currentQuestion.difficulty}</Badge>} {currentQuestion.marks && <Badge variant='outline' className="text-xs px-1.5 py-0.5">Marks: {currentQuestion.marks}</Badge>} </div>)} </div> </CardHeader>
+            <CardHeader className="p-3 sm:p-4 border-b border-border bg-muted/30"> 
+                <div className="flex justify-between items-center"> 
+                    <p className="text-xs sm:text-sm font-medium text-muted-foreground">Question {currentQuestionIndex + 1} of {questions.length}</p> 
+                    {currentQuestion && (
+                        <div className="flex items-center gap-1"> 
+                            {currentQuestion.difficulty && <Badge variant={currentQuestion.difficulty === 'Easy' ? 'secondary' : currentQuestion.difficulty === 'Medium' ? 'default' : 'destructive'} className="text-xs px-1.5 py-0.5">{currentQuestion.difficulty}</Badge>} 
+                            {currentQuestion.marks && <Badge variant='outline' className="text-xs px-1.5 py-0.5">Marks: {currentQuestion.marks}</Badge>} 
+                        </div>
+                    )} 
+                </div> 
+            </CardHeader>
             {currentQuestion ? (
               <ScrollArea className="flex-1 min-h-0"><CardContent className="p-3 sm:p-4 md:p-6 space-y-4">
                   <div className="p-2 border-b border-border/50 rounded-md bg-background min-h-[80px]">{currentQuestion.displayQuestionText && (<div className="prose prose-sm dark:prose-invert max-w-none mb-3 text-foreground leading-relaxed">{renderLatexHelper(currentQuestion.displayQuestionText)}</div>)}{currentQuestion.displayQuestionImageUrl && (<div className="my-2 text-center"><NextImage src={currentQuestion.displayQuestionImageUrl} alt="Question Image" width={400} height={300} className="rounded object-contain inline-block border max-h-80" data-ai-hint="question diagram"/></div>)}{!(currentQuestion.displayQuestionText || currentQuestion.displayQuestionImageUrl) && (<p className="text-xs sm:text-sm text-muted-foreground italic py-3">Question content not provided.</p>)}</div>
-                  <RadioGroup value={userAnswers[currentQuestion.id]?.selectedOption || ""} onValueChange={handleOptionChange} className="space-y-2.5" disabled={testSessionState !== 'inProgress'}>{currentQuestion.displayOptions.map(opt => renderOption(opt))}</RadioGroup>
+                  <RadioGroup value={userAnswers[currentQuestion.id]?.selectedOption || ""} onValueChange={handleOptionChange} className="space-y-2.5" disabled={testSessionState !== 'inProgress' || isSubmittingTest}>{currentQuestion.displayOptions.map(opt => renderOption(opt))}</RadioGroup>
               </CardContent></ScrollArea>
             ) : ( <CardContent className="p-3 sm:p-4 md:p-6 flex items-center justify-center h-full"> <Loader2 className="h-8 w-8 animate-spin text-primary" /> <p className="ml-2 text-muted-foreground">Loading question data...</p> </CardContent> )}
-            <CardFooter className="p-3 sm:p-4 border-t border-border bg-muted/30 flex-wrap justify-center sm:justify-between gap-2"><Button variant="outline" size="sm" onClick={handleClearResponse} disabled={testSessionState !== 'inProgress' || !currentQuestion || !userAnswers[currentQuestion.id]?.selectedOption}>Clear Response</Button><Button variant={currentQuestion && userAnswers[currentQuestion.id]?.markedForReview ? "secondary" : "outline"} size="sm" onClick={handleMarkForReview} disabled={testSessionState !== 'inProgress' || !currentQuestion} className="border-purple-500 text-purple-600 data-[state=active]:bg-purple-500/10 data-[state=active]:text-purple-700 hover:bg-purple-500/10"><Flag className="mr-1.5 h-4 w-4" /> {currentQuestion && userAnswers[currentQuestion.id]?.markedForReview ? "Unmark Review" : "Mark for Review"}</Button>
-            {currentQuestionIndex === questions.length - 1 ? (
-              <Button size="sm" onClick={() => setIsSubmitConfirmOpen(true)} disabled={testSessionState !== 'inProgress' || isSubmittingTest} className="bg-destructive hover:bg-destructive/90 text-white">
-                {isSubmittingTest ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Send className="mr-1.5 h-4 w-4" />} Submit Test
-              </Button>
-            ) : (
-              <Button size="sm" onClick={() => {navigateQuestion('next')}} disabled={testSessionState !== 'inProgress'} className="bg-green-600 hover:bg-green-700 text-white">
-                Save & Next <ChevronRight className="ml-1.5 h-4 w-4" />
-              </Button>
-            )}
+            <CardFooter className="p-3 sm:p-4 border-t border-border bg-muted/30 flex-wrap justify-center sm:justify-between gap-2">
+                <Button variant="outline" size="sm" onClick={handleClearResponse} disabled={testSessionState !== 'inProgress' || !currentQuestion || !userAnswers[currentQuestion.id]?.selectedOption || isSubmittingTest}>Clear Response</Button>
+                <Button variant={currentQuestion && userAnswers[currentQuestion.id]?.markedForReview ? "secondary" : "outline"} size="sm" onClick={handleMarkForReview} disabled={testSessionState !== 'inProgress' || !currentQuestion || isSubmittingTest} className="border-purple-500 text-purple-600 data-[state=active]:bg-purple-500/10 data-[state=active]:text-purple-700 hover:bg-purple-500/10">
+                    <Flag className="mr-1.5 h-4 w-4" /> {currentQuestion && userAnswers[currentQuestion.id]?.markedForReview ? "Unmark Review" : "Mark for Review"}
+                </Button>
+                {currentQuestionIndex === questions.length - 1 ? (
+                    <Button size="sm" onClick={() => setIsSubmitConfirmOpen(true)} disabled={testSessionState !== 'inProgress' || isSubmittingTest} className="bg-destructive hover:bg-destructive/90 text-white">
+                        {isSubmittingTest ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Send className="mr-1.5 h-4 w-4" />} Submit Test
+                    </Button>
+                ) : (
+                    <Button size="sm" onClick={() => navigateQuestion('next')} disabled={testSessionState !== 'inProgress' || isSubmittingTest} className="bg-green-600 hover:bg-green-700 text-white">
+                        Save & Next <ChevronRight className="ml-1.5 h-4 w-4" />
+                    </Button>
+                )}
             </CardFooter>
         </Card>
         {isRightSidebarOpen && (<div className="hidden md:flex w-72 lg:w-80 flex-shrink-0 flex-col space-y-0"><QuestionPaletteContent /></div>)}
