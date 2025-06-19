@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area'; // Added import
 import { ArrowLeft, Settings, ListChecks, PlusCircle, BarChart3, Send, Edit } from 'lucide-react';
 import Link from 'next/link';
 import { Routes } from '@/lib/constants';
