@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation'; // Added useRouter
 import * as React from "react";
 import {
   Sidebar,
@@ -43,7 +43,7 @@ import {
   Settings,
   LogOut,
   UserCircle,
-  Search as SearchIcon, // Renamed to avoid conflict if Search is used elsewhere
+  Search as SearchIcon,
 } from 'lucide-react';
 import { ThemeToggleButton } from './ThemeToggleButton';
 import { buttonVariants } from '../ui/button';
@@ -51,12 +51,13 @@ import { buttonVariants } from '../ui/button';
 const collegePortalNavItems = [
   { href: Routes.collegeDetailsDashboard, label: 'Dashboard', icon: <LayoutDashboard /> },
   { href: Routes.collegeDetailsSearch, label: 'College Search', icon: <SearchIcon /> },
-  // { href: Routes.collegeDetailsCutoffs || '#', label: 'Cutoff Analysis', icon: <ListChecks /> }, // Removed Cutoff Analysis
-  { href: Routes.collegeDetailsPreferences || '#', label: 'My Preferences', icon: <Heart /> },
+  // { href: Routes.collegeDetailsCutoffs, label: 'Cutoff Analysis', icon: <ListChecks /> }, // Removed as per previous instruction
+  { href: Routes.collegeDetailsPreferences, label: 'My Preferences', icon: <Heart /> },
 ];
 
 export function CollegeDetailsSidebar() {
   const pathname = usePathname();
+  const router = useRouter(); // Initialize useRouter
   const { collegeUser, logout, isLoadingCollegeUser } = useAuth();
   const { isMobile, setOpenMobile } = useSidebar();
 
@@ -174,3 +175,4 @@ export function CollegeDetailsSidebar() {
     </Sidebar>
   );
 }
+
