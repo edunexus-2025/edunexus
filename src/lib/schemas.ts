@@ -1,3 +1,4 @@
+
 import { z } from 'zod';
 
 export const LoginSchema = z.object({
@@ -203,11 +204,7 @@ const TestModelEnum = z.enum(["Chapterwise", "Full Length"]);
 const TestExamEnum = z.enum(["MHT CET", "JEE MAIN", "NEET"], {
   required_error: "Target Exam is required.",
 });
-const TestSubjectEnum = z.enum(['Physics', 'Chemistry', 'Mathematics', 'Biology'], {
-  required_error: "Test Subject is required for Chapterwise tests.",
-});
-
-const BaseTeacherTestSubjectEnum = z.enum(['Physics', 'Chemistry', 'Maths', 'Biology']);
+export const BaseTeacherTestSubjectEnum = z.enum(['Physics', 'Chemistry', 'Maths', 'Biology']);
 export const TeacherTestSubjectEnumOptions = BaseTeacherTestSubjectEnum.options;
 export const TeacherTestSubjectEnum = BaseTeacherTestSubjectEnum.optional().nullable();
 
@@ -219,7 +216,7 @@ export const CreateTestSchema = z.object({
   Model: TestModelEnum.default("Chapterwise"),
   Exam: TestExamEnum,
   TestTags: z.string().optional().nullable(),
-  testSubject: TestSubjectEnum.optional(),
+  testSubject: TeacherTestSubjectEnum,
   PhysicsQuestion: z.array(z.string()).optional().default([]),
   ChemistryQuestion: z.array(z.string()).optional().default([]),
   MathsQuestion: z.array(z.string()).optional().default([]),
@@ -318,6 +315,7 @@ export const TeacherCreateTestModalSchema = z.object({
 export type TeacherCreateTestModalInput = z.infer<typeof TeacherCreateTestModalSchema>;
 
 export const TeacherQuestionDataCreateSchema = z.object({
+  lesson_name: z.string().optional().nullable(), // Will be auto-filled with parent testName
   QuestionText: z.string().max(2000, "Question text too long.").optional().nullable(),
   QuestionImage: z.string().url({ message: "Question Image must be a valid URL." }).optional().nullable(),
   OptionAText: z.string().max(500).optional().nullable(),
@@ -359,6 +357,7 @@ const WhoCanTakeTestEnum = z.enum([
     "Group 5",
     "Group 6"
 ]);
+const _NONE_SUBJECT_ = "_NONE_SUBJECT_"; // Special value for "None" option
 
 export const TeacherTestSettingsSchema = z.object({
     testName: z.string().min(1, "Test name is required.").max(100, "Test name too long."),
@@ -378,7 +377,7 @@ export const TeacherTestSettingsSchema = z.object({
     Shuffle_Questions: z.boolean().default(false),
     Who_can_take_your_test: WhoCanTakeTestEnum.default("EveryOne"),
     Would_you_like_to_get_admin_access_through_link: z.boolean().default(false),
-    QBExam: TestModalQBExamEnum.optional(), // Kept optional as per original intent for settings page
+    QBExam: TestModalQBExamEnum.optional(),
     Test_Subject: TeacherTestSubjectEnum,
     model: z.enum(["Chapterwise", "Full Length"]).optional(),
     type: z.enum(["Free", "Premium"]).optional(),
@@ -502,4 +501,3 @@ export const TeacherReferralCodeSchema = z.object({
   expiry_date: z.string().optional().nullable().refine(val => !val || !isNaN(Date.parse(val)), { message: "Invalid date format for expiry date." }),
 });
 export type TeacherReferralCodeInput = z.infer<typeof TeacherReferralCodeSchema>;
-

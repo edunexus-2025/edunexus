@@ -25,6 +25,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription as ShadcnFormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -41,7 +42,7 @@ import type { TeacherQuestionDataCreateInput } from '@/lib/schemas';
 import { AlertCircle, Loader2, Save, ImagePlus as ImageIcon, Trash2, BookOpen, FilePlus } from 'lucide-react';
 import { ImageImportModal } from '@/components/teacher/ImageImportModal';
 import NextImage from 'next/image';
-import { Routes, TeacherQBExamEnumOptions } from '@/lib/constants'; // Import TeacherQBExamEnumOptions
+import { Routes, TeacherQBExamEnumOptions, TeacherTestSubjectEnumOptions } from '@/lib/constants';
 
 // Helper to check if a string is a valid HTTP/S URL
 const isValidHttpUrl = (string: string | null | undefined): string is string => {
@@ -54,10 +55,13 @@ const isValidHttpUrl = (string: string | null | undefined): string is string => 
   }
 };
 
-const subjectOptions: Array<TeacherQuestionDataCreateInput['subject']> = ['Physics', 'Chemistry', 'Mathematics', 'Biology'];
-const qbExamOptions: Array<TeacherQuestionDataCreateInput['QBExam']> = TeacherQBExamEnumOptions; // Use imported options
 const correctOptionSelect: Array<TeacherQuestionDataCreateInput['CorrectOption']> = ["Option A", "Option B", "Option C", "Option D"];
 
+interface ParentTestDetails {
+  testName: string | null;
+  QBExam: TeacherQuestionDataCreateInput['QBExam'] | undefined;
+  Test_Subject: TeacherQuestionDataCreateInput['subject'] | undefined;
+}
 
 export default function TeacherCreateQuestionForTestPage() {
   const params = useParams();
@@ -66,8 +70,8 @@ export default function TeacherCreateQuestionForTestPage() {
   const testId = typeof params.testId === 'string' ? params.testId : '';
   const router = useRouter();
 
-  const [isLoadingTestName, setIsLoadingTestName] = useState(true);
-  const [testName, setTestName] = useState<string | null>(null);
+  const [isLoadingTestDetails, setIsLoadingTestDetails] = useState(true);
+  const [parentTestDetails, setParentTestDetails] = useState<ParentTestDetails | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,6 +85,7 @@ export default function TeacherCreateQuestionForTestPage() {
   const form = useForm<TeacherQuestionDataCreateInput>({
     resolver: zodResolver(TeacherQuestionDataCreateSchema),
     defaultValues: {
+      lesson_name: '', 
       QuestionText: '', QuestionImage: null,
       OptionAText: '', OptionAImage: null,
       OptionBText: '', OptionBImage: null,
@@ -96,29 +101,40 @@ export default function TeacherCreateQuestionForTestPage() {
 
   const fetchParentTestDetails = useCallback(async (isMountedGetter: () => boolean) => {
     if (!testId || !teacher?.id) { 
-      if (isMountedGetter()) { setIsLoadingTestName(false); setError(testId ? "Auth error." : "Test ID missing."); }
+      if (isMountedGetter()) { setIsLoadingTestDetails(false); setError(testId ? "Auth error." : "Test ID missing."); }
       return;
     }
-    if (isMountedGetter()) setIsLoadingTestName(true);
+    if (isMountedGetter()) setIsLoadingTestDetails(true);
     try {
-      const record = await pb.collection('teacher_tests').getOne(testId, { fields: 'id,testName,teacherId,QBExam' });
+      const record = await pb.collection('teacher_tests').getOne(testId, { fields: 'id,testName,teacherId,QBExam,Test_Subject' });
       if (!isMountedGetter()) return;
       if (record.teacherId !== teacher.id) { 
-        if (isMountedGetter()) { setError("Unauthorized to add questions to this test."); setIsLoadingTestName(false); }
+        if (isMountedGetter()) { setError("Unauthorized to add questions to this test."); setIsLoadingTestDetails(false); }
         return; 
       }
-      setTestName(record.testName || 'Untitled Test');
-      const qbExamFromTest = record.QBExam as TeacherQuestionDataCreateInput['QBExam'];
-      if (qbExamFromTest && qbExamOptions.includes(qbExamFromTest)) {
-        form.setValue('QBExam', qbExamFromTest);
-      }
+      const details: ParentTestDetails = {
+        testName: record.testName || 'Untitled Test',
+        QBExam: record.QBExam as TeacherQuestionDataCreateInput['QBExam'] || undefined,
+        Test_Subject: record.Test_Subject as TeacherQuestionDataCreateInput['subject'] || undefined,
+      };
+      setParentTestDetails(details);
+      form.reset({ // Use reset to ensure all fields are updated, especially derived ones
+        ...form.getValues(), // Preserve any existing typed data not related to parent test
+        lesson_name: details.testName || '',
+        QBExam: details.QBExam,
+        subject: details.Test_Subject,
+        // Keep other fields as they are or reset them to defaults if needed
+        marks: form.getValues('marks') || 1, // Example: keep marks or reset
+        CorrectOption: form.getValues('CorrectOption') || "Option A",
+      });
+
     } catch (err) { 
       if (isMountedGetter()) {
         console.error("Error fetching parent test details for add question page:", err);
         setError("Could not load context for adding questions.");
       }
     } finally { 
-      if (isMountedGetter()) setIsLoadingTestName(false);
+      if (isMountedGetter()) setIsLoadingTestDetails(false);
     }
   }, [testId, teacher?.id, form]);
 
@@ -162,15 +178,17 @@ export default function TeacherCreateQuestionForTestPage() {
   };
 
   const onSubmit = async (values: TeacherQuestionDataCreateInput) => {
-    if (!teacher?.id || !testId || !testName) {
-      toast({ title: "Error", description: "Missing teacher, test ID, or test name context.", variant: "destructive" });
+    if (!teacher?.id || !testId || !parentTestDetails?.testName || !parentTestDetails.QBExam || !parentTestDetails.Test_Subject) {
+      toast({ title: "Error", description: "Missing teacher, test ID, or critical parent test details (Test Name, QBExam, Subject).", variant: "destructive" });
+      setIsSubmitting(false);
       return;
     }
     setIsSubmitting(true);
     
     const dataForTeacherQb: any = {
       teacher: teacher.id,
-      LessonName: testId, 
+      LessonName: testId, // Relation to teacher_tests table using the current test's ID
+      lesson_name: parentTestDetails.testName, // Text field, storing parent test's name
       QuestionText: values.QuestionText || null,
       QuestionImage: isValidHttpUrl(values.QuestionImage) ? values.QuestionImage : null,
       OptionAText: values.OptionAText || null,
@@ -184,8 +202,8 @@ export default function TeacherCreateQuestionForTestPage() {
       CorrectOption: values.CorrectOption,
       explanationText: values.explanationText || null,
       explanationImage: isValidHttpUrl(values.explanationImage) ? values.explanationImage : null,
-      QBExam: values.QBExam, 
-      subject: values.subject, 
+      QBExam: parentTestDetails.QBExam, 
+      subject: parentTestDetails.Test_Subject, 
       marks: values.marks ? Number(values.marks) : 1,
     };
 
@@ -193,17 +211,16 @@ export default function TeacherCreateQuestionForTestPage() {
       const newQuestionRecord = await pb.collection('teacher_question_data').create(dataForTeacherQb);
       await pb.collection('teacher_tests').update(testId, { "questions_teachers+": newQuestionRecord.id });
 
-      toast({ title: "Question Created & Added", description: `New question added to your QB and linked to "${testName}".` });
-      const keptQBExam = form.getValues('QBExam'); // Keep current QBExam
-      const keptSubject = form.getValues('subject'); // Keep current subject
+      toast({ title: "Question Created & Added", description: `New question added to your QB and linked to "${parentTestDetails.testName}".` });
       form.reset({ 
           QuestionText: '', QuestionImage: null,
           OptionAText: '', OptionAImage: null, OptionBText: '', OptionBImage: null,
           OptionCText: '', OptionCImage: null, OptionDText: '', OptionDImage: null,
           CorrectOption: "Option A", 
           explanationText: '', explanationImage: null,
-          QBExam: keptQBExam, 
-          subject: keptSubject, 
+          lesson_name: parentTestDetails.testName,
+          QBExam: parentTestDetails.QBExam,
+          subject: parentTestDetails.Test_Subject,
           marks: 1,
       });
       setImagePreviews({ QuestionImage: null, OptionAImage: null, OptionBImage: null, OptionCImage: null, OptionDImage: null, explanationImage: null, });
@@ -222,7 +239,7 @@ export default function TeacherCreateQuestionForTestPage() {
     }
   };
   
-  const renderImageFieldWithModal = (fieldName: keyof CreateTeacherQuestionFormInput, label: string) => (
+  const renderImageFieldWithModal = (fieldName: keyof TeacherQuestionDataCreateInput, label: string) => (
     <FormField
       control={form.control}
       name={fieldName}
@@ -255,14 +272,14 @@ export default function TeacherCreateQuestionForTestPage() {
     />
   );
 
-  if (isLoadingTestName) { return (<div className="p-6 space-y-4"><Skeleton className="h-8 w-3/4 mb-2" /><Skeleton className="h-64 w-full" /></div>); }
+  if (isLoadingTestDetails) { return (<div className="p-6 space-y-4"><Skeleton className="h-8 w-3/4 mb-2" /><Skeleton className="h-64 w-full" /></div>); }
   if (error) { return (<Card className="text-center border-destructive bg-destructive/10 p-6"><AlertCircle className="mx-auto h-10 w-10 text-destructive mb-3" /><CardTitle className="text-destructive">Error</CardTitle><CardDescription className="text-destructive/80">{error}</CardDescription></Card>); }
 
   return (
     <div className="p-2 sm:p-4 md:p-6">
       <CardHeader className="px-0 pb-4">
         <CardTitle className="text-xl font-semibold flex items-center gap-2">
-          <FilePlus className="h-5 w-5 text-primary"/> Create New Question for: <span className="text-primary truncate">{testName}</span>
+          <FilePlus className="h-5 w-5 text-primary"/> Create New Question for: <span className="text-primary truncate">{parentTestDetails?.testName || 'Test'}</span>
         </CardTitle>
         <CardDescription>
           This question will be saved to your "My Teacher QB" and added to this test.
@@ -273,7 +290,26 @@ export default function TeacherCreateQuestionForTestPage() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             
             <Card className="p-4 shadow-sm border bg-card">
-              <CardHeader className="p-0 pb-3"><CardTitle className="text-base font-medium">Question Details</CardTitle></CardHeader>
+              <CardHeader className="p-0 pb-3"><CardTitle className="text-base font-medium">Categorization & Marks</CardTitle></CardHeader>
+              <CardContent className="p-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <FormItem>
+                  <FormLabel className="text-sm">Test Name (Lesson Context)</FormLabel>
+                  <Input value={parentTestDetails?.testName || 'Loading...'} readOnly className="h-9 text-sm bg-muted/50" />
+                </FormItem>
+                <FormItem>
+                  <FormLabel className="text-sm">Exam Association (from Test)</FormLabel>
+                  <Input value={parentTestDetails?.QBExam || 'N/A'} readOnly className="h-9 text-sm bg-muted/50" />
+                </FormItem>
+                <FormItem>
+                  <FormLabel className="text-sm">Subject (from Test)</FormLabel>
+                  <Input value={parentTestDetails?.Test_Subject || 'N/A'} readOnly className="h-9 text-sm bg-muted/50" />
+                </FormItem>
+                 <FormField control={form.control} name="marks" render={({ field }) => (<FormItem><FormLabel className="text-sm">Marks for this Question *</FormLabel><FormControl><Input type="number" placeholder="e.g., 1" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value,10))} className="h-9 text-sm bg-background dark:bg-slate-800"/></FormControl><FormMessage /></FormItem>)}/>
+              </CardContent>
+            </Card>
+            
+            <Card className="p-4 shadow-sm border bg-card">
+              <CardHeader className="p-0 pb-3"><CardTitle className="text-base font-medium">Question Content</CardTitle></CardHeader>
               <CardContent className="p-0 space-y-3">
                 <FormField control={form.control} name="QuestionText" render={({ field }) => (<FormItem><FormLabel className="text-sm">Question Text (Supports LaTeX: $...$ or $$...$$)</FormLabel><FormControl><Textarea placeholder="Type question..." {...field} value={field.value ?? ''} rows={4} className="text-sm bg-background dark:bg-slate-800"/></FormControl><FormMessage /></FormItem>)}/>
                 {renderImageFieldWithModal("QuestionImage", "Question Image (Optional)")}
@@ -285,8 +321,8 @@ export default function TeacherCreateQuestionForTestPage() {
                 <Card key={optChar} className="p-3 shadow-sm border bg-card">
                   <CardHeader className="p-0 pb-2"><CardTitle className="text-sm font-medium">Option {optChar} *</CardTitle></CardHeader>
                   <CardContent className="p-0 space-y-2">
-                    <FormField control={form.control} name={`Option${optChar}Text` as keyof CreateTeacherQuestionFormInput} render={({ field }) => (<FormItem><FormLabel className="text-xs">Text (LaTeX)</FormLabel><FormControl><Textarea placeholder={`Option ${optChar} text`} {...field} value={field.value ?? ''} rows={2} className="text-xs min-h-[38px] bg-background dark:bg-slate-800"/></FormControl><FormMessage className="text-xs"/></FormItem>)}/>
-                    {renderImageFieldWithModal(`Option${optChar}Image` as keyof CreateTeacherQuestionFormInput, "Image (Optional)")}
+                    <FormField control={form.control} name={`Option${optChar}Text` as keyof TeacherQuestionDataCreateInput} render={({ field }) => (<FormItem><FormLabel className="text-xs">Text (LaTeX)</FormLabel><FormControl><Textarea placeholder={`Option ${optChar} text`} {...field} value={field.value ?? ''} rows={2} className="text-xs min-h-[38px] bg-background dark:bg-slate-800"/></FormControl><FormMessage className="text-xs"/></FormItem>)}/>
+                    {renderImageFieldWithModal(`Option${optChar}Image` as keyof TeacherQuestionDataCreateInput, "Image (Optional)")}
                   </CardContent>
                 </Card>
               ))}
@@ -298,15 +334,6 @@ export default function TeacherCreateQuestionForTestPage() {
                 <FormField control={form.control} name="CorrectOption" render={({ field }) => (<FormItem><FormLabel className="text-sm">Correct Option *</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-9 text-sm bg-background dark:bg-slate-800"><SelectValue placeholder="Select correct answer" /></SelectTrigger></FormControl><SelectContent>{correctOptionSelect.map(val => (<SelectItem key={val} value={val}>{val}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)}/>
                 <FormField control={form.control} name="explanationText" render={({ field }) => (<FormItem><FormLabel className="text-sm">Explanation Text (Optional, LaTeX)</FormLabel><FormControl><Textarea placeholder="Detailed explanation..." {...field} value={field.value ?? ''} rows={3} className="text-sm bg-background dark:bg-slate-800"/></FormControl><FormMessage /></FormItem>)}/>
                 {renderImageFieldWithModal("explanationImage", "Explanation Image (Optional)")}
-              </CardContent>
-            </Card>
-
-            <Card className="p-4 shadow-sm border bg-card">
-              <CardHeader className="p-0 pb-3"><CardTitle className="text-base font-medium">Categorization & Marks</CardTitle></CardHeader>
-              <CardContent className="p-0 grid grid-cols-1 md:grid-cols-3 gap-4">
-                 <FormField control={form.control} name="QBExam" render={({ field }) => (<FormItem><FormLabel className="text-sm">Exam Association *</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-9 text-sm bg-background dark:bg-slate-800"><SelectValue placeholder="Select Exam" /></SelectTrigger></FormControl><SelectContent>{qbExamOptions.map(val => (<SelectItem key={val} value={val}>{val}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)}/>
-                 <FormField control={form.control} name="subject" render={({ field }) => (<FormItem><FormLabel className="text-sm">Subject *</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-9 text-sm bg-background dark:bg-slate-800"><SelectValue placeholder="Select Subject" /></SelectTrigger></FormControl><SelectContent>{subjectOptions.map(val => (<SelectItem key={val} value={val}>{val}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)}/>
-                 <FormField control={form.control} name="marks" render={({ field }) => (<FormItem><FormLabel className="text-sm">Marks *</FormLabel><FormControl><Input type="number" placeholder="e.g., 1" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value,10))} className="h-9 text-sm bg-background dark:bg-slate-800"/></FormControl><FormMessage /></FormItem>)}/>
               </CardContent>
             </Card>
             
