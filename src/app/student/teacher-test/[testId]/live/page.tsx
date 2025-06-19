@@ -24,6 +24,15 @@ import {
   AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogContent as InstructionDialogContent,
+  DialogDescription as InstructionDialogDescription,
+  DialogFooter as InstructionDialogFooter,
+  DialogHeader as InstructionDialogHeader,
+  DialogTitle as InstructionDialogTitle,
+  DialogClose as InstructionDialogClose,
+} from "@/components/ui/dialog";
+import {
   Sheet,
   SheetContent,
   SheetHeader as ShadcnSheetHeader,
@@ -33,17 +42,8 @@ import {
   SheetClose,
   SheetFooter as ShadcnSheetFooter
 } from '@/components/ui/sheet';
-import {
-  Dialog, // Keep Dialog for instruction modal
-  DialogContent as InstructionDialogContent, // Alias for instruction modal
-  DialogDescription as InstructionDialogDescription,
-  DialogFooter as InstructionDialogFooter,
-  DialogHeader as InstructionDialogHeader,
-  DialogTitle as InstructionDialogTitle,
-  DialogClose as InstructionDialogClose,
-} from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
-import { AlertCircle, CheckCircle, ChevronLeft, ChevronRight, Clock, Flag, Image as ImageIconLucide, Loader2, Minimize, Send, XCircle, ArrowLeft as BackArrowIcon, Settings as SettingsIcon, Bookmark as BookmarkIconLucide, Check, PlusCircle, Info, ListOrdered, UserCircle as UserCircleIcon, CalendarDays, NotebookText, BarChart, PieChart as PieChartIcon, UserCheck, ListChecks, Eye, X as CloseIcon, MoreVertical, Menu, PanelRightOpen, KeyRound, Lock } from 'lucide-react';
+import { AlertCircle, CheckCircle, ChevronLeft, ChevronRight, Clock, Flag, Image as ImageIconLucide, Loader2, Minimize, Send, XCircle, ArrowLeft as BackArrowIcon, Settings as SettingsIcon, Bookmark as BookmarkIconLucide, Check, PlusCircle, Info, ListOrdered, UserCircle as UserCircleIcon, Menu, PanelRightOpen, KeyRound, Lock, X as CloseIcon } from 'lucide-react';
 import NextImage from 'next/image';
 import 'katex/dist/katex.min.css';
 import { InlineMath, BlockMath } from 'react-katex';
@@ -105,10 +105,9 @@ interface FetchedQuestionSourceRecord extends RecordModel {
 
   QuestionText?: string | null;
   CorrectOption?: 'Option A' | 'Option B' | 'Option C' | 'Option D';
-  lesson_name?: string | null; // Note: underscore, from teacher_question_data
-  explanationText_teacher?: string | null; // For teacher_question_data
+  lesson_name?: string | null;
+  explanationText_teacher?: string | null;
 
-  // Specific to teacher_question_data (direct URLs)
   QuestionImage_teacher?: string | null;
   OptionAImage_teacher?: string | null;
   OptionBImage_teacher?: string | null;
@@ -139,7 +138,7 @@ interface NormalizedQuestionRecord {
   lessonName?: string | null;
   difficulty?: 'Easy' | 'Medium' | 'Hard' | null;
   originalSourceCollection: 'question_bank' | 'teacher_question_data';
-  rawRecord: RecordModel; // Keep raw for any other needs
+  rawRecord: RecordModel;
 }
 
 interface UserAnswerLog {
@@ -198,7 +197,7 @@ export default function StudentTakeTeacherTestLivePage() {
   const { toast } = useToast();
 
   const [initialLoading, setInitialLoading] = useState(true);
-  const [isLoadingPageData, setIsLoadingPageData] = useState(false); // For question loading stage
+  const [isLoadingPageData, setIsLoadingPageData] = useState(false);
 
   const [testDetails, setTestDetails] = useState<TeacherTestDetailsRecord | null>(null);
   const [teacherName, setTeacherName] = useState<string>('Educator');
@@ -219,18 +218,17 @@ export default function StudentTakeTeacherTestLivePage() {
 
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
-  
+
 
   const currentQuestion = questions[currentQuestionIndex];
   const questionStartTimeRef = useRef<number>(Date.now());
-  const testStartTimeRef = useRef<number | null>(null);
   const todayDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const normalizeFetchedQuestion = useCallback((q: FetchedQuestionSourceRecord, sourceCollection: 'question_bank' | 'teacher_question_data'): NormalizedQuestionRecord | null => {
     if (!q || !q.id) return null;
-    let displayCorrectOptionLabel: 'A' | 'B' | 'C' | 'D' = 'A'; // Default
-    let correctOptionStringFull: 'Option A' | 'Option B' | 'Option C' | 'Option D' = 'Option A'; // Default
+    let displayCorrectOptionLabel: 'A' | 'B' | 'C' | 'D' = 'A';
+    let correctOptionStringFull: 'Option A' | 'Option B' | 'Option C' | 'Option D' = 'Option A';
     let lessonNameToUse = '';
 
     if (sourceCollection === 'question_bank') {
@@ -247,7 +245,7 @@ export default function StudentTakeTeacherTestLivePage() {
           correctOptionStringFull = q.CorrectOption;
         }
       }
-      lessonNameToUse = q.lesson_name || testDetails?.testName || ''; // Use testName as fallback lesson for teacher's QB questions
+      lessonNameToUse = q.lesson_name || testDetails?.testName || '';
     }
 
     const normalized: NormalizedQuestionRecord = {
@@ -258,7 +256,7 @@ export default function StudentTakeTeacherTestLivePage() {
         const textKey = sourceCollection === 'question_bank' ? `option${label}Text` : `Option${label}Text`;
         const imageFieldKeyForPb = sourceCollection === 'question_bank' ? `option${label}Image` : null;
         const imageFieldKeyForTeacher = sourceCollection === 'teacher_question_data' ? `Option${label}Image_teacher` : null;
-        
+
         let imageUrl: string | null = null;
         if (sourceCollection === 'question_bank' && imageFieldKeyForPb) {
             imageUrl = getPbFileUrl(q, imageFieldKeyForPb);
@@ -304,7 +302,7 @@ export default function StudentTakeTeacherTestLivePage() {
       const selected = userAnswerRec?.selectedOption || null;
       let isCorrectAns = false;
       const questionCorrectOptionString = q.correctOptionString;
-      const questionMarks = typeof q.marks === 'number' ? q.marks : 1; // Default 1 mark
+      const questionMarks = typeof q.marks === 'number' ? q.marks : 1;
       totalMarksForTest += questionMarks;
 
       if (selected) {
@@ -324,8 +322,8 @@ export default function StudentTakeTeacherTestLivePage() {
         timeSpentSeconds: userAnswerRec?.timeSpentSeconds || 0,
       };
     });
-    
-    const maxScorePossible = testDetails.totalScore && testDetails.totalScore > 0 ? testDetails.totalScore : totalMarksForTest;
+
+    const maxScorePossible = (testDetails.totalScore && testDetails.totalScore > 0) ? testDetails.totalScore : totalMarksForTest;
     const percentageScore = maxScorePossible > 0 ? (pointsEarnedFromTest / maxScorePossible) * 100 : 0;
 
 
@@ -344,7 +342,7 @@ export default function StudentTakeTeacherTestLivePage() {
       teacher_name_cache: testDetails.expand?.teacherId?.name || 'Educator',
       score: pointsEarnedFromTest,
       max_score: maxScorePossible,
-      total_questions_in_test_cache: questions.length, // Store total questions from the displayed set
+      total_questions_in_test_cache: questions.length,
       attempted_questions_count: attemptedCount,
       correct_answers_count: correctCount,
       incorrect_answers_count: attemptedCount - correctCount,
@@ -353,7 +351,7 @@ export default function StudentTakeTeacherTestLivePage() {
       duration_taken_seconds: Math.max(0, durationTakenSecs),
       answers_log: JSON.stringify(answersLogForDb),
       status: finalTestStatusDbValue,
-      plan_context: "Subscribed - Teacher Plan", // Example context
+      plan_context: "Subscribed - Teacher Plan",
       started_at: testStartTimeRef.current ? new Date(testStartTimeRef.current).toISOString() : new Date().toISOString(),
       submitted_at: new Date().toISOString(),
       marked_for_review_without_selecting_option: answersLogForDb.filter(a => a.markedForReview && !a.selectedOption).length,
@@ -373,7 +371,7 @@ export default function StudentTakeTeacherTestLivePage() {
       setIsSubmittingTest(false);
       setIsSubmitConfirmOpen(false);
     }
-  }, [currentUser, testDetails, questions, userAnswers, timeLeft, router, toast, testSessionState, currentQuestion]);
+  }, [currentUser, testDetails, questions, userAnswers, timeLeft, router, toast, testSessionState, currentQuestion, isSubmittingTest]);
 
   const loadQuestionsAndStartTest = useCallback(async (currentTestDetails: TeacherTestDetailsRecord, isMountedGetter: () => boolean) => {
     if (!isMountedGetter()) return;
@@ -409,7 +407,6 @@ export default function StudentTakeTeacherTestLivePage() {
         if (isMountedGetter()) { fetchedAndNormalizedQuestions.push(...teacherQuestionRecords.map(q => normalizeFetchedQuestion(q, 'teacher_question_data')).filter(Boolean) as NormalizedQuestionRecord[]); } else return;
       }
 
-      // Re-order based on the original order in teacher_tests collections
       const orderedQuestions = fetchedAndNormalizedQuestions.sort((a,b) => (originalOrderMap.get(a.id) ?? Infinity) - (originalOrderMap.get(b.id) ?? Infinity));
 
       if (isMountedGetter()) {
@@ -423,7 +420,7 @@ export default function StudentTakeTeacherTestLivePage() {
           setUserAnswers(initialAnswers);
           setTestSessionState('inProgress');
           const durationMinutes = parseInt(currentTestDetails.duration || "60", 10);
-          setTimeLeft(durationMinutes > 0 ? durationMinutes * 60 : 3600); // Default 1hr if invalid or zero
+          setTimeLeft(durationMinutes > 0 ? durationMinutes * 60 : 3600);
           testStartTimeRef.current = Date.now();
           questionStartTimeRef.current = Date.now();
           toast({ title: "Test Started!", description: "Good luck!" });
@@ -530,7 +527,7 @@ export default function StudentTakeTeacherTestLivePage() {
   const handleStartTestAfterInstructions = () => {
     setShowInstructionModal(false);
     if (testDetails) {
-        loadQuestionsAndStartTest(testDetails, () => true); // Assuming component is mounted
+        loadQuestionsAndStartTest(testDetails, () => true);
     } else {
         setError("Test details not available to start.");
         setTestSessionState('terminated');
@@ -659,7 +656,7 @@ export default function StudentTakeTeacherTestLivePage() {
       </div>
     );
   }
-  
+
   if (testSessionState === 'instructions' && showInstructionModal) {
     return (
       <Dialog open={showInstructionModal} onOpenChange={(openState: boolean) => { if (!openState) { setShowInstructionModal(false); if (testDetails) handleStartTestAfterInstructions(); else { setError("Cannot start test, test details missing."); setTestSessionState('terminated');}} else { setShowInstructionModal(openState); }}}>
@@ -681,7 +678,7 @@ export default function StudentTakeTeacherTestLivePage() {
 
   if (testSessionState === 'completed' || testSessionState === 'terminated') { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-4 text-white"> <Card className="w-full max-w-lg text-center shadow-xl bg-background text-foreground"> <CardHeader> {testSessionState === 'completed' ? <CheckCircle className="mx-auto h-12 w-12 text-green-500" /> : <XCircle className="mx-auto h-12 w-12 text-destructive" />} <CardTitle>{testSessionState === 'completed' ? "Test Completed" : "Test Terminated"}</CardTitle> </CardHeader> <CardContent><p className="text-muted-foreground">{testSessionState === 'completed' ? "Your responses have been submitted." : "This test session has been terminated."}</p></CardContent> <CardFooter> <Button onClick={() => { if (window.opener && !window.opener.closed) window.close(); else router.push(Routes.dashboard);}} className="w-full"> Close Window / Back to Dashboard </Button> </CardFooter> </Card> </div> ); }
   if (!currentQuestion && testSessionState === 'inProgress' && !isLoadingPageData) { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-4 text-white"> <Card className="w-full max-w-lg text-center shadow-xl bg-background text-foreground"> <CardHeader> <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground" /> <CardTitle>No Questions</CardTitle> </CardHeader> <CardContent><p className="text-muted-foreground">No questions available for this test, or an error occurred loading them.</p></CardContent> <CardFooter><Button onClick={() => router.back()} variant="outline" className="w-full">Go Back</Button></CardFooter> </Card> </div> );}
-  
+
 
   return (
     <div className="flex flex-col h-screen bg-slate-100 dark:bg-slate-900">
@@ -703,8 +700,9 @@ export default function StudentTakeTeacherTestLivePage() {
               SUBJECT: {currentQuestion?.subject || testDetails?.Test_Subject || 'N/A'}
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
-                <Sheet open={isMobileSheetOpen} onOpenChange={setIsMobileSheetOpen}><SheetTrigger asChild><Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary h-7 w-7 md:hidden" aria-label="Open Question Navigation"><ListOrdered className="h-5 w-5" /></Button></SheetTrigger><SheetContent side="right" className="w-3/4 p-0 flex flex-col"><ShadcnSheetHeader className="p-3 border-b text-center"><ShadcnSheetTitle className="text-lg">Question Navigation</ShadcnSheetTitle><ShadcnSheetDescription>Jump to any question or submit.</ShadcnSheetDescription></ShadcnSheetHeader><QuestionPaletteContent /></SheetContent></Sheet>
+                <Sheet open={isMobileSheetOpen} onOpenChange={setIsMobileSheetOpen}><SheetTrigger asChild><Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary h-7 w-7 md:hidden" aria-label="Open Question Navigation"><ListOrdered className="h-5 w-5" /></Button></SheetTrigger><SheetContent side="right" className="w-3/4 p-0 flex flex-col"><ShadcnSheetHeader className="p-3 border-b text-center"><ShadcnSheetTitle className="text-lg">Navigation</ShadcnSheetTitle><ShadcnSheetDescription>Jump to any question or submit.</ShadcnSheetDescription></ShadcnSheetHeader><QuestionPaletteContent /></SheetContent></Sheet>
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary h-7 w-7 hidden md:inline-flex" onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} aria-label={isRightSidebarOpen ? "Hide Question Panel" : "Show Question Panel"}><Menu className="h-5 w-5" /></Button>
+                <Button variant="ghost" size="icon" asChild className="text-muted-foreground hover:text-primary h-7 w-7"><Link href={Routes.studentTestInstructions(testId as string)} target="_blank"><Info className="h-4 w-4" /></Link></Button>
             </div>
         </div>
       </div>
@@ -713,20 +711,31 @@ export default function StudentTakeTeacherTestLivePage() {
             <CardHeader className="p-3 sm:p-4 border-b border-border bg-muted/30">
               <div className="flex justify-between items-center">
                 <p className="text-xs sm:text-sm font-medium text-muted-foreground">Question {currentQuestionIndex + 1} of {questions.length}</p>
-                <div className="flex items-center gap-1">
-                  {currentQuestion && currentQuestion.difficulty && <Badge variant={currentQuestion.difficulty === 'Easy' ? 'secondary' : currentQuestion.difficulty === 'Medium' ? 'default' : 'destructive'} className="text-xs px-1.5 py-0.5">{currentQuestion.difficulty}</Badge>}
-                  {currentQuestion && currentQuestion.marks && <Badge variant='outline' className="text-xs px-1.5 py-0.5">Marks: {currentQuestion.marks}</Badge>}
-                </div>
+                {currentQuestion && (
+                  <div className="flex items-center gap-1">
+                    {currentQuestion.difficulty && <Badge variant={currentQuestion.difficulty === 'Easy' ? 'secondary' : currentQuestion.difficulty === 'Medium' ? 'default' : 'destructive'} className="text-xs px-1.5 py-0.5">{currentQuestion.difficulty}</Badge>}
+                    {currentQuestion.marks && <Badge variant='outline' className="text-xs px-1.5 py-0.5">Marks: {currentQuestion.marks}</Badge>}
+                  </div>
+                )}
               </div>
             </CardHeader>
-            <ScrollArea className="flex-1 min-h-0"><CardContent className="p-3 sm:p-4 md:p-6 space-y-4">
-                <div className="p-2 border-b border-border/50 rounded-md bg-background min-h-[80px]">{currentQuestion.displayQuestionText && (<div className="prose prose-sm dark:prose-invert max-w-none mb-3 text-foreground leading-relaxed">{renderLatexHelper(currentQuestion.displayQuestionText)}</div>)}{currentQuestion.displayQuestionImageUrl && (<div className="my-2 text-center"><NextImage src={currentQuestion.displayQuestionImageUrl} alt="Question Image" width={400} height={300} className="rounded object-contain inline-block border" data-ai-hint="question diagram"/></div>)}{!(currentQuestion.displayQuestionText || currentQuestion.displayQuestionImageUrl) && (<p className="text-xs sm:text-sm text-muted-foreground italic py-3">Question content not provided.</p>)}</div>
-                <RadioGroup value={userAnswers[currentQuestion.id]?.selectedOption || ""} onValueChange={handleOptionChange} className="space-y-2.5" disabled={testSessionState !== 'inProgress'}>{currentQuestion.displayOptions.map(opt => renderOption(opt))}</RadioGroup>
-            </CardContent></ScrollArea>
-            <CardFooter className="p-3 sm:p-4 border-t border-border bg-muted/30 flex-wrap justify-center sm:justify-between gap-2"><Button variant="outline" size="sm" onClick={handleClearResponse} disabled={testSessionState !== 'inProgress' || !userAnswers[currentQuestion.id]?.selectedOption}>Clear Response</Button><Button variant={userAnswers[currentQuestion.id]?.markedForReview ? "secondary" : "outline"} size="sm" onClick={handleMarkForReview} disabled={testSessionState !== 'inProgress'} className="border-purple-500 text-purple-600 data-[state=active]:bg-purple-500/10 data-[state=active]:text-purple-700 hover:bg-purple-500/10"><Flag className="mr-1.5 h-4 w-4" /> {userAnswers[currentQuestion.id]?.markedForReview ? "Unmark Review" : "Mark for Review"}</Button><Button size="sm" onClick={handleSaveAndNext} disabled={testSessionState !== 'inProgress' || currentQuestionIndex === questions.length - 1} className="bg-green-600 hover:bg-green-700 text-white">Save & Next <ChevronRight className="ml-1.5 h-4 w-4" /></Button></CardFooter>
+            {currentQuestion ? (
+              <ScrollArea className="flex-1 min-h-0"><CardContent className="p-3 sm:p-4 md:p-6 space-y-4">
+                  <div className="p-2 border-b border-border/50 rounded-md bg-background min-h-[80px]">{currentQuestion.displayQuestionText && (<div className="prose prose-sm dark:prose-invert max-w-none mb-3 text-foreground leading-relaxed">{renderLatexHelper(currentQuestion.displayQuestionText)}</div>)}{currentQuestion.displayQuestionImageUrl && (<div className="my-2 text-center"><NextImage src={currentQuestion.displayQuestionImageUrl} alt="Question Image" width={400} height={300} className="rounded object-contain inline-block border" data-ai-hint="question diagram"/></div>)}{!(currentQuestion.displayQuestionText || currentQuestion.displayQuestionImageUrl) && (<p className="text-xs sm:text-sm text-muted-foreground italic py-3">Question content not provided.</p>)}</div>
+                  <RadioGroup value={userAnswers[currentQuestion.id]?.selectedOption || ""} onValueChange={handleOptionChange} className="space-y-2.5" disabled={testSessionState !== 'inProgress'}>{currentQuestion.displayOptions.map(opt => renderOption(opt))}</RadioGroup>
+              </CardContent></ScrollArea>
+            ) : (
+               <CardContent className="p-3 sm:p-4 md:p-6 flex items-center justify-center h-full">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="ml-2 text-muted-foreground">Loading question data...</p>
+                </CardContent>
+            )}
+            <CardFooter className="p-3 sm:p-4 border-t border-border bg-muted/30 flex-wrap justify-center sm:justify-between gap-2"><Button variant="outline" size="sm" onClick={handleClearResponse} disabled={testSessionState !== 'inProgress' || !currentQuestion || !userAnswers[currentQuestion.id]?.selectedOption}>Clear Response</Button><Button variant={currentQuestion && userAnswers[currentQuestion.id]?.markedForReview ? "secondary" : "outline"} size="sm" onClick={handleMarkForReview} disabled={testSessionState !== 'inProgress' || !currentQuestion} className="border-purple-500 text-purple-600 data-[state=active]:bg-purple-500/10 data-[state=active]:text-purple-700 hover:bg-purple-500/10"><Flag className="mr-1.5 h-4 w-4" /> {currentQuestion && userAnswers[currentQuestion.id]?.markedForReview ? "Unmark Review" : "Mark for Review"}</Button><Button size="sm" onClick={handleSaveAndNext} disabled={testSessionState !== 'inProgress' || !currentQuestion || currentQuestionIndex === questions.length - 1} className="bg-green-600 hover:bg-green-700 text-white">Save & Next <ChevronRight className="ml-1.5 h-4 w-4" /></Button></CardFooter>
         </Card>
         {isRightSidebarOpen && (<div className="hidden md:flex w-72 lg:w-80 flex-shrink-0 flex-col space-y-0"><QuestionPaletteContent /></div>)}
       </div>
     </div>
   );
 }
+
+
