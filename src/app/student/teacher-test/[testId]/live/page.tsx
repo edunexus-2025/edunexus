@@ -68,25 +68,25 @@ interface FetchedQuestionSourceRecord extends RecordModel {
   optionDText?: string | null;
   correctOption?: 'A' | 'B' | 'C' | 'D';
   explanationText?: string | null;
-  lessonName?: string | null; 
-  questionImage?: string | null; 
-  optionAImage?: string | null;  
-  optionBImage?: string | null;  
-  optionCImage?: string | null;  
-  optionDImage?: string | null;  
-  explanationImage?: string | null; 
-  
+  lessonName?: string | null;
+  questionImage?: string | null;
+  optionAImage?: string | null;
+  optionBImage?: string | null;
+  optionCImage?: string | null;
+  optionDImage?: string | null;
+  explanationImage?: string | null;
+
   // teacher_question_data specific (uppercase field names, images are direct URLs)
   QuestionText?: string | null;
   CorrectOption?: 'Option A' | 'Option B' | 'Option C' | 'Option D';
-  LessonName?: string; 
-  explanationText_teacher?: string | null; 
-  QuestionImage_teacher?: string | null;    
-  OptionAImage_teacher?: string | null;   
-  OptionBImage_teacher?: string | null;   
-  OptionCImage_teacher?: string | null;   
-  OptionDImage_teacher?: string | null;   
-  explanationImage_teacher?: string | null; 
+  LessonName?: string;
+  explanationText_teacher?: string | null; // Using a distinct name for clarity
+  QuestionImage_teacher?: string | null; // Using distinct name
+  OptionAImage_teacher?: string | null;  // Using distinct name
+  OptionBImage_teacher?: string | null;  // Using distinct name
+  OptionCImage_teacher?: string | null;  // Using distinct name
+  OptionDImage_teacher?: string | null;  // Using distinct name
+  explanationImage_teacher?: string | null; // Using distinct name
 }
 
 
@@ -105,7 +105,7 @@ interface NormalizedQuestionRecord {
   displayExplanationImageUrl?: string | null;
   marks: number;
   subject?: string | null;
-  lessonName?: string | null; // Added for consistency
+  lessonName?: string | null;
   difficulty?: 'Easy' | 'Medium' | 'Hard' | null;
   originalSourceCollection: 'question_bank' | 'teacher_question_data';
   rawRecord: RecordModel;
@@ -167,7 +167,7 @@ export default function StudentTakeTeacherTestLivePage() {
   const { toast } = useToast();
 
   const [initialLoading, setInitialLoading] = useState(true);
-  const [isLoadingPageData, setIsLoadingPageData] = useState(false); 
+  const [isLoadingPageData, setIsLoadingPageData] = useState(false);
 
   const [testDetails, setTestDetails] = useState<TeacherTestDetailsRecord | null>(null);
   const [teacherName, setTeacherName] = useState<string>('Educator');
@@ -178,7 +178,7 @@ export default function StudentTakeTeacherTestLivePage() {
   const [error, setError] = useState<string | null>(null);
   const [testSessionState, setTestSessionState] = useState<'initialLoading' | 'pinEntry' | 'instructions' | 'inProgress' | 'completed' | 'terminated'>('initialLoading');
   const [isSubmittingTest, setIsSubmittingTest] = useState(false);
-  
+
   const [enteredPin, setEnteredPin] = useState('');
   const [pinError, setPinError] = useState<string | null>(null);
   const [isVerifyingPin, setIsVerifyingPin] = useState(false);
@@ -186,18 +186,18 @@ export default function StudentTakeTeacherTestLivePage() {
 
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
+  const [isSubmitConfirmOpen, setIsSubmitConfirmOpen] = useState(false);
 
   const currentQuestion = questions[currentQuestionIndex];
   const questionStartTimeRef = useRef<number>(Date.now());
   const testStartTimeRef = useRef<number | null>(null);
   const todayDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const [isSubmitConfirmOpen, setIsSubmitConfirmOpen] = useState(false);
 
 
   const normalizeFetchedQuestion = (q: FetchedQuestionSourceRecord, sourceCollection: 'question_bank' | 'teacher_question_data'): NormalizedQuestionRecord | null => {
     if (!q || !q.id) return null;
-    let displayCorrectOptionLabel: 'A' | 'B' | 'C' | 'D' = 'A'; 
+    let displayCorrectOptionLabel: 'A' | 'B' | 'C' | 'D' = 'A';
     let correctOptionStringFull: 'Option A' | 'Option B' | 'Option C' | 'Option D' = 'Option A';
 
     if (sourceCollection === 'question_bank') {
@@ -212,12 +212,11 @@ export default function StudentTakeTeacherTestLivePage() {
       displayQuestionImageUrl: sourceCollection === 'question_bank' ? getPbFileUrl(q, 'questionImage') : (isValidHttpUrl(q.QuestionImage_teacher) ? q.QuestionImage_teacher : null),
       displayOptions: (['A', 'B', 'C', 'D'] as const).map(label => {
         const textKey = sourceCollection === 'question_bank' ? `option${label}Text` : `Option${label}Text`;
-        const imageFieldKey = sourceCollection === 'question_bank' ? `option${label}Image` : `Option${label}Image_teacher`;
-        const isTeacherSourceImage = sourceCollection === 'teacher_question_data';
+        const imageFieldKey = sourceCollection === 'question_bank' ? `option${label}Image` : `Option${label}Image_teacher`; // Corrected: was Option${label}Image
         return {
           label: label,
-          text: q[textKey] || null,
-          imageUrl: isTeacherSourceImage ? (isValidHttpUrl(q[imageFieldKey]) ? q[imageFieldKey] : null) : getPbFileUrl(q, imageFieldKey),
+          text: q[textKey] as string | null || null,
+          imageUrl: sourceCollection === 'question_bank' ? getPbFileUrl(q, imageFieldKey) : (isValidHttpUrl(q[imageFieldKey] as string | null) ? q[imageFieldKey] as string : null),
         };
       }),
       displayCorrectOptionLabel,
@@ -240,7 +239,7 @@ export default function StudentTakeTeacherTestLivePage() {
       return;
     }
     setIsSubmittingTest(true);
-    
+
     if (currentQuestion && userAnswers[currentQuestion.id] && questionStartTimeRef.current && testSessionState === 'inProgress') {
       const currentTime = Date.now();
       const timeSpentCurrentQuestion = Math.round((currentTime - questionStartTimeRef.current) / 1000);
@@ -254,7 +253,7 @@ export default function StudentTakeTeacherTestLivePage() {
       const userAnswerRec = userAnswers[q.id];
       const selected = userAnswerRec?.selectedOption || null;
       let isCorrectAns = false;
-      const questionCorrectOptionString = q.correctOptionString; 
+      const questionCorrectOptionString = q.correctOptionString;
       const questionMarks = typeof q.marks === 'number' ? q.marks : 1;
       totalMarksForTest += questionMarks;
 
@@ -275,14 +274,14 @@ export default function StudentTakeTeacherTestLivePage() {
         timeSpentSeconds: userAnswerRec?.timeSpentSeconds || 0,
       };
     });
-    
+
     const maxScorePossible = testDetails.totalScore && testDetails.totalScore > 0 ? testDetails.totalScore : totalMarksForTest;
     const percentageScore = maxScorePossible > 0 ? (pointsEarnedFromTest / maxScorePossible) * 100 : 0;
 
-    const finalTestStatusDbValue: TeacherTestAttempt['status'] = terminationReason === 'time_up' 
-        ? 'terminated_time_up' 
+    const finalTestStatusDbValue: TeacherTestAttempt['status'] = terminationReason === 'time_up'
+        ? 'terminated_time_up'
         : (terminationReason === 'manual' ? 'terminated_manual' : 'completed');
-    
+
     const durationTakenSecs = testStartTimeRef.current ? Math.round((Date.now() - testStartTimeRef.current) / 1000) : (timeLeft !== null && testDetails?.duration ? (parseInt(testDetails.duration, 10)*60 - timeLeft) : 0);
 
 
@@ -303,7 +302,7 @@ export default function StudentTakeTeacherTestLivePage() {
       duration_taken_seconds: Math.max(0, durationTakenSecs),
       answers_log: JSON.stringify(answersLogForDb),
       status: finalTestStatusDbValue,
-      plan_context: "Subscribed - Teacher Plan", 
+      plan_context: "Subscribed - Teacher Plan",
       started_at: testStartTimeRef.current ? new Date(testStartTimeRef.current).toISOString() : new Date().toISOString(),
       submitted_at: new Date().toISOString(),
       marked_for_review_without_selecting_option: answersLogForDb.filter(a => a.markedForReview && !a.selectedOption).length,
@@ -331,7 +330,7 @@ export default function StudentTakeTeacherTestLivePage() {
 
     const eduNexusQuestionIds = Array.isArray(currentTestDetails.questions_edunexus) ? currentTestDetails.questions_edunexus : [];
     const teacherQuestionIds = Array.isArray(currentTestDetails.questions_teachers) ? currentTestDetails.questions_teachers : [];
-    
+
     const allQuestionIdsFromTestDetails = [...eduNexusQuestionIds, ...teacherQuestionIds];
     if (allQuestionIdsFromTestDetails.length === 0) {
       if (isMountedGetter()) { setError("No questions are linked to this test. Please contact the teacher."); setQuestions([]); setIsLoadingPageData(false); setTestSessionState('terminated'); }
@@ -358,7 +357,7 @@ export default function StudentTakeTeacherTestLivePage() {
         });
         if (isMountedGetter()) { fetchedAndNormalizedQuestions.push(...teacherQuestionRecords.map(q => normalizeFetchedQuestion(q, 'teacher_question_data')).filter(Boolean) as NormalizedQuestionRecord[]); } else return;
       }
-      
+
       const orderedQuestions = fetchedAndNormalizedQuestions.sort((a,b) => (originalOrderMap.get(a.id) ?? Infinity) - (originalOrderMap.get(b.id) ?? Infinity));
 
       if (isMountedGetter()) {
@@ -393,14 +392,14 @@ export default function StudentTakeTeacherTestLivePage() {
     const currentTestId = typeof testId === 'string' ? testId : '';
     if (!currentTestId) { if (isMountedGetter()) { setError("Invalid test ID."); setInitialLoading(false); setIsLoadingPageData(false); setTestSessionState('terminated'); } return; }
     if (!currentUser?.id && !currentTeacherUser?.id) { if (isMountedGetter()) { setError("User not authenticated."); setInitialLoading(false); setIsLoadingPageData(false); setTestSessionState('terminated'); } return; }
-    
+
     if (isMountedGetter()) { setInitialLoading(true); setIsLoadingPageData(true); }
 
     try {
-      const fetchedTest = await pb.collection('teacher_tests').getOne<TeacherTestDetailsRecord>(currentTestId, { 
-        expand: 'teacherId', 
+      const fetchedTest = await pb.collection('teacher_tests').getOne<TeacherTestDetailsRecord>(currentTestId, {
+        expand: 'teacherId',
         fields: 'id,testName,Admin_Password,duration,teacherId,QBExam,model,Test_Subject,questions_edunexus,questions_teachers,status,totalScore,expand.teacherId.name,expand.teacherId.EduNexus_Name',
-        '$autoCancel': false 
+        '$autoCancel': false
       });
       if (!isMountedGetter()) return;
 
@@ -450,7 +449,7 @@ export default function StudentTakeTeacherTestLivePage() {
         setTimeLeft(prev => {
           if (prev === null || prev <= 1) {
             clearInterval(timerIntervalRef.current!);
-            handleSubmitTest(true, "time_up"); // This should already be wrapped in useCallback
+            handleSubmitTest(true, "time_up");
             return 0;
           }
           return prev - 1;
@@ -461,8 +460,8 @@ export default function StudentTakeTeacherTestLivePage() {
   }, [testSessionState, timeLeft, isSubmitConfirmOpen, handleSubmitTest]);
 
   const handlePinVerify = async () => {
-    if (!testDetails || testDetails.Admin_Password === null || testDetails.Admin_Password === undefined) { 
-      setPinError("Test PIN configuration error by teacher."); return; 
+    if (!testDetails || testDetails.Admin_Password === null || testDetails.Admin_Password === undefined) {
+      setPinError("Test PIN configuration error by teacher."); return;
     }
     setIsVerifyingPin(true); setPinError(null);
     if (enteredPin === String(testDetails.Admin_Password).trim()) {
@@ -478,18 +477,18 @@ export default function StudentTakeTeacherTestLivePage() {
 
   const handleStartTestAfterInstructions = () => {
     setShowInstructionModal(false);
-    if (testDetails) { 
-        loadQuestionsAndStartTest(testDetails, () => true); 
+    if (testDetails) {
+        loadQuestionsAndStartTest(testDetails, () => true);
     } else {
         setError("Test details not available to start.");
         setTestSessionState('terminated');
     }
   };
-  
+
   const handleOptionChange = (value: string) => { if (testSessionState !== 'inProgress' || !currentQuestion) return; setUserAnswers(prev => ({ ...prev, [currentQuestion.id]: { ...(prev[currentQuestion.id] || { questionId: currentQuestion.id, timeSpentSeconds: 0, markedForReview: false, correctOption: currentQuestion.correctOptionString }), selectedOption: value, isCorrect: false }})); };
   const handleClearResponse = () => { if (testSessionState !== 'inProgress' || !currentQuestion) return; setUserAnswers(prev => ({ ...prev, [currentQuestion.id]: { ...(prev[currentQuestion.id] || { questionId: currentQuestion.id, timeSpentSeconds: 0, correctOption: currentQuestion.correctOptionString }), selectedOption: null, isCorrect: false }})); };
   const handleMarkForReview = () => { if (testSessionState !== 'inProgress' || !currentQuestion) return; setUserAnswers(prev => ({ ...prev, [currentQuestion.id]: { ...(prev[currentQuestion.id] || { questionId: currentQuestion.id, selectedOption: null, isCorrect: false, timeSpentSeconds: 0, correctOption: currentQuestion.correctOptionString }), markedForReview: !prev[currentQuestion.id]?.markedForReview }})); };
-  
+
   const navigateQuestion = (directionOrIndex: 'next' | 'prev' | number) => {
     if (testSessionState !== 'inProgress' || !currentQuestion) return;
     if (userAnswers[currentQuestion.id]) {
@@ -506,18 +505,91 @@ export default function StudentTakeTeacherTestLivePage() {
   const formatTime = (seconds: number | null): string => { if (seconds === null || seconds < 0) seconds = 0; const h = Math.floor(seconds / 3600); const m = Math.floor((seconds % 3600) / 60); const s = seconds % 60; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`; };
   const getQuestionStatusForPalette = (questionId: string): 'answered' | 'notAnswered' | 'markedForReview' | 'markedAndAnswered' | 'notVisited' => { const answer = userAnswers[questionId]; if (!answer || (answer.selectedOption === null && !answer.markedForReview)) return 'notVisited'; if (answer.selectedOption) { return answer.markedForReview ? 'markedAndAnswered' : 'answered'; } else { return answer.markedForReview ? 'markedForReview' : 'notAnswered'; }};
   const questionPaletteButtonClass = (status: ReturnType<typeof getQuestionStatusForPalette>, isActive: boolean) => { if (isActive) return "bg-primary text-primary-foreground border-primary ring-2 ring-offset-1 ring-primary"; switch (status) { case 'answered': return "bg-green-500 hover:bg-green-600 text-white border-green-500"; case 'notAnswered': return "bg-red-500 hover:bg-red-600 text-white border-red-500"; case 'markedForReview': return "bg-purple-500 hover:bg-purple-600 text-white border-purple-500"; case 'markedAndAnswered': return "bg-orange-500 hover:bg-orange-600 text-white border-orange-500"; case 'notVisited': default: return "bg-card hover:bg-muted/80 text-muted-foreground border-border"; }};
-  
+
   const renderOption = (option: { label: 'A' | 'B' | 'C' | 'D'; text?: string | null; imageUrl?: string | null }): React.ReactNode => {
     if(!currentQuestion) return null;
     const optionValue = `Option ${option.label}`;
-    return ( <Label key={optionValue} htmlFor={`option-${currentQuestion.id}-${option.label}`} className={cn("flex items-start space-x-3 rounded-lg border p-3 cursor-pointer transition-all hover:shadow-md", userAnswers[currentQuestion.id]?.selectedOption === optionValue ? 'bg-primary/10 border-primary ring-1 ring-primary' : 'bg-card border-border hover:border-primary/50')}> <RadioGroupItem value={optionValue} id={`option-${currentQuestion.id}-${option.label}`} className="mt-1 border-muted-foreground data-[state=checked]:border-primary shrink-0" /> <div className="flex-1 text-sm"> <div className="font-semibold">{option.label}.</div> {option.text && <div className="prose prose-sm dark:prose-invert max-w-none mt-0.5">{renderLatexHelper(option.text)}</div>} {option.imageUrl && (<div className="mt-1.5"><NextImage src={option.imageUrl} alt={`Option ${option.label}`} width={200} height={100} className="rounded object-contain border" data-ai-hint="option illustration"/></div>)} {!(option.text || option.imageUrl) && <p className="text-muted-foreground italic">Option {option.label} content not available.</p>} </div> </Label> );
+    return (
+        <Label key={optionValue} htmlFor={`option-${currentQuestion.id}-${option.label}`} className={cn("flex items-start space-x-3 rounded-lg border p-3 cursor-pointer transition-all hover:shadow-md", userAnswers[currentQuestion.id]?.selectedOption === optionValue ? 'bg-primary/10 border-primary ring-1 ring-primary' : 'bg-card border-border hover:border-primary/50')}>
+            <RadioGroupItem value={optionValue} id={`option-${currentQuestion.id}-${option.label}`} className="mt-1 border-muted-foreground data-[state=checked]:border-primary shrink-0" />
+            <div className="flex-1 text-sm">
+                <div className="font-semibold">{option.label}.</div>
+                {option.text && <div className="prose prose-sm dark:prose-invert max-w-none mt-0.5">{renderLatexHelper(option.text)}</div>}
+                {option.imageUrl && (<div className="mt-1.5"><NextImage src={option.imageUrl} alt={`Option ${option.label}`} width={200} height={100} className="rounded object-contain border" data-ai-hint="option illustration"/></div>)}
+                {!(option.text || option.imageUrl) && <p className="text-muted-foreground italic">Option {option.label} content not available.</p>}
+            </div>
+        </Label>
+    );
   };
 
-  const QuestionPaletteContent = () => ( <> <Card className="shadow-none border-0 md:border md:shadow-sm md:rounded-lg md:bg-card"> <CardHeader className="p-3 border-b text-center"> <UserCircleIcon className="mx-auto h-10 w-10 text-primary mb-1" /> <CardTitle className="text-base">{currentUser?.name || "Student"}</CardTitle> <CardDescription className="text-xs truncate">{currentUser?.email}</CardDescription> <CardDescription className="text-xs">{todayDate}</CardDescription> </CardHeader> </Card> <Card className="border-primary/30 bg-primary/5 flex-1 flex flex-col min-h-0 shadow-md rounded-lg md:mt-3"> <CardHeader className="p-2 text-center border-b border-primary/20"><CardTitle className="text-sm text-primary">QUESTION NAVIGATION</CardTitle></CardHeader> <CardContent className="p-2 flex-1 overflow-hidden"><ScrollArea className="h-full"><div className="grid grid-cols-5 sm:grid-cols-4 gap-1.5 p-1">{questions.map((q, index) => { const status = getQuestionStatusForPalette(q.id); const isActive = currentQuestionIndex === index; return ( <Button key={`${q.id}-${index}`} variant="outline" size="icon" className={cn("h-8 w-full text-xs rounded-md aspect-square", questionPaletteButtonClass(status, isActive))} onClick={() => { navigateQuestion(index); if (isMobileSheetOpen) setIsMobileSheetOpen(false); }} disabled={testSessionState !== 'inProgress'} aria-label={`Go to question ${index + 1}, Status: ${(status || 'Not Visited').replace(/([A-Z])/g, ' $1')}`}>{index + 1}{status === 'markedAndAnswered' && <Check className="absolute h-2.5 w-2.5 bottom-0.5 right-0.5 text-white" />}</Button> );})}</div></ScrollArea></CardContent> </Card> <div className="p-3 border-t bg-card md:bg-transparent rounded-b-lg md:shadow-md mt-auto md:mt-3"> <AlertDialog open={isSubmitConfirmOpen} onOpenChange={setIsSubmitConfirmOpen}><AlertDialogTrigger asChild><Button variant="destructive" className="w-full text-sm py-2.5" disabled={testSessionState !== 'inProgress' || isSubmittingTest}><CloseIcon className="mr-1.5 h-4 w-4" /> Submit Test</Button></AlertDialogTrigger><AlertDialogContent><RadixAlertDialogHeader><RadixAlertDialogTitle>Confirm Submission</RadixAlertDialogTitle><RadixAlertDialogDescription>Are you sure you want to submit your test?</RadixAlertDialogDescription></RadixAlertDialogHeader><RadixAlertDialogFooter><AlertDialogCancel onClick={() => setIsSubmitConfirmOpen(false)} disabled={isSubmittingTest}>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleSubmitTest(false, 'manual')} disabled={isSubmittingTest}>{isSubmittingTest && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Yes, Submit</AlertDialogAction></RadixAlertDialogFooter></AlertDialogContent></AlertDialog></div> </> );
+  const QuestionPaletteContent = () => (
+    <>
+      <Card className="shadow-none border-0 md:border md:shadow-sm md:rounded-lg md:bg-card">
+        <CardHeader className="p-3 border-b text-center">
+          <UserCircleIcon className="mx-auto h-10 w-10 text-primary mb-1" />
+          <CardTitle className="text-base">{currentUser?.name || "Student"}</CardTitle>
+          <CardDescription className="text-xs truncate">{currentUser?.email}</CardDescription>
+          <CardDescription className="text-xs">{todayDate}</CardDescription>
+        </CardHeader>
+      </Card>
+      <Card className="border-primary/30 bg-primary/5 flex-1 flex flex-col min-h-0 shadow-md rounded-lg md:mt-3">
+        <CardHeader className="p-2 text-center border-b border-primary/20"><CardTitle className="text-sm text-primary">QUESTION NAVIGATION</CardTitle></CardHeader>
+        <CardContent className="p-2 flex-1 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div className="grid grid-cols-5 sm:grid-cols-4 gap-1.5 p-1">
+            {questions.map((q, index) => {
+              const status = getQuestionStatusForPalette(q.id);
+              const isActive = currentQuestionIndex === index;
+              return (
+                <Button
+                  key={`${q.id}-${index}`} // Changed key
+                  variant="outline"
+                  size="icon"
+                  className={cn("h-8 w-full text-xs rounded-md aspect-square", questionPaletteButtonClass(status, isActive))}
+                  onClick={() => {
+                    navigateQuestion(index);
+                    if (isMobileSheetOpen) setIsMobileSheetOpen(false);
+                  }}
+                  disabled={testSessionState !== 'inProgress'}
+                  aria-label={`Go to question ${index + 1}, Status: ${(status || 'Not Visited').replace(/([A-Z])/g, ' $1')}`}
+                >
+                  {index + 1}
+                  {status === 'markedAndAnswered' && <Check className="absolute h-2.5 w-2.5 bottom-0.5 right-0.5 text-white" />}
+                </Button>
+              );
+            })}
+            </div>
+          </ScrollArea>
+        </CardContent>
+      </Card>
+      <div className="p-3 border-t bg-card md:bg-transparent rounded-b-lg md:shadow-md mt-auto md:mt-3">
+        <AlertDialog open={isSubmitConfirmOpen} onOpenChange={setIsSubmitConfirmOpen}>
+            <AlertDialogTrigger asChild>
+                <Button variant="destructive" className="w-full text-sm py-2.5" disabled={testSessionState !== 'inProgress' || isSubmittingTest}>
+                    <CloseIcon className="mr-1.5 h-4 w-4" /> Submit Test
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <RadixAlertDialogHeader>
+                    <RadixAlertDialogTitle>Confirm Submission</RadixAlertDialogTitle>
+                    <RadixAlertDialogDescription>Are you sure you want to submit your test?</RadixAlertDialogDescription>
+                </RadixAlertDialogHeader>
+                <RadixAlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setIsSubmitConfirmOpen(false)} disabled={isSubmittingTest}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => handleSubmitTest(false, 'manual')} disabled={isSubmittingTest}>
+                        {isSubmittingTest && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Yes, Submit
+                    </AlertDialogAction>
+                </RadixAlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </>
+  );
 
   if (initialLoading || isAuthLoading) { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-4 text-white"> <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" /> <p className="text-lg">Loading test environment...</p> </div> ); }
   if (error) { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-4 text-white"> <Card className="w-full max-w-lg text-center shadow-xl bg-background text-foreground"> <CardHeader> <AlertCircle className="mx-auto h-12 w-12 text-destructive" /> <CardTitle className="text-destructive">Error Loading Test</CardTitle> </CardHeader> <CardContent><p className="text-muted-foreground whitespace-pre-wrap">{error}</p></CardContent> <CardFooter><Button onClick={() => router.back()} variant="outline" className="w-full">Go Back</Button></CardFooter> </Card> </div> ); }
-  
+
   if (testSessionState === 'pinEntry') {
     return (
       <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/80 p-4">
@@ -535,7 +607,7 @@ export default function StudentTakeTeacherTestLivePage() {
       </div>
     );
   }
-  
+
   if (testSessionState === 'instructions' && showInstructionModal) {
     return (
       <Dialog open={showInstructionModal} onOpenChange={(open) => { if (!open) { setShowInstructionModal(false); if (testDetails) handleStartTestAfterInstructions(); else { setError("Cannot start test, test details missing."); setTestSessionState('terminated');}} else { setShowInstructionModal(open); }}}>
@@ -558,7 +630,7 @@ export default function StudentTakeTeacherTestLivePage() {
   if (testSessionState === 'completed' || testSessionState === 'terminated') { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-4 text-white"> <Card className="w-full max-w-lg text-center shadow-xl bg-background text-foreground"> <CardHeader> {testSessionState === 'completed' ? <CheckCircle className="mx-auto h-12 w-12 text-green-500" /> : <XCircle className="mx-auto h-12 w-12 text-destructive" />} <CardTitle>{testSessionState === 'completed' ? "Test Completed" : "Test Terminated"}</CardTitle> </CardHeader> <CardContent><p className="text-muted-foreground">{testSessionState === 'completed' ? "Your responses have been submitted." : "This test session has been terminated."}</p></CardContent> <CardFooter> <Button onClick={() => { if (window.opener && !window.opener.closed) window.close(); else router.push(Routes.dashboard);}} className="w-full"> Close Window / Back to Dashboard </Button> </CardFooter> </Card> </div> ); }
   if (!currentQuestion && testSessionState === 'inProgress' && !isLoadingPageData) { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-4 text-white"> <Card className="w-full max-w-lg text-center shadow-xl bg-background text-foreground"> <CardHeader> <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground" /> <CardTitle>No Questions</CardTitle> </CardHeader> <CardContent><p className="text-muted-foreground">No questions available for this test, or an error occurred loading them.</p></CardContent> <CardFooter><Button onClick={() => router.back()} variant="outline" className="w-full">Go Back</Button></CardFooter> </Card> </div> );}
   if (isLoadingPageData && testSessionState === 'inProgress') { return ( <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 p-4 text-white"> <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" /> <p className="text-lg">Loading questions...</p> </div> );}
-  
+
   return (
     <div className="flex flex-col h-screen bg-slate-100 dark:bg-slate-900">
       <header className="sticky top-0 z-50 bg-card shadow-md p-3 border-b border-border">
