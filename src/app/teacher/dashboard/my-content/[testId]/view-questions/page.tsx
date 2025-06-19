@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -21,35 +20,26 @@ import { cn } from '@/lib/utils';
 // Combined interface for displaying questions from either source
 interface DisplayableQuestion extends RecordModel {
   id: string;
-  displayQuestionText?: string; // Normalized
-  displayQuestionImageUrl?: string | null; // Normalized
+  displayQuestionText?: string; 
+  displayQuestionImageUrl?: string | null; 
   displayOptions: { label: string; text?: string; imageUrl?: string | null }[];
   displayCorrectOptionLabel: string; // e.g., "A", "B"
   displayExplanationText?: string;
   displayExplanationImageUrl?: string | null;
-  difficulty?: 'Easy' | 'Medium' | 'Hard'; // From EduNexus QB
-  subject?: string; // From EduNexus QB
-  lessonName?: string; // From EduNexus QB (question's own lesson) or Teacher Test Name
+  difficulty?: 'Easy' | 'Medium' | 'Hard'; 
+  subject?: string; 
+  lessonName?: string; 
   marks?: number;
-  source: 'edunexus' | 'teacher';
-  // Original collection details if needed for specific operations (like image URL construction)
-  originalCollectionId?: string;
-  originalCollectionName?: string;
-  originalQuestionImageFile?: string | null; // filename for pb.files.getUrl
-  originalOptionAImageFile?: string | null;
-  originalOptionBImageFile?: string | null;
-  originalOptionCImageFile?: string | null;
-  originalOptionDImageFile?: string | null;
-  originalExplanationImageFile?: string | null;
+  source: 'EduNexus QB' | 'My QB'; // To distinguish origin
 }
 
 interface ParentTest extends RecordModel {
   testName: string;
-  questions_edunexus?: string[]; // IDs from question_bank
-  questions_teachers?: string[]; // IDs from teacher_question_data
+  questions_edunexus?: string[]; 
+  questions_teachers?: string[]; 
   expand?: {
-    questions_edunexus?: RecordModel[]; // Expanded records from question_bank
-    questions_teachers?: RecordModel[]; // Expanded records from teacher_question_data
+    questions_edunexus?: RecordModel[]; 
+    questions_teachers?: RecordModel[]; 
   };
 }
 
@@ -68,10 +58,25 @@ const renderLatex = (text: string | undefined | null): React.ReactNode => {
   });
 };
 
-const getPbFileUrlUtil = (record: {collectionId?: string, collectionName?: string, id: string, [key:string]: any} | null | undefined, fieldName: string): string | null => {
-    if (record && record[fieldName] && typeof record[fieldName] === 'string' && record.collectionId && record.collectionName) {
-      try { return pb.files.getUrl(record as RecordModel, record[fieldName] as string); }
-      catch (e) { console.warn(`ViewTestQuestionsPage: Error getting URL for ${fieldName} in record ${record.id}:`, e); return null; }
+const getPbFileUrlOrDirectUrl = (record: RecordModel | null | undefined, fieldName: string, isDirectUrlField: boolean = false): string | null => {
+    if (!record || !record[fieldName] || typeof record[fieldName] !== 'string') {
+      return null;
+    }
+    const fieldValue = record[fieldName] as string;
+    if (isDirectUrlField) {
+      // Validate if it's a proper URL if needed, or just return
+      try {
+        new URL(fieldValue); // Basic validation
+        return fieldValue;
+      } catch (_) {
+        // console.warn(`Invalid direct URL for ${fieldName} in record ${record.id}: ${fieldValue}`);
+        return null;
+      }
+    }
+    // For PocketBase file fields
+    if (record.collectionId && record.collectionName) {
+      try { return pb.files.getUrl(record, fieldValue); }
+      catch (e) { console.warn(`ViewTestQuestionsPage: Error getting PB file URL for ${fieldName} in record ${record.id}:`, e); return null; }
     }
     return null;
 };
@@ -104,61 +109,64 @@ export default function ViewTestQuestionsPage() {
 
       try {
         if (!isMounted) return;
+        // Expand both relation fields and ensure all necessary sub-fields are fetched
         const fetchedTest = await pb.collection('teacher_tests').getOne<ParentTest>(testId, {
-          expand: 'questions_edunexus(id,questionText,questionImage,optionAText,optionAImage,optionBText,optionBImage,optionCText,optionCImage,optionDText,optionDImage,correctOption,explanationText,explanationImage,difficulty,subject,lessonName,marks,collectionId,collectionName),questions_teachers(id,QuestionText,QuestionImage,OptionAText,OptionAImage,OptionBText,OptionBImage,OptionCText,OptionCImage,OptionDText,OptionDImage,CorrectOption,explanationText,explanationImage,subject,LessonName,marks,QBExam,collectionId,collectionName)',
+          expand: `
+            questions_edunexus(id,questionText,questionImage,optionAText,optionAImage,optionBText,optionBImage,optionCText,optionCImage,optionDText,optionDImage,correctOption,explanationText,explanationImage,difficulty,subject,lessonName,marks,collectionId,collectionName),
+            questions_teachers(id,QuestionText,QuestionImage,OptionAText,OptionAImage,OptionBText,OptionBImage,OptionCText,OptionCImage,OptionDText,OptionDImage,CorrectOption,explanationText,explanationImage,subject,LessonName,marks,QBExam)
+          `,
         });
         if (isMounted) {
           setParentTest(fetchedTest);
           let combinedQuestions: DisplayableQuestion[] = [];
 
+          // Process questions from EduNexus QB (question_bank)
           const eduNexusQs = fetchedTest.expand?.questions_edunexus || [];
           eduNexusQs.forEach((q: RecordModel) => {
             combinedQuestions.push({
               ...q,
               id: q.id,
               displayQuestionText: q.questionText,
-              displayQuestionImageUrl: getPbFileUrlUtil(q, 'questionImage'),
+              displayQuestionImageUrl: getPbFileUrlOrDirectUrl(q, 'questionImage', false),
               displayOptions: [
-                { label: 'A', text: q.optionAText, imageUrl: getPbFileUrlUtil(q, 'optionAImage') },
-                { label: 'B', text: q.optionBText, imageUrl: getPbFileUrlUtil(q, 'optionBImage') },
-                { label: 'C', text: q.optionCText, imageUrl: getPbFileUrlUtil(q, 'optionCImage') },
-                { label: 'D', text: q.optionDText, imageUrl: getPbFileUrlUtil(q, 'optionDImage') },
+                { label: 'A', text: q.optionAText, imageUrl: getPbFileUrlOrDirectUrl(q, 'optionAImage', false) },
+                { label: 'B', text: q.optionBText, imageUrl: getPbFileUrlOrDirectUrl(q, 'optionBImage', false) },
+                { label: 'C', text: q.optionCText, imageUrl: getPbFileUrlOrDirectUrl(q, 'optionCImage', false) },
+                { label: 'D', text: q.optionDText, imageUrl: getPbFileUrlOrDirectUrl(q, 'optionDImage', false) },
               ],
-              displayCorrectOptionLabel: q.correctOption,
+              displayCorrectOptionLabel: q.correctOption, // A, B, C, D
               displayExplanationText: q.explanationText,
-              displayExplanationImageUrl: getPbFileUrlUtil(q, 'explanationImage'),
-              source: 'edunexus',
-              originalCollectionId: q.collectionId,
-              originalCollectionName: q.collectionName,
-              originalQuestionImageFile: q.questionImage,
-              originalOptionAImageFile: q.optionAImage,
-              originalOptionBImageFile: q.optionBImage,
-              originalOptionCImageFile: q.optionCImage,
-              originalOptionDImageFile: q.optionDImage,
-              originalExplanationImageFile: q.explanationImage,
+              displayExplanationImageUrl: getPbFileUrlOrDirectUrl(q, 'explanationImage', false),
+              source: 'EduNexus QB',
+              difficulty: q.difficulty,
+              subject: q.subject,
+              lessonName: q.lessonName,
+              marks: q.marks
             });
           });
 
+          // Process questions from Teacher's QB (teacher_question_data)
           const teacherQs = fetchedTest.expand?.questions_teachers || [];
           teacherQs.forEach((q: RecordModel) => {
             combinedQuestions.push({
               ...q,
               id: q.id,
               displayQuestionText: q.QuestionText,
-              displayQuestionImageUrl: q.QuestionImage || null, // Direct URL
+              displayQuestionImageUrl: getPbFileUrlOrDirectUrl(q, 'QuestionImage', true), // Assuming direct URL
               displayOptions: [
-                { label: 'A', text: q.OptionAText, imageUrl: q.OptionAImage || null },
-                { label: 'B', text: q.OptionBText, imageUrl: q.OptionBImage || null },
-                { label: 'C', text: q.OptionCText, imageUrl: q.OptionCImage || null },
-                { label: 'D', text: q.OptionDText, imageUrl: q.OptionDImage || null },
+                { label: 'A', text: q.OptionAText, imageUrl: getPbFileUrlOrDirectUrl(q, 'OptionAImage', true) },
+                { label: 'B', text: q.OptionBText, imageUrl: getPbFileUrlOrDirectUrl(q, 'OptionBImage', true) },
+                { label: 'C', text: q.OptionCText, imageUrl: getPbFileUrlOrDirectUrl(q, 'OptionCImage', true) },
+                { label: 'D', text: q.OptionDText, imageUrl: getPbFileUrlOrDirectUrl(q, 'OptionDImage', true) },
               ],
-              displayCorrectOptionLabel: q.CorrectOption?.replace("Option ", "") || "",
-              displayExplanationText: q.explanationText, // Corrected to match field name
-              displayExplanationImageUrl: q.explanationImage || null, // Direct URL
-              source: 'teacher',
+              displayCorrectOptionLabel: q.CorrectOption?.replace("Option ", "") || "", // Normalize to A, B, C, D
+              displayExplanationText: q.explanationText, 
+              displayExplanationImageUrl: getPbFileUrlOrDirectUrl(q, 'explanationImage', true), // Assuming direct URL
+              source: 'My QB',
               marks: q.marks,
-              subject: q.subject, // Assuming teacher_question_data has 'subject'
-              lessonName: q.LessonName, // Assuming teacher_question_data has 'LessonName'
+              subject: q.subject || fetchedTest.QBExam, // Fallback to test's exam as subject context
+              lessonName: q.LessonName || fetchedTest.testName, // Fallback to test name as lesson context
+              difficulty: q.difficulty, // Assuming teacher_question_data might also have difficulty
             });
           });
           
@@ -228,8 +236,8 @@ export default function ViewTestQuestionsPage() {
         <CardHeader className="p-4 bg-card border-b border-border">
             <div className="flex justify-between items-center">
                 <p className="text-sm font-medium text-muted-foreground">Question {currentQuestionIndex + 1} of {questions.length}</p>
-                <Badge variant={currentQuestion.source === 'edunexus' ? 'secondary' : 'outline'} className={cn("text-xs", currentQuestion.source === 'teacher' && "border-blue-500 text-blue-600 bg-blue-50")}>
-                  {currentQuestion.source === 'edunexus' ? 'EduNexus QB' : 'My QB'}
+                <Badge variant={currentQuestion.source === 'EduNexus QB' ? 'secondary' : 'outline'} className={cn("text-xs", currentQuestion.source === 'My QB' && "border-blue-500 text-blue-600 bg-blue-50")}>
+                  {currentQuestion.source}
                 </Badge>
             </div>
         </CardHeader>
