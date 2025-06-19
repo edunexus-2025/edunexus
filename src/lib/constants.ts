@@ -1,7 +1,8 @@
+
 import type { Plan, UserSubscriptionTierStudent, UserSubscriptionTierTeacher } from '@/lib/types';
 
 export const AppConfig = {
-  appName: 'EduNexus', // Updated appName
+  appName: 'EduNexus',
 };
 
 // Define APP_BASE_URL with a client-side fallback
@@ -65,7 +66,7 @@ export const Routes = {
   refundPolicy: '/refund-policy',
   contactUs: '/contact-us',
   activatePlan: (token: string, planSlug: string) => `/activate-plan/${token}/${planSlug}`,
-  collegeCutoffs: '/college-cutoffs', // This remains for public viewing
+  collegeCutoffs: '/college-cutoffs', 
   ownerInfo: '/owner-info',
   paymentStatusPage: (orderId: string, status: 'success' | 'failure' | 'error' | 'info', planName?: string, message?: string) => {
     const params = new URLSearchParams();
@@ -78,8 +79,8 @@ export const Routes = {
 
 
   // Student Test Taking Routes
-  studentTestInstructions: (testId: string) => `/student/test/${testId}/instructions`, // For platform tests
-  studentTestChapterwise: (testId: string) => `/student/test/${testId}/chapterwise`, // For platform tests
+  studentTestInstructions: (testId: string) => `/student/test/${testId}/instructions`, 
+  studentTestChapterwise: (testId: string) => `/student/test/${testId}/chapterwise`, 
 
   // Routes for student taking a teacher-created test
   studentTakeTeacherTestLive: (testId: string) => `/student/teacher-test/${testId}/live`,
@@ -139,6 +140,10 @@ export const Routes = {
   collegeDetailsLogin: '/college-details/login',
   collegeDetailsSignup: '/college-details/signup',
   collegeDetailsDashboard: '/college-details/dashboard',
+  collegeDetailsSearch: '/college-details/search', // Placeholder
+  collegeDetailsCutoffs: '/college-details/cutoffs-analysis', // Placeholder
+  collegeDetailsPreferences: '/college-details/my-preferences', // Placeholder
+  // collegeDetailsSettings: '/college-details/settings', // Placeholder if needed
 };
 
 // Helper to convert display names to URL-friendly slugs
@@ -223,8 +228,8 @@ export const allPlansData: Plan[] = [
     name: 'Pulse',
     description: "Daily rhythm of practice. Focus on daily problems and foundational tests.",
     price: '₹1',
-    priceSuffix: '/- year', // Updated
-    priceValue: 1,      // Updated
+    priceSuffix: '/- year', 
+    priceValue: 1,      
     features: [
       'All Nova features',
       'Access to free test series',
@@ -298,7 +303,7 @@ export const teacherPlatformPlansData: Plan[] = [
       "Limited access to EduNexus Question Bank features",
     ],
     ctaText: 'Current Plan',
-    commissionRate: 10, // EduNexus takes 10%
+    commissionRate: 10, 
     maxContentPlans: 2,
     qbAccess: false,
   },
@@ -315,7 +320,7 @@ export const teacherPlatformPlansData: Plan[] = [
       "Standard access to EduNexus Question Bank features",
     ],
     ctaText: 'Upgrade to Starter',
-    commissionRate: 7.5, // EduNexus takes 7.5%
+    commissionRate: 7.5, 
     maxContentPlans: 5,
     qbAccess: false,
   },
@@ -334,24 +339,24 @@ export const teacherPlatformPlansData: Plan[] = [
     ],
     isRecommended: true,
     ctaText: 'Upgrade to Pro',
-    commissionRate: 5, // EduNexus takes 5%
+    commissionRate: 5, 
     maxContentPlans: 10,
     qbAccess: true,
   },
   {
-    id: 'Ads Model', // Matches User['ads_subscription'] type
+    id: 'Ads Model', 
     name: 'Advertisement Creator Pack',
     description: "Enable tools to create and manage advertisements for your content on EduNexus.",
     price: '₹10',
     priceSuffix: '/month (Activation via Telegram)',
-    priceValue: 10, // This is monthly, but Razorpay flow is annual.
+    priceValue: 10, 
     features: [
       "Create promotional ads for your profile & plans",
       "Reach a wider student audience on EduNexus",
       "Track ad performance (coming soon)"
     ],
     ctaText: 'Activate Ad Features',
-    customActivationLink: Routes.teacherUpgradeAds, // Special link for this plan
+    customActivationLink: Routes.teacherUpgradeAds, 
   },
 ];
 

@@ -1,53 +1,47 @@
+
 'use client';
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { AppLogo } from './AppLogo'; // Using a simplified version or a specific college portal logo
+import { AppLogo } from './AppLogo'; 
 import { Routes, AppConfig } from '@/lib/constants';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { GraduationCap, LogOut, UserCircle } from 'lucide-react'; // UserCircle instead of LayoutDashboard
+import { GraduationCap, LogOut, UserCircle, Menu as MenuIcon } from 'lucide-react';
+import { SidebarTrigger } from '@/components/ui/sidebar'; // Import SidebarTrigger
+import { ThemeToggleButton } from './ThemeToggleButton';
 
 export function CollegeDetailsNavbar() {
   const { collegeUser, logout, isLoadingCollegeUser } = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
-    await logout(); // Assuming logout clears collegeUser as well
+    await logout();
     router.push(Routes.collegeDetailsLogin);
   };
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between">
-        <Link href={Routes.collegeDetailsLogin} className="flex items-center gap-2">
-          <GraduationCap className="h-7 w-7 text-primary" />
-          <span className="text-xl font-bold text-primary">{AppConfig.appName} College Portal</span>
-        </Link>
-
+    <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
+      <div className="container flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-2">
+          <SidebarTrigger className="h-8 w-8" /> {/* Mobile Sidebar Trigger */}
+          <Link href={Routes.collegeDetailsLogin} className="flex items-center gap-1 md:hidden">
+            <GraduationCap className="h-6 w-6 text-primary" />
+            <span className="text-lg font-bold text-primary">{AppConfig.appName}</span>
+          </Link>
+        </div>
+        <div className="flex items-center gap-1">
+          <ThemeToggleButton />
           {isLoadingCollegeUser ? (
-            <div className="h-9 w-20 animate-pulse rounded-md bg-muted"></div>
+            <div className="h-8 w-16 animate-pulse rounded-md bg-muted"></div>
           ) : collegeUser ? (
-            <>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href={Routes.collegeDetailsDashboard}>
-                  <UserCircle className="mr-2 h-4 w-4" /> Dashboard
-                </Link>
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleLogout}>
-                <LogOut className="mr-2 h-4 w-4" /> Logout
-              </Button>
-            </>
+             <Button variant="ghost" size="icon" onClick={handleLogout} className="h-8 w-8">
+                <LogOut className="h-5 w-5" />
+             </Button>
           ) : (
-            <>
-              <Button variant="outline" size="sm" asChild>
-                <Link href={Routes.collegeDetailsLogin}>Login</Link>
-              </Button>
-              <Button size="sm" asChild>
-                <Link href={Routes.collegeDetailsSignup}>Sign Up</Link>
-              </Button>
-            </>
+            <Button variant="outline" size="sm" asChild className="h-8 px-3 text-xs">
+              <Link href={Routes.collegeDetailsLogin}>Login</Link>
+            </Button>
           )}
         </div>
       </div>
