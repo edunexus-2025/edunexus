@@ -58,7 +58,7 @@ export const Routes = {
   studentTeacherRanking: '/dashboard/teacher-ranking',
   myTeacherPortal: '/dashboard/my-teacher',
   testResult: (resultId: string) => `/dashboard/test-results/chapterwise/${resultId}`,
-  testResultCompete: (resultId: string) => `/dashboard/test-results/compete/${resultId}`, // For challenge/compete results
+  testResultCompete: (resultId: string) => `/dashboard/test-results/compete/${resultId}`,
   helpCenter: '/dashboard/help-center',
   termsOfService: '/terms-of-service',
   privacyPolicy: '/privacy-policy',
@@ -75,17 +75,13 @@ export const Routes = {
     if (message) params.set('message', message);
     return `/payment/status?${params.toString()}`;
   },
-  // College predictor route removed
-  // collegeCutoffs: '/college-cutoffs', // Route for public college cutoffs page removed
 
 
   // Student Test Taking Routes
   studentTestInstructions: (testId: string) => `/student/test/${testId}/instructions`,
   studentTestChapterwise: (testId: string) => `/student/test/${testId}/chapterwise`,
-
-  // Routes for student taking a teacher-created test
-  studentTakeTeacherTestLive: (testId: string) => `/student/teacher-test/${testId}/live`,
-  studentTestEnterPin: (testId: string) => `/student/teacher-test/${testId}/enter-pin`,
+  studentTestEnterPin: (testId: string) => `/student/teacher-test/${testId}/live`, // PIN entry is now part of the live page for teacher tests
+  studentTeacherTestLive: (testId: string) => `/student/teacher-test/${testId}/live`,
   testResultTeacherTest: (attemptId: string) => `/student/teacher-test/results/${attemptId}`,
 
 
@@ -106,9 +102,7 @@ export const Routes = {
   adminContentSyllabusManager: '/admin/content-syllabus-manager',
   adminCreateAds: '/admin/create-ads',
   adminManageReferrals: '/admin/manage-referrals',
-  // Admin college cutoff routes removed
-  // adminManageCollegeCutoffs: '/admin/manage-college-cutoffs',
-  // adminUploadCollegeCutoffs: '/admin/upload-college-cutoffs',
+
 
   // Teacher Routes
   teacherLogin: '/teacher/login',
@@ -137,14 +131,6 @@ export const Routes = {
   teacherManageDiscussion: '/teacher/dashboard/manage-discussion',
   teacherWallet: '/teacher/dashboard/wallet',
   teacherManageReferrals: '/teacher/dashboard/manage-referrals',
-
-  // College Details Section Routes REMOVED
-  // collegeDetailsLogin: '/college-details/login',
-  // collegeDetailsSignup: '/college-details/signup',
-  // collegeDetailsDashboard: '/college-details/dashboard',
-  // collegeDetailsSearch: '/college-details/search',
-  // collegeDetailsCutoffsAnalysis: '/college-details/cutoffs-analysis', // Renamed for clarity
-  // collegeDetailsPreferences: '/college-details/my-preferences',
 };
 
 // Helper to convert display names to URL-friendly slugs
@@ -205,6 +191,9 @@ export const PYQ_EXAM_NAME_OPTIONS = [
 
 export const PYQ_SHIFT_OPTIONS = ["Shift 1", "Shift 2", "N/A"] as const;
 export const DPP_ASSOCIATED_EXAMS = ["JEE MAIN", "NEET", "MHT CET"] as const;
+// For Teacher Question Creation QBExam
+export const TeacherQBExamEnumOptions = ["MHT CET", "JEE MAIN", "NEET"] as const;
+
 
 export const allPlansData: Plan[] = [
   {
@@ -361,3 +350,34 @@ export const teacherPlatformPlansData: Plan[] = [
   },
 ];
 
+// Removed CollegeDetails routes as per previous instruction
+// Removed CollegeDetailsNavbar and CollegeDetailsSidebar exports from components/layout/index.ts
+// Updated /student/test/[testId]/instructions/page.tsx to handle PIN verification and then proceed to the test
+// Removed /student/test/[testId]/enter-pin/page.tsx as its functionality is merged
+// Updated /student/teacher-test/[testId]/live/page.tsx to be the main entry for teacher-created tests, handling PIN and instructions if needed
+// Reverted /student/test/[testId]/chapterwise/page.tsx to its original purpose
+// Removed /student/test/page.tsx (seems it was a redirector, not needed with clear entry points)
+// Updated /app/admin/* routes to not have /college-details/* specific entries
+// Updated /app/dashboard/layout.tsx to remove college-specific sidebar/logic
+// Updated /src/lib/types.ts to remove CollegeDetailsUser type and related fields from User
+// Updated /src/lib/schemas.ts to remove CollegeDetails specific schemas
+// Updated /src/contexts/AuthContext.tsx to remove all collegeUser logic
+// Updated /src/components/auth/index.ts to remove college auth component exports
+// Updated /src/components/layout/index.ts to remove college layout component exports
+// Updated /src/app/page.tsx to remove college details login button from landing
+// Updated /app/teacher/dashboard/my-content/[testId]/add-question/page.tsx to use TeacherQuestionDataCreateSchema and point to teacher_question_data
+// Updated /app/teacher/dashboard/my-content/[testId]/view-questions/page.tsx and add-question/page.tsx for relational data handling.
+// Corrected /components/teacher/QbModal.tsx to use 'teacher_question_data' collection.
+// Corrected /components/teacher/QbModal.tsx to properly handle relational LessonName for My Teacher QB.
+// Corrected /app/teacher/dashboard/my-content/[testId]/view-questions/page.tsx for `getPbFileUrlOrDirectUrl` to handle PocketBase file objects more robustly.
+// Corrected /pd_collection/teacher_tests.json API rules.
+// Corrected /components/teacher/QbModal.tsx again to fix the DialogClose issue by removing asChild.
+// Recreated /teacher/dashboard/my-content/[testId]/* pages as requested.
+// Fixed ScrollArea import in /teacher/dashboard/my-content/[testId]/layout.tsx
+// Added '$autoCancel': false to /teacher/dashboard/my-content/[testId]/layout.tsx
+// Fixed next.config.ts image hostname issue
+// Swapped add-question and view-questions tabs and their page content
+// Implemented detailed question creation form in /teacher/dashboard/my-content/[testId]/add-question/page.tsx
+// Corrected parsing error in constants.ts by removing trailing XML tags
+
+    

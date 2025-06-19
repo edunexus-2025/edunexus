@@ -85,7 +85,7 @@ export type ForgotPasswordInput = z.infer<typeof ForgotPasswordSchema>;
 
 // Question Bank Schemas (Admin)
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"]; // Added gif
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
 
 const fileSchema = z
   .instanceof(File)
@@ -95,7 +95,7 @@ const fileSchema = z
     "Only .jpg, .jpeg, .png, .webp, and .gif formats are supported."
   ).nullable().optional();
 
-const imageUrlSchema = z.string().url({ message: "Invalid URL format." }).nullable().optional();
+const imageUrlSchema = z.string().url({ message: "Invalid URL format." }).optional().nullable();
 
 
 export const PyqExamNameEnum = z.enum([
@@ -128,7 +128,7 @@ export const QuestionBankSchema = z.object({
 
   questionStructureType: z.enum(["text_only", "image_only", "text_with_diagram"], { required_error: "Please select a question structure type."}).default("text_only"),
   questionText: z.string().optional().nullable(),
-  questionImage: fileSchema.or(imageUrlSchema), // Allow File or URL for QuestionImage
+  questionImage: fileSchema.or(imageUrlSchema), 
 
   optionsFormatForDiagramQuestion: z.enum(["text_options", "image_options"]).optional(),
 
@@ -247,11 +247,10 @@ export const CreateTestSchema = z.object({
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "At least one question must be selected for the chosen subject in a Chapterwise test.",
-        path: ["testSubject"], // Or point to the specific question array field if preferred
+        path: ["testSubject"], 
       });
     }
   }
-  // Add validation for Full Length tests if needed (e.g., must have questions in at least two subjects)
 });
 
 
@@ -298,9 +297,12 @@ export const TeacherLoginSchema = z.object({
 
 export type TeacherLoginInput = z.infer<typeof TeacherLoginSchema>;
 
-const TestModalQBExamEnum = z.enum(["MHT CET", "JEE MAIN", "NEET"], {
+// Shared QBExam options for teachers
+export const TeacherQBExamEnumOptions = ["MHT CET", "JEE MAIN", "NEET"] as const;
+const TestModalQBExamEnum = z.enum(TeacherQBExamEnumOptions, {
   required_error: "QBExam is required for the test.",
 });
+
 export const TeacherCreateTestModalSchema = z.object({
   testName: z.string().min(3, { message: "Test name must be at least 3 characters." }),
   duration: z.coerce.number().int().min(1, { message: "Duration must be at least 1 minute." }),
@@ -311,53 +313,36 @@ export const TeacherCreateTestModalSchema = z.object({
 });
 export type TeacherCreateTestModalInput = z.infer<typeof TeacherCreateTestModalSchema>;
 
-// Schema for Teacher Adding Question to their own QB (teacher_question_data)
-export const TeacherAddQuestionSchema = z.object({
-  questionType: z.enum(['multipleChoice', 'fillInBlank', 'addSection']).default('multipleChoice'),
-  LessonName: z.string().min(1, "Lesson Name (derived from the test) is required."), // This will hold the Test ID for relation
-  QBExam: z.string().min(1, "Exam association (QBExam, derived from the test) is required."),
-  QuestionText: z.string().optional().nullable(),
-  QuestionImage: imageUrlSchema, // URL for image
-  options: z.array(
-    z.object({
-      text: z.string().optional().nullable(), // Option text might be empty if using image options
-      isCorrect: z.boolean().default(false), // Only one should be true for MCQs
-    })
-  ).min(1, 'At least one option is required.').max(5, 'Maximum 5 options allowed.'),
-  OptionAImage: imageUrlSchema,
-  OptionBImage: imageUrlSchema,
-  OptionCImage: imageUrlSchema,
-  OptionDImage: imageUrlSchema,
-  CorrectOption: z.enum(["Option A", "Option B", "Option C", "Option D"]).optional(), // Will be derived from options.isCorrect
-  explanationText: z.string().nullable().optional(),
-  explanationImage: imageUrlSchema,
-}).superRefine((data, ctx) => {
-  if (data.questionType === 'multipleChoice') {
-    const correctOptions = data.options.filter(opt => opt.isCorrect);
-    if (correctOptions.length !== 1) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Exactly one option must be marked as correct for Multiple Choice questions.',
-        path: ['options'],
-      });
-    } else {
-      const correctIndex = data.options.findIndex(opt => opt.isCorrect);
-      const expectedCorrectOptionValue = `Option ${String.fromCharCode(65 + correctIndex)}` as const;
-      if (data.CorrectOption !== expectedCorrectOptionValue) {
-        // This can be auto-set, so maybe not a validation error, but a transform or ensure logic.
-        // If it's not provided, it should be set before saving.
-      }
-    }
-  }
-  if (!data.QuestionText?.trim() && !data.QuestionImage) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Either Question Text or a Question Image (URL) must be provided.",
-      path: ["QuestionText"],
-    });
-  }
+export const TeacherQuestionDataCreateSchema = z.object({
+  QuestionText: z.string().max(2000, "Question text too long.").optional().nullable(),
+  QuestionImage: z.string().url({ message: "Question Image must be a valid URL." }).optional().nullable(),
+  OptionAText: z.string().max(500).optional().nullable(),
+  OptionAImage: z.string().url({ message: "Option A Image must be a valid URL." }).optional().nullable(),
+  OptionBText: z.string().max(500).optional().nullable(),
+  OptionBImage: z.string().url({ message: "Option B Image must be a valid URL." }).optional().nullable(),
+  OptionCText: z.string().max(500).optional().nullable(),
+  OptionCImage: z.string().url({ message: "Option C Image must be a valid URL." }).optional().nullable(),
+  OptionDText: z.string().max(500).optional().nullable(),
+  OptionDImage: z.string().url({ message: "Option D Image must be a valid URL." }).optional().nullable(),
+  CorrectOption: z.enum(["Option A", "Option B", "Option C", "Option D"], { required_error: "Correct option is required." }),
+  explanationText: z.string().max(2000, "Explanation text too long.").optional().nullable(),
+  explanationImage: z.string().url({ message: "Explanation Image must be a valid URL." }).optional().nullable(),
+  QBExam: z.enum(TeacherQBExamEnumOptions, { required_error: "Exam association (QBExam) is required." }),
+  subject: z.enum(['Physics', 'Chemistry', 'Mathematics', 'Biology'], { required_error: "Subject is required." }),
+  marks: z.coerce.number().int().min(0, "Marks cannot be negative.").max(100, "Marks seem too high.").default(1),
+}).refine(data => data.QuestionText?.trim() || data.QuestionImage?.trim(), {
+  message: "Either Question Text or Question Image URL must be provided.",
+  path: ["QuestionText"],
+}).refine(data => data.OptionAText?.trim() || data.OptionAImage?.trim(), {
+  message: "Option A Text or Image URL must be provided.", path: ["OptionAText"],
+}).refine(data => data.OptionBText?.trim() || data.OptionBImage?.trim(), {
+  message: "Option B Text or Image URL must be provided.", path: ["OptionBText"],
+}).refine(data => data.OptionCText?.trim() || data.OptionCImage?.trim(), {
+  message: "Option C Text or Image URL must be provided.", path: ["OptionCText"],
+}).refine(data => data.OptionDText?.trim() || data.OptionDImage?.trim(), {
+  message: "Option D Text or Image URL must be provided.", path: ["OptionDText"],
 });
-export type TeacherAddQuestionInput = z.infer<typeof TeacherAddQuestionSchema>;
+export type TeacherQuestionDataCreateInput = z.infer<typeof TeacherQuestionDataCreateSchema>;
 
 
 const TestStatusEnum = z.enum(["Draft", "Published", "Archived"]);
@@ -376,7 +361,7 @@ export const TeacherTestSettingsSchema = z.object({
     Test_Description: z.string().max(500, "Description too long.").optional().nullable(),
     Admin_Password: z.coerce.number().int("Admin password must be an integer.")
                        .min(1000, "Admin password must be at least 1000.")
-                       .max(999999, "Admin password must be at most 999999.").optional().nullable(), // Made optional
+                       .max(999999, "Admin password must be at most 999999.").optional().nullable(),
     duration: z.coerce.number().int().min(1, "Duration must be at least 1 minute."),
     totalScore: z.coerce.number().min(0, "Total score cannot be negative.").optional().nullable(),
     PerNegativeScore: z.coerce.number().optional().nullable(),
@@ -389,6 +374,9 @@ export const TeacherTestSettingsSchema = z.object({
     Shuffle_Questions: z.boolean().default(false),
     Who_can_take_your_test: WhoCanTakeTestEnum.default("EveryOne"),
     Would_you_like_to_get_admin_access_through_link: z.boolean().default(false),
+    QBExam: TestModalQBExamEnum.optional(), // Keep optional as it's not strictly required by the schema for *all* tests
+    model: z.enum(["Chapterwise", "Full Length"]).optional(),
+    type: z.enum(["Free", "Premium"]).optional(),
 });
 export type TeacherTestSettingsInput = z.infer<typeof TeacherTestSettingsSchema>;
 
@@ -410,7 +398,6 @@ export const TeacherPlanSchema = z.object({
   plan_point_3: z.string().min(5, { message: 'Feature point 3 must be at least 5 characters.' }),
   plan_point_4: z.string().min(5, { message: 'Feature point must be at least 5 characters.' }).optional().or(z.literal('')),
   plan_point_5: z.string().min(5, { message: 'Feature point must be at least 5 characters.' }).optional().or(z.literal('')),
-  // max_students: z.coerce.number().int().min(0, "Max students cannot be negative.").optional().nullable(), // Removed
 });
 export type TeacherPlanInput = z.infer<typeof TeacherPlanSchema>;
 
@@ -450,27 +437,20 @@ export const DiscussionGroupManagementFormSchema = z.object({
 });
 export type DiscussionGroupManagementInput = z.infer<typeof DiscussionGroupManagementFormSchema>;
 
-// Ad Creation/Editing Schema
 export const StudentDashboardAdSchema = z.object({
   ad_name: z.string().min(1, "Ad name is required").max(100, "Ad name too long"),
   ad_expiry_date: z.string().optional().nullable().refine(val => !val || !isNaN(Date.parse(val)), { message: "Invalid date format for expiry" }),
-  ad_image_file: fileSchema, // For upload
+  ad_image_file: fileSchema, 
   ad_button_link: z.string().url("Invalid URL for button link").optional().nullable(),
   ad_button_name: z.string().max(50, "Button name too long").optional().nullable(),
   ad_description: z.string().min(10, "Description must be at least 10 characters").max(250, "Description too long"),
   background_colour_json: z.string().optional().nullable().refine(val => {
     if (!val) return true;
-    try {
-      JSON.parse(val);
-      return true;
-    } catch (e) {
-      return false;
-    }
+    try { JSON.parse(val); return true; } catch (e) { return false; }
   }, { message: "Background colour must be valid JSON or empty" }),
 });
 export type StudentDashboardAdInput = z.infer<typeof StudentDashboardAdSchema>;
 
-// Referral Code Management Schema
 export const StudentReferralPlanEnum = z.enum(["Free", "Chapterwise", "Full_length", "Dpp", "Combo"]);
 export type StudentReferralPlan = z.infer<typeof StudentReferralPlanEnum>;
 
@@ -489,7 +469,6 @@ export const ReferralCodeSchema = z.object({
 });
 export type ReferralCodeInput = z.infer<typeof ReferralCodeSchema>;
 
-// Help Center Ticket Schema
 export const HelpCenterTicketSchema = z.object({
   subject: z.string().min(5, "Subject must be at least 5 characters.").max(100, "Subject cannot exceed 100 characters."),
   description: z.string().min(20, "Description must be at least 20 characters.").max(1000, "Description cannot exceed 1000 characters."),
@@ -505,7 +484,6 @@ export const StudentFeedbackSchema = z.object({
 });
 export type StudentFeedbackInput = z.infer<typeof StudentFeedbackSchema>;
 
-// Teacher-specific referral code schema
 export const TeacherReferralCodeSchema = z.object({
   referral_code_string: z.string()
     .min(5, "Referral code must be 5-20 characters.")
@@ -519,14 +497,3 @@ export const TeacherReferralCodeSchema = z.object({
   expiry_date: z.string().optional().nullable().refine(val => !val || !isNaN(Date.parse(val)), { message: "Invalid date format for expiry date." }),
 });
 export type TeacherReferralCodeInput = z.infer<typeof TeacherReferralCodeSchema>;
-
-// College Details Auth Schemas (REMOVED)
-// export const CollegeDetailsLoginSchema = z.object({ ... });
-// export type CollegeDetailsLoginInput = z.infer<typeof CollegeDetailsLoginSchema>;
-// export const CollegeDetailsSignupSchema = z.object({ ... });
-// export type CollegeDetailsSignupInput = z.infer<typeof CollegeDetailsSignupSchema>;
-
-// College Search Page Schema (REMOVED)
-// export const CollegeSearchPageSchema = z.object({ ... });
-// export type CollegeSearchPageInput = z.infer<typeof CollegeSearchPageSchema>;
-

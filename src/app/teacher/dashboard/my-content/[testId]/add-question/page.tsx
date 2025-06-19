@@ -2,269 +2,327 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, ChangeEvent } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import pb from '@/lib/pocketbase';
 import type { RecordModel, ClientResponseError } from 'pocketbase';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from '@/components/ui/card';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, BookOpen, PlusCircle, Trash2, Eye as EyeIcon, Loader2, Info, MessageSquare } from 'lucide-react';
-import { QbModal } from '@/components/teacher/QbModal';
-import Link from 'next/link';
-import { Routes, escapeForPbFilter } from '@/lib/constants';
+import { TeacherQuestionDataCreateSchema } from '@/lib/schemas';
+import type { TeacherQuestionDataCreateInput } from '@/lib/schemas';
+import { AlertCircle, Loader2, Save, ImagePlus as ImageIcon, Trash2, BookOpen, FilePlus } from 'lucide-react';
+import { ImageImportModal } from '@/components/teacher/ImageImportModal';
 import NextImage from 'next/image';
-import 'katex/dist/katex.min.css';
-import { InlineMath, BlockMath } from 'react-katex';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Routes, TeacherQBExamEnumOptions } from '@/lib/constants'; // Import TeacherQBExamEnumOptions
 
-// Interface for how questions will be displayed on this page
-interface DisplayableQuestionSummary {
-  id: string;
-  textSnippet?: string | null;
-  imageUrl?: string | null; // This will be the resolved URL
-  source: 'EduNexus QB' | 'My QB';
-  difficulty?: string | null;
-  rawRecord: RecordModel; // Keep the original record for potential full view or other ops
-  // Fields specifically for PocketBase file URL construction from question_bank
-  collectionId?: string;
-  collectionName?: string;
-  questionImage_filename?: string | null; // Original filename if source is question_bank
-}
-
+// Helper to check if a string is a valid HTTP/S URL
 const isValidHttpUrl = (string: string | null | undefined): string is string => {
-  if (!string || typeof string !== 'string') return false;
-  try { const url = new URL(string); return url.protocol === "http:" || url.protocol === "https:"; }
-  catch (_) { return false; }
+  if (!string) return false;
+  try {
+    const url = new URL(string);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch (_) {
+    return false;
+  }
 };
 
-// Helper to get file URL, distinguishing between PB files and direct URLs
-const getPbFileUrlOrDirectUrl = (record: RecordModel | null | undefined, fieldName: string, isDirectUrlField: boolean = false): string | null => {
-    if (!record) return null;
-    if (!record[fieldName] || typeof record[fieldName] !== 'string') return null;
-    const fieldValue = (record[fieldName] as string).trim();
-    if (!fieldValue) return null;
+const subjectOptions: Array<TeacherQuestionDataCreateInput['subject']> = ['Physics', 'Chemistry', 'Mathematics', 'Biology'];
+const qbExamOptions: Array<TeacherQuestionDataCreateInput['QBExam']> = TeacherQBExamEnumOptions; // Use imported options
+const correctOptionSelect: Array<TeacherQuestionDataCreateInput['CorrectOption']> = ["Option A", "Option B", "Option C", "Option D"];
 
-    if (isDirectUrlField) {
-      if (isValidHttpUrl(fieldValue)) return fieldValue;
-      return null;
-    } else {
-      if (typeof record.id === 'string' && record.id.trim() !== '' &&
-          typeof record.collectionId === 'string' && record.collectionId.trim() !== '' &&
-          typeof record.collectionName === 'string' && record.collectionName.trim() !== '') {
-        try {
-          const minimalRecordForPb = { id: record.id, collectionId: record.collectionId, collectionName: record.collectionName, [fieldName]: fieldValue };
-          return pb.files.getUrl(minimalRecordForPb as RecordModel, fieldValue);
-        } catch (e) { console.warn(`AddQuestionPage: Error getting PB file URL for ${fieldName} in record ${record.id}:`, e); return null; }
-      }
-      console.error(`AddQuestionPage: CRITICAL - Missing collectionId/collectionName for PB file field '${fieldName}' in record ID '${record.id}'.`);
-      return null;
-    }
-};
 
-const renderLatexSnippet = (text: string | undefined | null, maxLength: number = 70): React.ReactNode => {
-  if (!text) return <span className="italic text-xs text-muted-foreground">No text.</span>;
-  const snippet = text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
-  const parts = snippet.split(/(\$\$[\s\S]*?\$\$|\$.*?\$|\\\(.*?\\\)|\\\[.*?\\\]|\\begin\{.*?\}[\s\S]*?\\end\{.*?\})/g);
-  return parts.map((part, index) => {
-    try {
-      if (part.startsWith('$$') && part.endsWith('$$') && part.length > 4) { return <BlockMath key={index} math={part.substring(2, part.length - 2)} />; }
-      if (part.startsWith('$') && part.endsWith('$') && part.length > 2) { return <InlineMath key={index} math={part.substring(1, part.length - 1)} />; }
-      if (part.startsWith('\\(') && part.endsWith('\\)')) { return <InlineMath key={index} math={part.substring(2, part.length - 2)} />; }
-      if (part.startsWith('\\[') && part.endsWith('\\]')) { return <BlockMath key={index} math={part.substring(2, part.length - 2)} />; }
-      if (part.startsWith('\\begin{') && part.includes('\\end{')) { const envMatch = part.match(/^\\begin\{(.*?)\}/); if (envMatch && ['equation', 'align', 'gather', 'matrix', 'pmatrix', 'bmatrix', 'vmatrix', 'Vmatrix', 'cases', 'array', 'subequations'].includes(envMatch[1])) { return <BlockMath key={index} math={part} /> }}
-    } catch (e) { return <span key={index} className="text-destructive text-xs" title="LaTeX Error">{part}</span>; }
-    return <span key={index} className="text-xs">{part}</span>;
-  });
-};
-
-export default function TeacherAddQuestionToTestPage() {
+export default function TeacherCreateQuestionForTestPage() {
   const params = useParams();
   const { teacher } = useAuth();
   const { toast } = useToast();
   const testId = typeof params.testId === 'string' ? params.testId : '';
   const router = useRouter();
 
+  const [isLoadingTestName, setIsLoadingTestName] = useState(true);
   const [testName, setTestName] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isQbModalOpen, setIsQbModalOpen] = useState(false);
-  const [currentDisplayableQuestions, setCurrentDisplayableQuestions] = useState<DisplayableQuestionSummary[]>([]);
 
-  const fetchTestAndQuestionDetails = useCallback(async (isMountedGetter: () => boolean) => {
-    if (!testId || !teacher?.id) { if (isMountedGetter()) { setIsLoading(false); setError(testId ? "Teacher not authenticated." : "Test ID missing."); } return; }
-    if (isMountedGetter()) setIsLoading(true);
+  const [isImageImportModalOpen, setIsImageImportModalOpen] = useState(false);
+  const [imageTargetField, setImageTargetField] = useState<keyof TeacherQuestionDataCreateInput | null>(null);
+  
+  const [imagePreviews, setImagePreviews] = useState<Partial<Record<keyof TeacherQuestionDataCreateInput, string | null>>>({
+    QuestionImage: null, OptionAImage: null, OptionBImage: null, OptionCImage: null, OptionDImage: null, explanationImage: null,
+  });
 
-    try {
-      const fetchedTest = await pb.collection('teacher_tests').getOne(testId, {
-        fields: 'id,testName,teacherId,questions_edunexus,questions_teachers,QBExam,expand.questions_edunexus.id,expand.questions_edunexus.questionText,expand.questions_edunexus.questionImage,expand.questions_edunexus.difficulty,expand.questions_edunexus.collectionId,expand.questions_edunexus.collectionName,expand.questions_teachers.id,expand.questions_teachers.QuestionText,expand.questions_teachers.QuestionImage,expand.questions_teachers.CorrectOption,expand.questions_teachers.difficulty,expand.questions_teachers.subject,expand.questions_teachers.LessonName,expand.questions_teachers.marks',
-        expand: 'questions_edunexus,questions_teachers',
-      });
+  const form = useForm<TeacherQuestionDataCreateInput>({
+    resolver: zodResolver(TeacherQuestionDataCreateSchema),
+    defaultValues: {
+      QuestionText: '', QuestionImage: null,
+      OptionAText: '', OptionAImage: null,
+      OptionBText: '', OptionBImage: null,
+      OptionCText: '', OptionCImage: null,
+      OptionDText: '', OptionDImage: null,
+      CorrectOption: "Option A",
+      explanationText: '', explanationImage: null,
+      QBExam: undefined, 
+      subject: undefined,
+      marks: 1,
+    },
+  });
 
-      if (!isMountedGetter()) return;
-      if (fetchedTest.teacherId !== teacher.id) { if (isMountedGetter()) { setError("Unauthorized to manage this test."); setIsLoading(false); } return; }
-      setTestName(fetchedTest.testName || 'Untitled Test');
-
-      const combinedQuestions: DisplayableQuestionSummary[] = [];
-
-      (fetchedTest.expand?.questions_edunexus || []).forEach((q: RecordModel) => {
-        combinedQuestions.push({
-          id: q.id,
-          textSnippet: q.questionText,
-          imageUrl: getPbFileUrlOrDirectUrl(q, 'questionImage', false),
-          source: 'EduNexus QB',
-          difficulty: q.difficulty,
-          rawRecord: q,
-          collectionId: q.collectionId,
-          collectionName: q.collectionName,
-          questionImage_filename: q.questionImage,
-        });
-      });
-
-      (fetchedTest.expand?.questions_teachers || []).forEach((q: RecordModel) => {
-        combinedQuestions.push({
-          id: q.id,
-          textSnippet: q.QuestionText,
-          imageUrl: getPbFileUrlOrDirectUrl(q, 'QuestionImage', true),
-          source: 'My QB',
-          difficulty: q.difficulty || (q.CorrectOption ? q.CorrectOption.replace("Option ", "") : 'N/A'),
-          rawRecord: q,
-        });
-      });
-      if (isMountedGetter()) setCurrentDisplayableQuestions(combinedQuestions);
-
-    } catch (err: any) { if (isMountedGetter()) { const clientError = err as ClientResponseError; if (clientError?.isAbort || (clientError?.name === 'ClientResponseError' && clientError?.status === 0)) { console.warn('AddQuestionPage: Fetch test/question details request was cancelled.'); } else { console.error("Error fetching test/question details:", clientError.data || clientError); setError("Could not load test or question details. Ensure API rules for 'question_bank' and 'teacher_question_data' allow access and test data is correctly linked."); } } }
-    finally { if (isMountedGetter()) setIsLoading(false); }
-  }, [testId, teacher?.id]);
-
-  useEffect(() => { let isMounted = true; fetchTestAndQuestionDetails(() => isMounted); return () => { isMounted = false; }; }, [fetchTestAndQuestionDetails]);
-
-  const handleQuestionSelectFromModal = async (questionId: string) => {
-    if (!testId || !teacher?.id) return;
-    setIsUpdating(true);
-
-    let sourceCollectionName: 'question_bank' | 'teacher_question_data' | null = null;
-    let questionDataForDisplay: Partial<DisplayableQuestionSummary> = { id: questionId, source: 'EduNexus QB' };
-
-    try {
-        const qbRecord = await pb.collection('question_bank').getOne(questionId, {fields: 'id,questionText,questionImage,difficulty,collectionId,collectionName'});
-        sourceCollectionName = 'question_bank';
-        questionDataForDisplay = {
-          id: qbRecord.id, textSnippet: qbRecord.questionText, imageUrl: getPbFileUrlOrDirectUrl(qbRecord, 'questionImage', false),
-          source: 'EduNexus QB', difficulty: qbRecord.difficulty, rawRecord: qbRecord,
-          collectionId: qbRecord.collectionId, collectionName: qbRecord.collectionName, questionImage_filename: qbRecord.questionImage
-        };
-    } catch (qbError) {
-        try {
-            const tqdRecord = await pb.collection('teacher_question_data').getOne(questionId, {fields: 'id,QuestionText,QuestionImage,CorrectOption,difficulty'});
-            sourceCollectionName = 'teacher_question_data';
-            questionDataForDisplay = {
-              id: tqdRecord.id, textSnippet: tqdRecord.QuestionText, imageUrl: getPbFileUrlOrDirectUrl(tqdRecord, 'QuestionImage', true),
-              source: 'My QB', difficulty: tqdRecord.difficulty || (tqdRecord.CorrectOption ? 'Ans: ' + tqdRecord.CorrectOption.replace("Option ","") : 'N/A'), rawRecord: tqdRecord
-            };
-        } catch (tqdError) { toast({title: "Error", description: "Selected question not found in any bank.", variant: "destructive"}); setIsUpdating(false); return; }
+  const fetchParentTestDetails = useCallback(async (isMountedGetter: () => boolean) => {
+    if (!testId || !teacher?.id) { 
+      if (isMountedGetter()) { setIsLoadingTestName(false); setError(testId ? "Auth error." : "Test ID missing."); }
+      return;
     }
-
-    if (!sourceCollectionName) { toast({title: "Error", description: "Could not determine question source.", variant: "destructive"}); setIsUpdating(false); return; }
-
-    const fieldToUpdate = sourceCollectionName === 'question_bank' ? 'questions_edunexus' : 'questions_teachers';
-    const alreadyAdded = currentDisplayableQuestions.some(q => q.id === questionId);
-
-    if (alreadyAdded) { toast({ title: "Already Added", description: "This question is already in the test.", variant: "default" }); setIsUpdating(false); return; }
-
+    if (isMountedGetter()) setIsLoadingTestName(true);
     try {
-      await pb.collection('teacher_tests').update(testId, { [`${fieldToUpdate}+`]: questionId });
-      toast({ title: "Question Added", description: `Question from ${questionDataForDisplay.source} added to "${testName}".` });
-      setCurrentDisplayableQuestions(prev => [...prev, questionDataForDisplay as DisplayableQuestionSummary]);
-    } catch (error: any) { toast({ title: "Error Adding Question", description: error.data?.message || error.message || "Could not add question.", variant: "destructive" });
-    } finally { setIsUpdating(false); }
+      const record = await pb.collection('teacher_tests').getOne(testId, { fields: 'id,testName,teacherId,QBExam' });
+      if (!isMountedGetter()) return;
+      if (record.teacherId !== teacher.id) { 
+        if (isMountedGetter()) { setError("Unauthorized to add questions to this test."); setIsLoadingTestName(false); }
+        return; 
+      }
+      setTestName(record.testName || 'Untitled Test');
+      const qbExamFromTest = record.QBExam as TeacherQuestionDataCreateInput['QBExam'];
+      if (qbExamFromTest && qbExamOptions.includes(qbExamFromTest)) {
+        form.setValue('QBExam', qbExamFromTest);
+      }
+    } catch (err) { 
+      if (isMountedGetter()) {
+        console.error("Error fetching parent test details for add question page:", err);
+        setError("Could not load context for adding questions.");
+      }
+    } finally { 
+      if (isMountedGetter()) setIsLoadingTestName(false);
+    }
+  }, [testId, teacher?.id, form]);
+
+  useEffect(() => { 
+    let isMounted = true; 
+    fetchParentTestDetails(() => isMounted);
+    return () => { isMounted = false; };
+  }, [fetchParentTestDetails]);
+
+  const openImageModalFor = (targetField: keyof TeacherQuestionDataCreateInput) => {
+    setImageTargetField(targetField);
+    setIsImageImportModalOpen(true);
+  };
+
+  const handleImageAssignFromModal = (imageUrl: string | null) => {
+    if (imageTargetField && imageUrl) {
+      form.setValue(imageTargetField, imageUrl as any); 
+      setImagePreviews(prev => ({ ...prev, [imageTargetField]: imageUrl }));
+      toast({ title: "Image URL Set", description: "URL from library has been set to the field." });
+    } else if (imageTargetField && imageUrl === null) { 
+      form.setValue(imageTargetField, null);
+      setImagePreviews(prev => ({ ...prev, [imageTargetField]: null }));
+    }
+    setIsImageImportModalOpen(false);
+    setImageTargetField(null);
   };
   
-  const handleRemoveQuestionFromTest = async (questionId: string, source: 'EduNexus QB' | 'My QB') => {
-    if (!testId || !questionId) return;
-    if (!confirm("Are you sure you want to remove this question from the test?")) return;
-    setIsUpdating(true);
-    const fieldToUpdate = source === 'EduNexus QB' ? 'questions_edunexus' : 'questions_teachers';
-    try {
-        await pb.collection('teacher_tests').update(testId, { [`${fieldToUpdate}-`]: questionId });
-        toast({ title: "Question Removed" });
-        setCurrentDisplayableQuestions(prev => prev.filter(q => q.id !== questionId));
-    } catch (error: any) { toast({ title: "Error Removing Question", description: error.message, variant: "destructive" });
-    } finally { setIsUpdating(false); }
+  const removeImagePreview = (fieldKey: keyof TeacherQuestionDataCreateInput) => {
+    form.setValue(fieldKey, null);
+    setImagePreviews(prev => ({...prev, [fieldKey]: null}));
   };
 
-  if (isLoading) { return ( <div className="p-6 space-y-4"><Skeleton className="h-8 w-3/4 mb-2" /><Skeleton className="h-10 w-40 mb-4" /><Skeleton className="h-20 w-full mb-4" /><Skeleton className="h-64 w-full" /></div> ); }
-  if (error) { return ( <Card className="text-center border-destructive bg-destructive/10 p-6"><AlertCircle className="mx-auto h-10 w-10 text-destructive mb-3" /><CardTitle className="text-destructive">Error</CardTitle><CardDescription className="text-destructive/80 whitespace-pre-wrap">{error}</CardDescription></Card> ); }
+  const handleUrlInputChange = (fieldKey: keyof TeacherQuestionDataCreateInput, url: string) => {
+    const trimmedUrl = url.trim();
+    form.setValue(fieldKey, trimmedUrl === '' ? null : trimmedUrl);
+    if (isValidHttpUrl(trimmedUrl)) {
+      setImagePreviews(prev => ({ ...prev, [fieldKey]: trimmedUrl }));
+    } else {
+      setImagePreviews(prev => ({ ...prev, [fieldKey]: null }));
+    }
+  };
+
+  const onSubmit = async (values: TeacherQuestionDataCreateInput) => {
+    if (!teacher?.id || !testId || !testName) {
+      toast({ title: "Error", description: "Missing teacher, test ID, or test name context.", variant: "destructive" });
+      return;
+    }
+    setIsSubmitting(true);
+    
+    const dataForTeacherQb: any = {
+      teacher: teacher.id,
+      LessonName: testId, 
+      QuestionText: values.QuestionText || null,
+      QuestionImage: isValidHttpUrl(values.QuestionImage) ? values.QuestionImage : null,
+      OptionAText: values.OptionAText || null,
+      OptionAImage: isValidHttpUrl(values.OptionAImage) ? values.OptionAImage : null,
+      OptionBText: values.OptionBText || null,
+      OptionBImage: isValidHttpUrl(values.OptionBImage) ? values.OptionBImage : null,
+      OptionCText: values.OptionCText || null,
+      OptionCImage: isValidHttpUrl(values.OptionCImage) ? values.OptionCImage : null,
+      OptionDText: values.OptionDText || null,
+      OptionDImage: isValidHttpUrl(values.OptionDImage) ? values.OptionDImage : null,
+      CorrectOption: values.CorrectOption,
+      explanationText: values.explanationText || null,
+      explanationImage: isValidHttpUrl(values.explanationImage) ? values.explanationImage : null,
+      QBExam: values.QBExam, 
+      subject: values.subject, 
+      marks: values.marks ? Number(values.marks) : 1,
+    };
+
+    try {
+      const newQuestionRecord = await pb.collection('teacher_question_data').create(dataForTeacherQb);
+      await pb.collection('teacher_tests').update(testId, { "questions_teachers+": newQuestionRecord.id });
+
+      toast({ title: "Question Created & Added", description: `New question added to your QB and linked to "${testName}".` });
+      const keptQBExam = form.getValues('QBExam'); // Keep current QBExam
+      const keptSubject = form.getValues('subject'); // Keep current subject
+      form.reset({ 
+          QuestionText: '', QuestionImage: null,
+          OptionAText: '', OptionAImage: null, OptionBText: '', OptionBImage: null,
+          OptionCText: '', OptionCImage: null, OptionDText: '', OptionDImage: null,
+          CorrectOption: "Option A", 
+          explanationText: '', explanationImage: null,
+          QBExam: keptQBExam, 
+          subject: keptSubject, 
+          marks: 1,
+      });
+      setImagePreviews({ QuestionImage: null, OptionAImage: null, OptionBImage: null, OptionCImage: null, OptionDImage: null, explanationImage: null, });
+    } catch (error: any) {
+      console.error("Error creating/linking question:", error.data?.data || error.response || error);
+      const specificErrors = error.data?.data;
+      let errorMessages = "Could not save the question. ";
+      if (specificErrors && typeof specificErrors === 'object') {
+        errorMessages += Object.entries(specificErrors).map(([key, val]: [string, any]) => `${key}: ${val.message}`).join('; ');
+      } else {
+        errorMessages += error.data?.message || error.message || "Unknown error.";
+      }
+      toast({ title: "Save Failed", description: errorMessages, variant: "destructive", duration: 9000 });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  const renderImageFieldWithModal = (fieldName: keyof CreateTeacherQuestionFormInput, label: string) => (
+    <FormField
+      control={form.control}
+      name={fieldName}
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel className="flex items-center gap-1 text-xs text-muted-foreground">{label}</FormLabel>
+          <div className="flex items-center gap-1.5">
+            <FormControl>
+              <Input
+                type="url"
+                placeholder="Image URL or Upload"
+                value={(field.value as string) || ''}
+                onChange={(e) => handleUrlInputChange(fieldName, e.target.value)}
+                className="h-8 text-xs flex-grow bg-background dark:bg-slate-800"
+              />
+            </FormControl>
+            <Button type="button" variant="outline" size="icon" onClick={() => openImageModalFor(fieldName)} className="h-8 w-8 text-xs px-2 py-1 flex-shrink-0">
+              <ImageIcon className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+          {imagePreviews[fieldName] && isValidHttpUrl(imagePreviews[fieldName]) && (
+            <div className="mt-1 p-1 border rounded-md bg-muted/30 w-24 h-16 relative">
+              <NextImage src={imagePreviews[fieldName]!} alt={`${label} Preview`} layout="fill" objectFit="contain" className="rounded" data-ai-hint="question preview"/>
+              <Button type="button" variant="ghost" size="icon" onClick={() => removeImagePreview(fieldName)} className="absolute -top-1 -right-1 h-4 w-4 p-0 text-destructive hover:bg-destructive/10 rounded-full"><Trash2 size={10} /></Button>
+            </div>
+          )}
+          <FormMessage className="text-xs"/>
+        </FormItem>
+      )}
+    />
+  );
+
+  if (isLoadingTestName) { return (<div className="p-6 space-y-4"><Skeleton className="h-8 w-3/4 mb-2" /><Skeleton className="h-64 w-full" /></div>); }
+  if (error) { return (<Card className="text-center border-destructive bg-destructive/10 p-6"><AlertCircle className="mx-auto h-10 w-10 text-destructive mb-3" /><CardTitle className="text-destructive">Error</CardTitle><CardDescription className="text-destructive/80">{error}</CardDescription></Card>); }
 
   return (
-    <div className="p-4 md:p-6">
+    <div className="p-2 sm:p-4 md:p-6">
       <CardHeader className="px-0 pb-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <CardTitle className="text-xl font-semibold flex items-center gap-2">
-            <PlusCircle className="h-5 w-5 text-primary"/> Add Questions to: {testName}
-          </CardTitle>
-          <Button onClick={() => setIsQbModalOpen(true)} disabled={isUpdating} size="sm">
-            <BookOpen className="mr-2 h-4 w-4" /> Browse Question Banks
-          </Button>
-        </div>
-        <CardDescription className="text-sm text-muted-foreground mt-1">
-          Questions added: <span className="font-medium text-foreground">{currentDisplayableQuestions.length}</span>.
+        <CardTitle className="text-xl font-semibold flex items-center gap-2">
+          <FilePlus className="h-5 w-5 text-primary"/> Create New Question for: <span className="text-primary truncate">{testName}</span>
+        </CardTitle>
+        <CardDescription>
+          This question will be saved to your "My Teacher QB" and added to this test.
         </CardDescription>
       </CardHeader>
+      <CardContent className="px-0">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            
+            <Card className="p-4 shadow-sm border bg-card">
+              <CardHeader className="p-0 pb-3"><CardTitle className="text-base font-medium">Question Details</CardTitle></CardHeader>
+              <CardContent className="p-0 space-y-3">
+                <FormField control={form.control} name="QuestionText" render={({ field }) => (<FormItem><FormLabel className="text-sm">Question Text (Supports LaTeX: $...$ or $$...$$)</FormLabel><FormControl><Textarea placeholder="Type question..." {...field} value={field.value ?? ''} rows={4} className="text-sm bg-background dark:bg-slate-800"/></FormControl><FormMessage /></FormItem>)}/>
+                {renderImageFieldWithModal("QuestionImage", "Question Image (Optional)")}
+              </CardContent>
+            </Card>
 
-      <CardContent className="space-y-4 px-0">
-        <Card className="p-3 border-dashed bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700">
-            <div className="flex items-start gap-2">
-                <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0"/>
-                <div>
-                    <p className="text-xs font-medium text-blue-700 dark:text-blue-300">How to Add Questions:</p>
-                    <ol className="list-decimal list-inside text-xs text-blue-600/90 dark:text-blue-300/90 space-y-0.5 mt-1">
-                        <li>Click "Browse Question Banks".</li>
-                        <li>Select "My Teacher QB" (your questions) or "EduNexus QB" (if Pro plan).</li>
-                        <li>Filter by Exam and Lesson/Test Name.</li>
-                        <li>Click "Select" on desired questions. They will appear below.</li>
-                    </ol>
-                </div>
-            </div>
-        </Card>
-
-        {currentDisplayableQuestions.length === 0 ? (
-          <div className="text-center py-10 border-2 border-dashed rounded-lg mt-4 bg-card">
-            <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
-            <p className="text-muted-foreground">No questions added yet. Click "Browse Question Banks" to start.</p>
-          </div>
-        ) : (
-          <ScrollArea className="max-h-[calc(100vh-450px)] pr-2 mt-4">
-            <div className="space-y-2">
-              {currentDisplayableQuestions.map((q, index) => (
-                <Card key={`${q.id}-${q.source}`} className="p-2.5 flex items-center justify-between gap-2 bg-card hover:shadow-sm">
-                  <div className="flex items-start gap-2 flex-grow min-w-0">
-                    <span className="text-xs font-medium text-muted-foreground pt-0.5">{index + 1}.</span>
-                    <div className="min-w-0">
-                      {q.imageUrl && ( <div className="mb-1 w-16 h-10 relative"> <NextImage src={q.imageUrl} alt="Q thumb" layout="fill" objectFit="contain" className="rounded border bg-muted" data-ai-hint="preview"/></div> )}
-                      <div className="text-xs text-foreground line-clamp-2 prose prose-xs dark:prose-invert max-w-none"> {renderLatexSnippet(q.textSnippet, 120)} </div>
-                      <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1.5">
-                        <span><Badge variant="outline" className="px-1 py-0 text-[9px]">{q.source}</Badge></span>
-                        {q.difficulty && <Badge variant="outline" className="px-1 py-0 text-[9px]">{q.difficulty}</Badge>}
-                      </div>
-                    </div>
-                  </div>
-                  <Button variant="ghost" size="icon" onClick={() => handleRemoveQuestionFromTest(q.id, q.source)} disabled={isUpdating} className="text-destructive hover:bg-destructive/10 h-7 w-7 flex-shrink-0" aria-label="Remove question">
-                    {isUpdating ? <Loader2 className="h-3.5 w-3.5 animate-spin"/> : <Trash2 size={13} />}
-                  </Button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {(['A', 'B', 'C', 'D'] as const).map(optChar => (
+                <Card key={optChar} className="p-3 shadow-sm border bg-card">
+                  <CardHeader className="p-0 pb-2"><CardTitle className="text-sm font-medium">Option {optChar} *</CardTitle></CardHeader>
+                  <CardContent className="p-0 space-y-2">
+                    <FormField control={form.control} name={`Option${optChar}Text` as keyof CreateTeacherQuestionFormInput} render={({ field }) => (<FormItem><FormLabel className="text-xs">Text (LaTeX)</FormLabel><FormControl><Textarea placeholder={`Option ${optChar} text`} {...field} value={field.value ?? ''} rows={2} className="text-xs min-h-[38px] bg-background dark:bg-slate-800"/></FormControl><FormMessage className="text-xs"/></FormItem>)}/>
+                    {renderImageFieldWithModal(`Option${optChar}Image` as keyof CreateTeacherQuestionFormInput, "Image (Optional)")}
+                  </CardContent>
                 </Card>
               ))}
             </div>
-          </ScrollArea>
-        )}
+            
+            <Card className="p-4 shadow-sm border bg-card">
+              <CardHeader className="p-0 pb-3"><CardTitle className="text-base font-medium">Answer & Explanation</CardTitle></CardHeader>
+              <CardContent className="p-0 space-y-3">
+                <FormField control={form.control} name="CorrectOption" render={({ field }) => (<FormItem><FormLabel className="text-sm">Correct Option *</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-9 text-sm bg-background dark:bg-slate-800"><SelectValue placeholder="Select correct answer" /></SelectTrigger></FormControl><SelectContent>{correctOptionSelect.map(val => (<SelectItem key={val} value={val}>{val}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)}/>
+                <FormField control={form.control} name="explanationText" render={({ field }) => (<FormItem><FormLabel className="text-sm">Explanation Text (Optional, LaTeX)</FormLabel><FormControl><Textarea placeholder="Detailed explanation..." {...field} value={field.value ?? ''} rows={3} className="text-sm bg-background dark:bg-slate-800"/></FormControl><FormMessage /></FormItem>)}/>
+                {renderImageFieldWithModal("explanationImage", "Explanation Image (Optional)")}
+              </CardContent>
+            </Card>
+
+            <Card className="p-4 shadow-sm border bg-card">
+              <CardHeader className="p-0 pb-3"><CardTitle className="text-base font-medium">Categorization & Marks</CardTitle></CardHeader>
+              <CardContent className="p-0 grid grid-cols-1 md:grid-cols-3 gap-4">
+                 <FormField control={form.control} name="QBExam" render={({ field }) => (<FormItem><FormLabel className="text-sm">Exam Association *</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-9 text-sm bg-background dark:bg-slate-800"><SelectValue placeholder="Select Exam" /></SelectTrigger></FormControl><SelectContent>{qbExamOptions.map(val => (<SelectItem key={val} value={val}>{val}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)}/>
+                 <FormField control={form.control} name="subject" render={({ field }) => (<FormItem><FormLabel className="text-sm">Subject *</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-9 text-sm bg-background dark:bg-slate-800"><SelectValue placeholder="Select Subject" /></SelectTrigger></FormControl><SelectContent>{subjectOptions.map(val => (<SelectItem key={val} value={val}>{val}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)}/>
+                 <FormField control={form.control} name="marks" render={({ field }) => (<FormItem><FormLabel className="text-sm">Marks *</FormLabel><FormControl><Input type="number" placeholder="e.g., 1" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value,10))} className="h-9 text-sm bg-background dark:bg-slate-800"/></FormControl><FormMessage /></FormItem>)}/>
+              </CardContent>
+            </Card>
+            
+            <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting ? 'Saving Question...' : 'Save Question & Add to This Test'}
+            </Button>
+          </form>
+        </Form>
       </CardContent>
-      <QbModal isOpen={isQbModalOpen} onOpenChange={setIsQbModalOpen} onQuestionSelect={handleQuestionSelectFromModal} />
+       <ImageImportModal
+        isOpen={isImageImportModalOpen}
+        onOpenChange={setIsImageImportModalOpen}
+        onImageAssign={handleImageAssignFromModal}
+        currentImageTargetField={imageTargetField as string}
+      />
     </div>
   );
 }
-    
-    
-    
