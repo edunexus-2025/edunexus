@@ -91,14 +91,13 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
-      // Add the problematic Replit hostname that is causing the error IF it's still needed for some old data
-      // For now, we'll assume it's not needed and should be removed as per user's intent for a single source URL.
-      // {
-      //   protocol: 'https',
-      //   hostname: 'f3605bbf-1d05-4292-9f0b-d3cd0ac21935-00-2eeov1wweb7qq.sisko.replit.dev',
-      //   port: '',
-      //   pathname: '/api/files/**', 
-      // },
+      // Re-adding the problematic Replit hostname that is causing the error
+      {
+        protocol: 'https',
+        hostname: 'f3605bbf-1d05-4292-9f0b-d3cd0ac21935-00-2eeov1wweb7qq.sisko.replit.dev',
+        port: '',
+        pathname: '/api/files/**', 
+      },
       {
         protocol: 'https',
         hostname: '9000-firebase-studio-1748410223729.cluster-ancjwrkgr5dvux4qug5rbzyc2y.cloudworkstations.dev',
