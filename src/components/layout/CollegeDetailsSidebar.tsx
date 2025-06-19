@@ -43,14 +43,15 @@ import {
   Settings,
   LogOut,
   UserCircle,
+  Search as SearchIcon, // Renamed to avoid conflict if Search is used elsewhere
 } from 'lucide-react';
 import { ThemeToggleButton } from './ThemeToggleButton';
 import { buttonVariants } from '../ui/button';
 
 const collegePortalNavItems = [
   { href: Routes.collegeDetailsDashboard, label: 'Dashboard', icon: <LayoutDashboard /> },
-  { href: Routes.collegeDetailsSearch || '#', label: 'College Search', icon: <GraduationCap /> }, // Placeholder href if not defined
-  { href: Routes.collegeDetailsCutoffs || '#', label: 'Cutoff Analysis', icon: <ListChecks /> },
+  { href: Routes.collegeDetailsSearch, label: 'College Search', icon: <SearchIcon /> },
+  // { href: Routes.collegeDetailsCutoffs || '#', label: 'Cutoff Analysis', icon: <ListChecks /> }, // Removed Cutoff Analysis
   { href: Routes.collegeDetailsPreferences || '#', label: 'My Preferences', icon: <Heart /> },
 ];
 

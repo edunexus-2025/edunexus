@@ -76,6 +76,7 @@ export const Routes = {
     if (message) params.set('message', message);
     return `/payment/status?${params.toString()}`;
   },
+  collegePredictor: '/college-predictor', // New route for college predictor
 
 
   // Student Test Taking Routes
@@ -140,10 +141,10 @@ export const Routes = {
   collegeDetailsLogin: '/college-details/login',
   collegeDetailsSignup: '/college-details/signup',
   collegeDetailsDashboard: '/college-details/dashboard',
-  collegeDetailsSearch: '/college-details/search', // Placeholder
-  collegeDetailsCutoffs: '/college-details/cutoffs-analysis', // Placeholder
-  collegeDetailsPreferences: '/college-details/my-preferences', // Placeholder
-  // collegeDetailsSettings: '/college-details/settings', // Placeholder if needed
+  collegeDetailsSearch: '/college-details/search',
+  collegeDetailsCutoffs: '/college-details/cutoffs-analysis', 
+  collegeDetailsPreferences: '/college-details/my-preferences', 
+  // collegeDetailsSettings: '/college-details/settings', 
 };
 
 // Helper to convert display names to URL-friendly slugs
@@ -361,3 +362,4 @@ export const teacherPlatformPlansData: Plan[] = [
 ];
 
     
+

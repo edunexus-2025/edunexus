@@ -7,7 +7,7 @@ import { AppLogo } from './AppLogo';
 import { Routes, AppConfig } from '@/lib/constants';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
-import { ArrowLeft, GraduationCap, Lightbulb } from 'lucide-react';
+import { ArrowLeft, GraduationCap, Lightbulb, Search } from 'lucide-react'; // Added Search
 
 interface NavbarProps {}
 
@@ -51,9 +51,14 @@ export function Navbar({}: NavbarProps) {
           <AppLogo mainTextSize="text-xl" taglineTextSize="text-[10px]" iconSize={24} /> {/* Adjusted logo sizes */}
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
-          <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex h-9">
+           <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex h-9">
               <Link href={Routes.collegePredictor} className="flex items-center gap-1">
-                  <Lightbulb className="h-4 w-4"/> College Predictor
+                  <Search className="h-4 w-4"/> College Predictor
+              </Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex h-9">
+              <Link href={Routes.collegeDetailsLogin} className="flex items-center gap-1"> {/* Changed from collegePredictor to collegeDetailsLogin */}
+                  <GraduationCap className="h-4 w-4"/> College Details
               </Link>
           </Button>
           {effectiveLoading ? (

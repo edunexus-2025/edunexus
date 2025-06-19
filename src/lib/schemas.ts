@@ -247,10 +247,11 @@ export const CreateTestSchema = z.object({
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "At least one question must be selected for the chosen subject in a Chapterwise test.",
-        path: ["testSubject"],
+        path: ["testSubject"], // Or point to the specific question array field if preferred
       });
     }
   }
+  // Add validation for Full Length tests if needed (e.g., must have questions in at least two subjects)
 });
 
 
@@ -538,3 +539,20 @@ export const CollegeDetailsSignupSchema = z.object({
   path: ['confirmPassword'],
 });
 export type CollegeDetailsSignupInput = z.infer<typeof CollegeDetailsSignupSchema>;
+
+
+// College Search Page Schema
+export const CollegeSearchPageSchema = z.object({
+  examName: z.string({ required_error: "Target exam is required."}).min(1, "Target exam is required."),
+  percentile: z.coerce.number({ invalid_type_error: "Percentile must be a number.", required_error: "Percentile is required."})
+    .min(0, "Percentile must be between 0 and 100.")
+    .max(100, "Percentile must be between 0 and 100."),
+  category: z.string({ required_error: "Category is required."}).min(1, "Category is required."),
+  branch: z.string({ required_error: "Branch is required."}).min(1, "Branch is required.").max(100, "Branch name is too long."),
+  region: z.string().max(100, "Region/District name is too long.").optional().nullable(),
+  academicYear: z.coerce.number({ required_error: "Academic year is required.", invalid_type_error: "Academic year must be a number."}).int()
+    .min(2000, "Academic year seems too old.")
+    .max(new Date().getFullYear() + 2, `Academic year cannot be beyond ${new Date().getFullYear() + 2}.`), // Allow current year + 2 for future planning
+});
+export type CollegeSearchPageInput = z.infer<typeof CollegeSearchPageSchema>;
+
