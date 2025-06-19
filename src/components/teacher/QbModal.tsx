@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -10,7 +11,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button'; // Import buttonVariants
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
@@ -174,20 +175,21 @@ export function QbModal({ isOpen, onOpenChange, onQuestionSelect }: QbModalProps
       const filterString = `teacher = "${teacher.id}" && QBExam = "${escapeForPbFilter(selectedExamMyQb)}"`;
       pb.collection('teacher_question_data').getFullList<RecordModel>({ 
         filter: filterString, 
-        fields: 'LessonName,expand.LessonName.id,expand.LessonName.testName',
-        expand: 'LessonName', 
-        $autoCancel: false 
+        fields: 'LessonName,expand.LessonName.id,expand.LessonName.testName', // LessonName is the relation field
+        expand: 'LessonName', // Expand the LessonName relation to teacher_tests
+        '$autoCancel': false 
       })
         .then(records => { 
           if (isMounted) { 
             const lessonMap = new Map<string, string>(); 
             records.forEach(r => {
+              // Check if LessonName relation is expanded and has the necessary fields
               if (r.expand?.LessonName?.id && r.expand?.LessonName?.testName) {
                 lessonMap.set(r.expand.LessonName.id, r.expand.LessonName.testName);
               }
             });
             const distinctLessons = Array.from(lessonMap.entries())
-              .map(([id, name]) => ({ value: id, label: name }))
+              .map(([id, name]) => ({ value: id, label: name })) // value is test ID, label is testName
               .sort((a, b) => a.label.localeCompare(b.label));
             setLessonsMyQb(distinctLessons); 
           }
@@ -214,8 +216,8 @@ export function QbModal({ isOpen, onOpenChange, onQuestionSelect }: QbModalProps
               id: r.id,
               QuestionText: r.QuestionText,
               CorrectOption: r.CorrectOption as QuestionFromBank['CorrectOption'],
-              QuestionImage_url: r.QuestionImage || null,
-              displayImageUrl: r.QuestionImage || null,
+              QuestionImage_url: r.QuestionImage || null, // This is a direct URL
+              displayImageUrl: r.QuestionImage || null, // Use direct URL for display
             }));
             setQuestionsMyQb(mappedQuestions);
           }
@@ -375,7 +377,11 @@ export function QbModal({ isOpen, onOpenChange, onQuestionSelect }: QbModalProps
               </TabsContent>
             </div>
           </Tabs>
-          <DialogFooter className="p-4 border-t flex-shrink-0"> <DialogClose asChild> <Button type="button" variant="outline">Close</Button> </DialogClose> </DialogFooter>
+          <DialogFooter className="p-4 border-t flex-shrink-0">
+            <DialogClose className={cn(buttonVariants({ variant: "outline" }))}>
+              Close
+            </DialogClose>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       <Dialog open={!!imageToViewUrl} onOpenChange={(open) => !open && setImageToViewUrl(null)}>
@@ -384,3 +390,5 @@ export function QbModal({ isOpen, onOpenChange, onQuestionSelect }: QbModalProps
     </>
   );
 }
+
+    
