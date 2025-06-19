@@ -348,14 +348,12 @@ export const TeacherAddQuestionSchema = z.object({
         // If it's not provided, it should be set before saving.
       }
     }
-    // Validate that options have text if not using image options (this part is tricky with dynamic structure)
-    // This might be better handled in component logic or by making Option Texts required by default and conditionally optional
   }
   if (!data.QuestionText?.trim() && !data.QuestionImage) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: "Either Question Text or a Question Image (URL) must be provided.",
-      path: ["QuestionText"], // Or QuestionImage
+      path: ["QuestionText"],
     });
   }
 });
@@ -412,6 +410,7 @@ export const TeacherPlanSchema = z.object({
   plan_point_3: z.string().min(5, { message: 'Feature point 3 must be at least 5 characters.' }),
   plan_point_4: z.string().min(5, { message: 'Feature point must be at least 5 characters.' }).optional().or(z.literal('')),
   plan_point_5: z.string().min(5, { message: 'Feature point must be at least 5 characters.' }).optional().or(z.literal('')),
+  // max_students: z.coerce.number().int().min(0, "Max students cannot be negative.").optional().nullable(), // Removed
 });
 export type TeacherPlanInput = z.infer<typeof TeacherPlanSchema>;
 
@@ -442,7 +441,7 @@ export const TeacherAdSchema = z.object({
 });
 export type TeacherAdInput = z.infer<typeof TeacherAdSchema>;
 
-export const EduNexusPlanEnum = z.enum(["Free", "Dpp", "Chapterwise", "Full_length", "Combo"]); // Corrected "Full Length"
+export const EduNexusPlanEnum = z.enum(["Free", "Dpp", "Chapterwise", "Full_length", "Combo"]);
 
 export const DiscussionGroupManagementFormSchema = z.object({
   group_name: z.string().min(3, "Group name must be at least 3 characters.").max(100, "Group name cannot exceed 100 characters."),
@@ -472,7 +471,7 @@ export const StudentDashboardAdSchema = z.object({
 export type StudentDashboardAdInput = z.infer<typeof StudentDashboardAdSchema>;
 
 // Referral Code Management Schema
-export const StudentReferralPlanEnum = z.enum(["Free", "Chapterwise", "Full_length", "Dpp", "Combo"]); // Corrected "Full Length"
+export const StudentReferralPlanEnum = z.enum(["Free", "Chapterwise", "Full_length", "Dpp", "Combo"]);
 export type StudentReferralPlan = z.infer<typeof StudentReferralPlanEnum>;
 
 export const ReferralCodeSchema = z.object({
@@ -521,38 +520,13 @@ export const TeacherReferralCodeSchema = z.object({
 });
 export type TeacherReferralCodeInput = z.infer<typeof TeacherReferralCodeSchema>;
 
-// College Details Auth Schemas
-export const CollegeDetailsLoginSchema = z.object({
-  email: z.string().email({ message: 'Invalid email address.' }),
-  password: z.string().min(8, { message: 'Password must be at least 8 characters.' }),
-});
-export type CollegeDetailsLoginInput = z.infer<typeof CollegeDetailsLoginSchema>;
+// College Details Auth Schemas (REMOVED)
+// export const CollegeDetailsLoginSchema = z.object({ ... });
+// export type CollegeDetailsLoginInput = z.infer<typeof CollegeDetailsLoginSchema>;
+// export const CollegeDetailsSignupSchema = z.object({ ... });
+// export type CollegeDetailsSignupInput = z.infer<typeof CollegeDetailsSignupSchema>;
 
-export const CollegeDetailsSignupSchema = z.object({
-  name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
-  email: z.string().email({ message: 'Invalid email address.' }),
-  password: z.string().min(8, { message: 'Password must be at least 8 characters.' }),
-  confirmPassword: z.string(),
-  date_of_last_mht_cet_exam: z.string().optional().nullable().refine(val => !val || !isNaN(Date.parse(val)), { message: "Invalid date format."}),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match.",
-  path: ['confirmPassword'],
-});
-export type CollegeDetailsSignupInput = z.infer<typeof CollegeDetailsSignupSchema>;
-
-
-// College Search Page Schema
-export const CollegeSearchPageSchema = z.object({
-  examName: z.string({ required_error: "Target exam is required."}).min(1, "Target exam is required."),
-  percentile: z.coerce.number({ invalid_type_error: "Percentile must be a number.", required_error: "Percentile is required."})
-    .min(0, "Percentile must be between 0 and 100.")
-    .max(100, "Percentile must be between 0 and 100."),
-  category: z.string({ required_error: "Category is required."}).min(1, "Category is required."),
-  branch: z.string({ required_error: "Branch is required."}).min(1, "Branch is required.").max(100, "Branch name is too long."),
-  region: z.string().max(100, "Region/District name is too long.").optional().nullable(),
-  academicYear: z.coerce.number({ required_error: "Academic year is required.", invalid_type_error: "Academic year must be a number."}).int()
-    .min(2000, "Academic year seems too old.")
-    .max(new Date().getFullYear() + 2, `Academic year cannot be beyond ${new Date().getFullYear() + 2}.`), // Allow current year + 2 for future planning
-});
-export type CollegeSearchPageInput = z.infer<typeof CollegeSearchPageSchema>;
+// College Search Page Schema (REMOVED)
+// export const CollegeSearchPageSchema = z.object({ ... });
+// export type CollegeSearchPageInput = z.infer<typeof CollegeSearchPageSchema>;
 

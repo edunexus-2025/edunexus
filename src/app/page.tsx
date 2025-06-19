@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -61,11 +62,7 @@ function LandingPageContent() {
               <Button size="lg" variant="outline" asChild className="shadow-lg hover:shadow-xl transition-shadow">
                 <Link href={Routes.teacherLogin}>Teacher Sign up</Link>
               </Button>
-              <Button size="lg" variant="secondary" asChild className="shadow-lg hover:shadow-xl transition-shadow bg-accent text-accent-foreground hover:bg-accent/90">
-                <Link href={Routes.collegeDetailsLogin} className="flex items-center gap-2">
-                  <GraduationCap className="h-5 w-5" /> College Details
-                </Link>
-              </Button>
+              {/* College Details button removed */}
             </div>
           </div>
         </section>
@@ -127,25 +124,24 @@ function LandingPageContent() {
 }
 
 export default function RootPageSwitcher() {
-  const { user, teacher, collegeUser, isLoading, isLoadingTeacher, isLoadingCollegeUser } = useAuth();
+  const { user, teacher, isLoading, isLoadingTeacher } = useAuth(); // Removed collegeUser and its loading state
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && !isLoadingTeacher && !isLoadingCollegeUser) {
+    if (!isLoading && !isLoadingTeacher) {
       if (user && !user.needsProfileCompletion) {
         router.replace(Routes.dashboard);
       } else if (user && user.needsProfileCompletion) {
         router.replace(Routes.completeProfile);
       } else if (teacher) {
         router.replace(Routes.teacherDashboard);
-      } else if (collegeUser) {
-        router.replace(Routes.collegeDetailsDashboard);
       }
-      // If none are logged in, it remains on the landing page.
+      // If none are logged in, it remains on the landing page (no action needed here).
     }
-  }, [user, teacher, collegeUser, isLoading, isLoadingTeacher, isLoadingCollegeUser, router]);
+  }, [user, teacher, isLoading, isLoadingTeacher, router]);
 
-  if (isLoading || isLoadingTeacher || isLoadingCollegeUser || user || teacher || collegeUser) {
+  // Updated loading condition
+  if (isLoading || isLoadingTeacher || (user && !user.needsProfileCompletion) || (user && user.needsProfileCompletion) || teacher) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background">
         <div className="space-y-4 p-8 rounded-lg shadow-xl bg-card">

@@ -6,6 +6,5 @@ export * from './TeacherLoginForm';
 export * from './TeacherSignupForm';
 export * from './TeacherProtectedRoute';
 export * from './AdminProtectedRoute';
-export * from './CollegeDetailsLoginForm';
-export * from './CollegeDetailsSignupForm';
-export * from './CollegeDetailsProtectedRoute';
+// Removed CollegeDetailsLoginForm, CollegeDetailsSignupForm, CollegeDetailsProtectedRoute
+

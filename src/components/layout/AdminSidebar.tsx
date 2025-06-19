@@ -54,10 +54,10 @@ import {
   BookOpen,
   Layers,
   BookCopy,
-  GraduationCap,
-  Database,
+  // GraduationCap, // Removed
+  // Database, // Removed as Upload Cutoffs is removed
   ClipboardList,
-  FileSpreadsheet
+  // FileSpreadsheet // Removed
 } from 'lucide-react';
 import { ThemeToggleButton } from './ThemeToggleButton';
 import { buttonVariants } from '../ui/button';
@@ -93,11 +93,10 @@ const adminNavGroups = [
     ]
   },
   {
-    label: 'Data & Marketing',
-    icon: <Database />,
+    label: 'Marketing & Referrals', // Renamed from "Data & Marketing"
+    icon: <Megaphone />, // Changed icon
     items: [
-      // { href: Routes.adminManageCollegeCutoffs, label: 'Manage College Cutoffs', icon: <GraduationCap /> }, // This route might be obsolete if only upload is needed
-      { href: Routes.adminUploadCollegeCutoffs, label: 'Upload Cutoffs (PDF Text)', icon: <FileSpreadsheet /> },
+      // Manage College Cutoffs & Upload Cutoffs removed
       { href: Routes.adminCreateAds, label: 'Create Ads', icon: <Megaphone /> },
       { href: Routes.adminManageReferrals, label: 'Manage Referrals', icon: <TicketPercent /> },
     ]
@@ -232,4 +231,3 @@ export function AdminSidebar() {
     </Sidebar>
   );
 }
-

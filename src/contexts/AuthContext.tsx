@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { User, UserSubscriptionTierStudent, UserSubscriptionTierTeacher } from '@/lib/types';
@@ -6,24 +7,24 @@ import React, { createContext, useState, useEffect, ReactNode, useCallback } fro
 import { Routes, AppConfig, escapeForPbFilter, teacherPlatformPlansData } from '@/lib/constants';
 import pb from '@/lib/pocketbase';
 import type { RecordModel, ClientResponseError } from 'pocketbase';
-import type { SignupInput, EditProfileInput, TeacherSignupInput, TeacherLoginInput, CollegeDetailsLoginInput, CollegeDetailsSignupInput } from '@/lib/schemas';
+import type { SignupInput, EditProfileInput, TeacherSignupInput, TeacherLoginInput } from '@/lib/schemas'; // Removed CollegeDetails types
 
 
 interface AuthContextType {
   user: User | null; // Student user
   teacher: User | null; // Teacher user
-  collegeUser: User | null; // College Details User
+  // collegeUser: User | null; // Removed
   isLoading: boolean; // For student user
   isLoadingTeacher: boolean; // For teacher user
-  isLoadingCollegeUser: boolean; // For college details user
+  // isLoadingCollegeUser: boolean; // Removed
   login: (email: string, password: string) => Promise<boolean>;
   signup: (details: SignupInput) => Promise<boolean>;
   logout: () => Promise<void>;
   updateUserProfile: (userId: string, data: EditProfileInput | Record<string, any>) => Promise<boolean>;
   teacherSignup: (details: TeacherSignupInput) => Promise<boolean>;
   teacherLogin: (email: string, password: string) => Promise<boolean>;
-  collegeLogin: (email: string, password: string) => Promise<boolean>;
-  collegeSignup: (details: CollegeDetailsSignupInput) => Promise<boolean>;
+  // collegeLogin: (email: string, password: string) => Promise<boolean>; // Removed
+  // collegeSignup: (details: CollegeDetailsSignupInput) => Promise<boolean>; // Removed
   authRefresh: () => Promise<void>;
 }
 
@@ -68,7 +69,7 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
   let maxContentPlansAllowed: number | undefined = undefined;
   let subscriptionByTeacherArray: string[] = [];
   let walletMoneyMapped: number | undefined = undefined;
-  let dateOfLastMhtCetExamMapped: string | undefined = undefined;
+  // Removed dateOfLastMhtCetExamMapped
 
   if (record.collectionName === 'users') {
     studentSubTier = (record.model || 'Free') as UserSubscriptionTierStudent;
@@ -87,9 +88,8 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
     phoneNumberMapped = record.phone_number as User['phoneNumber'];
     maxContentPlansAllowed = typeof record.max_content_plans_allowed === 'number' ? record.max_content_plans_allowed : undefined;
     walletMoneyMapped = typeof record.wallet_money === 'number' ? record.wallet_money : undefined;
-  } else if (record.collectionName === 'college_details_users') {
-    dateOfLastMhtCetExamMapped = record.date_of_last_mht_cet_exam;
   }
+  // Removed else if for college_details_users
 
 
   const name = record.name || record.meta?.name;
@@ -118,7 +118,7 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
     phoneNumber: phoneNumberMapped,
     studentSubscriptionTier: studentSubTier,
     teacherSubscriptionTier: teacherSubTier,
-    role: record.collectionName === 'college_details_users' ? 'CollegeDetailsUser' : (record.role as User['role']),
+    role: record.role as User['role'], // Simplified role, no CollegeDetailsUser
     avatarUrl: avatarUrl,
     avatar: record.avatar,
     profile_picture: record.profile_picture,
@@ -142,7 +142,7 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
     ads_subscription: adsSubscriptionTeacher,
     max_content_plans_allowed: maxContentPlansAllowed,
     wallet_money: walletMoneyMapped,
-    date_of_last_mht_cet_exam: dateOfLastMhtCetExamMapped,
+    // date_of_last_mht_cet_exam: undefined, // Removed
     created: record.created,
     updated: record.updated,
     collectionId: record.collectionId,
@@ -150,9 +150,8 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
     subscription_by_teacher: subscriptionByTeacherArray,
   };
 
-  if (mappedUser.collectionName === 'users' && (record.token || record.meta?.token) ) {  // Check both record.token and meta.token
-      // Check if critical profile fields are missing for a student
-      if (!mappedUser.favExam || !mappedUser.grade || !mappedUser.targetYear || !record.password) { // Password check is for initial setup
+  if (mappedUser.collectionName === 'users' && (record.token || record.meta?.token) ) {
+      if (!mappedUser.favExam || !mappedUser.grade || !mappedUser.targetYear || !record.password) {
           mappedUser.needsProfileCompletion = true;
       }
   }
@@ -163,10 +162,10 @@ const mapRecordToUser = (record: RecordModel | null | undefined): User | null =>
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUserState] = useState<User | null>(null);
   const [teacher, setTeacherState] = useState<User | null>(null);
-  const [collegeUser, setCollegeUserState] = useState<User | null>(null);
+  // const [collegeUser, setCollegeUserState] = useState<User | null>(null); // Removed
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingTeacher, setIsLoadingTeacher] = useState(true);
-  const [isLoadingCollegeUser, setIsLoadingCollegeUser] = useState(true);
+  // const [isLoadingCollegeUser, setIsLoadingCollegeUser] = useState(true); // Removed
   const router = useRouter();
 
   const authRefresh = useCallback(async () => {
@@ -175,7 +174,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         if (currentModel.collectionName === 'users') setIsLoading(true);
         else if (currentModel.collectionName === 'teacher_data') setIsLoadingTeacher(true);
-        else if (currentModel.collectionName === 'college_details_users') setIsLoadingCollegeUser(true);
+        // else if (currentModel.collectionName === 'college_details_users') setIsLoadingCollegeUser(true); // Removed
 
         const tokenParts = pb.authStore.token.split('.');
         let tokenRefreshNeeded = true;
@@ -203,16 +202,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (currentModel.collectionName === 'users') {
           setUserState(mappedEntity);
           setTeacherState(null);
-          setCollegeUserState(null);
+          // setCollegeUserState(null); // Removed
         } else if (currentModel.collectionName === 'teacher_data') {
           setTeacherState(mappedEntity);
           setUserState(null);
-          setCollegeUserState(null);
-        } else if (currentModel.collectionName === 'college_details_users') {
-          setCollegeUserState(mappedEntity);
-          setUserState(null);
-          setTeacherState(null);
-        }
+          // setCollegeUserState(null); // Removed
+        } 
+        // else if (currentModel.collectionName === 'college_details_users') { // Removed
+        //   setCollegeUserState(mappedEntity);
+        //   setUserState(null);
+        //   setTeacherState(null);
+        // }
       } catch (error: any) {
         const clientError = error as ClientResponseError;
         if (clientError?.isAbort || (clientError?.name === 'ClientResponseError' && clientError?.status === 0)) {
@@ -225,23 +225,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const finalModel = pb.authStore.model;
         if (pb.authStore.isValid && finalModel) {
             if (finalModel.collectionName === 'users') {
-                setIsLoading(false); setIsLoadingTeacher(false); setIsLoadingCollegeUser(false);
+                setIsLoading(false); setIsLoadingTeacher(false); // setIsLoadingCollegeUser(false); // Removed
             } else if (finalModel.collectionName === 'teacher_data') {
-                setIsLoadingTeacher(false); setIsLoading(false); setIsLoadingCollegeUser(false);
-            } else if (finalModel.collectionName === 'college_details_users') {
-                setIsLoadingCollegeUser(false); setIsLoading(false); setIsLoadingTeacher(false);
-            } else {
-                setUserState(null); setTeacherState(null); setCollegeUserState(null);
-                setIsLoading(false); setIsLoadingTeacher(false); setIsLoadingCollegeUser(false);
+                setIsLoadingTeacher(false); setIsLoading(false); // setIsLoadingCollegeUser(false); // Removed
+            } 
+            // else if (finalModel.collectionName === 'college_details_users') { // Removed
+            //     setIsLoadingCollegeUser(false); setIsLoading(false); setIsLoadingTeacher(false);
+            // } 
+            else {
+                setUserState(null); setTeacherState(null); // setCollegeUserState(null); // Removed
+                setIsLoading(false); setIsLoadingTeacher(false); // setIsLoadingCollegeUser(false); // Removed
             }
         } else {
-            setUserState(null); setTeacherState(null); setCollegeUserState(null);
-            setIsLoading(false); setIsLoadingTeacher(false); setIsLoadingCollegeUser(false);
+            setUserState(null); setTeacherState(null); // setCollegeUserState(null); // Removed
+            setIsLoading(false); setIsLoadingTeacher(false); // setIsLoadingCollegeUser(false); // Removed
         }
       }
     } else {
-      setUserState(null); setTeacherState(null); setCollegeUserState(null);
-      setIsLoading(false); setIsLoadingTeacher(false); setIsLoadingCollegeUser(false);
+      setUserState(null); setTeacherState(null); // setCollegeUserState(null); // Removed
+      setIsLoading(false); setIsLoadingTeacher(false); // setIsLoadingCollegeUser(false); // Removed
     }
   }, []);
 
@@ -269,7 +271,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
            pb.authStore.clear();
         }
       } else if (
-        !storeIsValid && 
+        !storeIsValid &&
         process.env.NEXT_PUBLIC_POCKETBASE_EMAIL &&
         process.env.NEXT_PUBLIC_POCKETBASE_PASSWORD &&
         (!modelToUse || modelToUse.collectionName === 'users') // Attempt dev login if no model or if last model was user
@@ -298,7 +300,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!pb.authStore.isValid && isMounted) {
           setIsLoading(false);
           setIsLoadingTeacher(false);
-          setIsLoadingCollegeUser(false);
+          // setIsLoadingCollegeUser(false); // Removed
       }
     };
 
@@ -307,32 +309,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const isStudentCollection = model?.collectionName === 'users';
       const isTeacherCollection = model?.collectionName === 'teacher_data';
-      const isCollegeUserCollection = model?.collectionName === 'college_details_users';
+      // const isCollegeUserCollection = model?.collectionName === 'college_details_users'; // Removed
 
-      if (isStudentCollection) { setIsLoading(true); setIsLoadingTeacher(false); setIsLoadingCollegeUser(false); }
-      else if (isTeacherCollection) { setIsLoadingTeacher(true); setIsLoading(false); setIsLoadingCollegeUser(false); }
-      else if (isCollegeUserCollection) { setIsLoadingCollegeUser(true); setIsLoading(false); setIsLoadingTeacher(false); }
-      else { setIsLoading(true); setIsLoadingTeacher(true); setIsLoadingCollegeUser(true); }
+      if (isStudentCollection) { setIsLoading(true); setIsLoadingTeacher(false); /*setIsLoadingCollegeUser(false);*/ }
+      else if (isTeacherCollection) { setIsLoadingTeacher(true); setIsLoading(false); /*setIsLoadingCollegeUser(false);*/ }
+      // else if (isCollegeUserCollection) { setIsLoadingCollegeUser(true); setIsLoading(false); setIsLoadingTeacher(false); } // Removed
+      else { setIsLoading(true); setIsLoadingTeacher(true); /*setIsLoadingCollegeUser(true);*/ }
 
       if (model && model.id) {
         try {
           if (!isMounted) return;
           const fieldsToFetch = model.collectionName === 'teacher_data'
             ? '*,max_content_plans_allowed,referralStats,subscription_by_teacher,wallet_money'
-            : (model.collectionName === 'college_details_users' ? '*' : '*,referralStats,subscription_by_teacher');
+            // : (model.collectionName === 'college_details_users' ? '*'  // Removed
+            : '*,referralStats,subscription_by_teacher';
 
           const refreshedRecord = await pb.collection(model.collectionName).getOne(model.id, { '$autoCancel': false, expand: 'referralStats', fields: fieldsToFetch });
           if (!isMounted) return;
           const mappedEntity = mapRecordToUser(refreshedRecord);
 
           if (isStudentCollection) {
-            setUserState(mappedEntity); setTeacherState(null); setCollegeUserState(null);
+            setUserState(mappedEntity); setTeacherState(null); // setCollegeUserState(null); // Removed
           } else if (isTeacherCollection) {
-            setTeacherState(mappedEntity); setUserState(null); setCollegeUserState(null);
-          } else if (isCollegeUserCollection) {
-            setCollegeUserState(mappedEntity); setUserState(null); setTeacherState(null);
-          } else {
-            setUserState(null); setTeacherState(null); setCollegeUserState(null);
+            setTeacherState(mappedEntity); setUserState(null); // setCollegeUserState(null); // Removed
+          } 
+          // else if (isCollegeUserCollection) { // Removed
+          //   setCollegeUserState(mappedEntity); setUserState(null); setTeacherState(null);
+          // } 
+          else {
+            setUserState(null); setTeacherState(null); // setCollegeUserState(null); // Removed
           }
         } catch (fetchError: any) {
           if (!isMounted) return;
@@ -349,19 +354,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (isMounted) {
             const currentAuthModel = pb.authStore.model;
             if (pb.authStore.isValid && currentAuthModel && currentAuthModel.id === model?.id) {
-                if (currentAuthModel.collectionName === 'users') { setIsLoading(false); setIsLoadingTeacher(false); setIsLoadingCollegeUser(false); }
-                else if (currentAuthModel.collectionName === 'teacher_data') { setIsLoadingTeacher(false); setIsLoading(false); setIsLoadingCollegeUser(false); }
-                else if (currentAuthModel.collectionName === 'college_details_users') { setIsLoadingCollegeUser(false); setIsLoading(false); setIsLoadingTeacher(false); }
-                else { setIsLoading(false); setIsLoadingTeacher(false); setIsLoadingCollegeUser(false); }
+                if (currentAuthModel.collectionName === 'users') { setIsLoading(false); setIsLoadingTeacher(false); /*setIsLoadingCollegeUser(false);*/ }
+                else if (currentAuthModel.collectionName === 'teacher_data') { setIsLoadingTeacher(false); setIsLoading(false); /*setIsLoadingCollegeUser(false);*/ }
+                // else if (currentAuthModel.collectionName === 'college_details_users') { setIsLoadingCollegeUser(false); setIsLoading(false); setIsLoadingTeacher(false); } // Removed
+                else { setIsLoading(false); setIsLoadingTeacher(false); /*setIsLoadingCollegeUser(false);*/ }
             } else {
-                setUserState(null); setTeacherState(null); setCollegeUserState(null);
-                setIsLoading(false); setIsLoadingTeacher(false); setIsLoadingCollegeUser(false);
+                setUserState(null); setTeacherState(null); // setCollegeUserState(null); // Removed
+                setIsLoading(false); setIsLoadingTeacher(false); // setIsLoadingCollegeUser(false); // Removed
             }
           }
         }
       } else {
-        setUserState(null); setTeacherState(null); setCollegeUserState(null);
-        setIsLoading(false); setIsLoadingTeacher(false); setIsLoadingCollegeUser(false);
+        setUserState(null); setTeacherState(null); // setCollegeUserState(null); // Removed
+        setIsLoading(false); setIsLoadingTeacher(false); // setIsLoadingCollegeUser(false); // Removed
       }
     }, true);
 
@@ -377,13 +382,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     setIsLoadingTeacher(true);
-    setIsLoadingCollegeUser(true);
+    // setIsLoadingCollegeUser(true); // Removed
     try {
       await pb.collection('users').authWithPassword(email, password);
-      // AuthStore onChange will handle setting user state and clearing others.
       return true;
     } catch (error: any) {
-      setIsLoading(false); setIsLoadingTeacher(false); setIsLoadingCollegeUser(false);
+      setIsLoading(false); setIsLoadingTeacher(false); // setIsLoadingCollegeUser(false); // Removed
       return false;
     }
   };
@@ -404,7 +408,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 
   const signup = async (details: SignupInput): Promise<boolean> => {
-    setIsLoading(true); setIsLoadingTeacher(true); setIsLoadingCollegeUser(true);
+    setIsLoading(true); setIsLoadingTeacher(true); // setIsLoadingCollegeUser(true); // Removed
     const avatarPlaceholderUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(details.name.charAt(0).toUpperCase() || 'U')}&background=random&color=fff&size=128`;
     const newReferralCode = generateUniqueReferralCode();
     const dataForNewUser = {
@@ -421,11 +425,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } else { let referringUser: RecordModel | null = null; try { const referringUserRecords = await pb.collection('users').getFullList<RecordModel>({ filter: `referralCode = "${escapeForPbFilter(details.referredByCode.trim())}"`, fields: 'id, referralCode, referralStats',}); if (referringUserRecords.length > 0) { referringUser = referringUserRecords[0]; const currentStats = referringUser.referralStats && typeof referringUser.referralStats === 'object' ? { ...createInitialPocketBaseReferralStats(), ...referringUser.referralStats } : createInitialPocketBaseReferralStats(); const newStudentTierPbKey = `referred_free`; currentStats[newStudentTierPbKey] = (currentStats[newStudentTierPbKey] || 0) + 1; await pb.collection('users').update(referringUser.id, { referralStats: currentStats }); console.log(`AuthContext (Student Signup): Successfully attempted to update referral stats for referring user ${referringUser.id}.`); } else { console.warn(`AuthContext (Student Signup): Referring user with code "${details.referredByCode}" not found. No stats updated for referrer.`);}} catch (referralUpdateError: any) { const clientError = referralUpdateError as ClientResponseError; let errorContext = referringUser ? `referring user ID ${referringUser.id}` : `referral code ${details.referredByCode}`; console.error( `AuthContext (Student Signup): CRITICAL ERROR updating referral stats for ${errorContext}. This often indicates a PocketBase permission issue preventing the new user's session from updating another user's record. To fix: Ensure the 'users' collection "Update Rule" in PocketBase allows updates to 'referralStats' by authenticated users, or implement this update via a server-side hook. Error:`, clientError.data || clientError.message, "Full Error Object:", clientError );}}}
       await pb.collection('users').authWithPassword(details.email, details.password);
       return true;
-    } catch (error: any) { console.error('AuthContext (Student Signup): PocketBase signup error. Full error:', error, 'Error data:', error.data, 'Error message:', error.message); setIsLoading(false); setIsLoadingTeacher(false); setIsLoadingCollegeUser(false); throw error; }
+    } catch (error: any) { console.error('AuthContext (Student Signup): PocketBase signup error. Full error:', error, 'Error data:', error.data, 'Error message:', error.message); setIsLoading(false); setIsLoadingTeacher(false); /*setIsLoadingCollegeUser(false);*/ throw error; }
   };
 
   const teacherSignup = async (details: TeacherSignupInput): Promise<boolean> => {
-    setIsLoadingTeacher(true); setIsLoading(true); setIsLoadingCollegeUser(true);
+    setIsLoadingTeacher(true); setIsLoading(true); // setIsLoadingCollegeUser(true); // Removed
     const dataForPocketBase: Record<string, any> = {
         email: details.email, password: details.password, passwordConfirm: details.confirmPassword, name: details.name, institute_name: details.institute_name || null,
         phone_number: details.phone_number, total_students: details.total_students, level: details.level, EduNexus_Name: details.EduNexus_Name,
@@ -440,34 +444,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     for (const key in dataForPocketBase) { if (dataForPocketBase[key] !== null && dataForPocketBase[key] !== undefined) { if (Array.isArray(dataForPocketBase[key])) { (dataForPocketBase[key] as string[]).forEach(val => formData.append(key, val)); } else { formData.append(key, String(dataForPocketBase[key])); }}}
     if (details.profile_picture) { formData.append('profile_picture', details.profile_picture); }
     try { await pb.collection('teacher_data').create(formData); await pb.collection('teacher_data').authWithPassword(details.email, details.password); return true;
-    } catch (error: any) { console.error('AuthContext (Teacher Signup): PocketBase signup error:', error.data?.data || error.message); setIsLoadingTeacher(false); setIsLoading(false); setIsLoadingCollegeUser(false); throw error; }
+    } catch (error: any) { console.error('AuthContext (Teacher Signup): PocketBase signup error:', error.data?.data || error.message); setIsLoadingTeacher(false); setIsLoading(false); /*setIsLoadingCollegeUser(false);*/ throw error; }
   };
 
   const teacherLogin = async (email: string, password: string): Promise<boolean> => {
-    setIsLoadingTeacher(true); setIsLoading(true); setIsLoadingCollegeUser(true);
+    setIsLoadingTeacher(true); setIsLoading(true); // setIsLoadingCollegeUser(true); // Removed
     try { await pb.collection('teacher_data').authWithPassword(email, password); return true;
-    } catch (error: any) { setIsLoadingTeacher(false); setIsLoading(false); setIsLoadingCollegeUser(false); return false; }
-  };
-  
-  const collegeLogin = async (email: string, password: string): Promise<boolean> => {
-    setIsLoadingCollegeUser(true); setIsLoading(false); setIsLoadingTeacher(false);
-    try { await pb.collection('college_details_users').authWithPassword(email, password); return true;
-    } catch (error: any) { setIsLoadingCollegeUser(false); return false; }
-  };
-  
-  const collegeSignup = async (details: CollegeDetailsSignupInput): Promise<boolean> => {
-    setIsLoadingCollegeUser(true); setIsLoading(false); setIsLoadingTeacher(false);
-    const data = {
-      email: details.email, password: details.password, passwordConfirm: details.confirmPassword, name: details.name,
-      date_of_last_mht_cet_exam: details.date_of_last_mht_cet_exam ? new Date(details.date_of_last_mht_cet_exam).toISOString() : null,
-      emailVisibility: true, verified: false, // Or true if you auto-verify
-    };
-    try { await pb.collection('college_details_users').create(data); await pb.collection('college_details_users').authWithPassword(details.email, details.password); return true;
-    } catch (error: any) { setIsLoadingCollegeUser(false); throw error; }
+    } catch (error: any) { setIsLoadingTeacher(false); setIsLoading(false); /*setIsLoadingCollegeUser(false);*/ return false; }
   };
 
+  // collegeLogin and collegeSignup methods removed
+
   const updateUserProfile = async (userId: string, data: EditProfileInput | Record<string, any>): Promise<boolean> => {
-    const activeAuthUser = user || teacher || collegeUser;
+    const activeAuthUser = user || teacher; // Removed collegeUser
     if (!activeAuthUser || activeAuthUser.id !== userId) { console.warn("updateUserProfile: No active user or ID mismatch."); return false; }
     const collectionName = activeAuthUser.collectionName;
     if (!collectionName) { console.warn("updateUserProfile: Active user has no collectionName."); return false; }
@@ -491,18 +480,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if ('about' in data) dataToUpdate.about = data.about;
       if ('subjects_offered' in data) dataToUpdate.subjects_offered = data.subjects_offered;
       if ('profile_picture' in data && data.profile_picture instanceof File) { /* FormData needed */ } else if ('profile_picture' in data && data.profile_picture === null) { dataToUpdate.profile_picture = null; }
-    } else if (collectionName === 'college_details_users') {
-        if ('name' in data) dataToUpdate.name = data.name;
-        if ('date_of_last_mht_cet_exam' in data && data.date_of_last_mht_cet_exam) {
-            dataToUpdate.date_of_last_mht_cet_exam = new Date(data.date_of_last_mht_cet_exam).toISOString();
-        } else if ('date_of_last_mht_cet_exam' in data && (data.date_of_last_mht_cet_exam === '' || data.date_of_last_mht_cet_exam === null)) {
-            dataToUpdate.date_of_last_mht_cet_exam = null;
-        }
-        if ('password' in data && data.password && 'confirmPassword' in data && data.confirmPassword) {
-          dataToUpdate.password = data.password;
-          dataToUpdate.passwordConfirm = data.confirmPassword;
-        }
     }
+    // Removed college_details_users logic
 
     if (Object.keys(dataToUpdate).length === 0) { console.log("updateUserProfile: No actual data to update."); return true; }
     try { await pb.collection(collectionName).update(userId, dataToUpdate); await authRefresh(); return true;
@@ -513,17 +492,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try { pb.realtime.unsubscribe(); console.log("AuthContext: Unsubscribed from all PocketBase real-time subscriptions.");
     } catch (unsubscribeError) { console.warn("AuthContext: Error during global real-time unsubscribe on logout:", unsubscribeError); }
     pb.authStore.clear();
-    // AuthStore onChange will set user states to null and loading states to false.
-    router.push(Routes.home); 
+    router.push(Routes.home);
   }, [router]);
 
   return (
     <AuthContext.Provider value={{
-        user, teacher, collegeUser,
-        isLoading, isLoadingTeacher, isLoadingCollegeUser,
+        user, teacher,
+        collegeUser: null, // Always null now
+        isLoading, isLoadingTeacher,
+        isLoadingCollegeUser: false, // Always false now
         login, signup, logout, updateUserProfile,
         teacherSignup, teacherLogin,
-        collegeLogin, collegeSignup,
+        collegeLogin: async () => false, // Stub removed function
+        collegeSignup: async () => false, // Stub removed function
         authRefresh,
     }}>
       {children}

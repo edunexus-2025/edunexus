@@ -19,10 +19,10 @@ export function Navbar({}: NavbarProps) {
   const effectiveUser = user || teacher;
   const effectiveLoading = isLoading || isLoadingTeacher;
 
-  const showBackButton = pathname !== Routes.home && 
-                         pathname !== Routes.login && 
-                         pathname !== Routes.signup && 
-                         pathname !== Routes.teacherLogin && 
+  const showBackButton = pathname !== Routes.home &&
+                         pathname !== Routes.login &&
+                         pathname !== Routes.signup &&
+                         pathname !== Routes.teacherLogin &&
                          pathname !== Routes.teacherSignup;
 
   const getDashboardButtonText = () => {
@@ -51,16 +51,8 @@ export function Navbar({}: NavbarProps) {
           <AppLogo mainTextSize="text-xl" taglineTextSize="text-[10px]" iconSize={24} /> {/* Adjusted logo sizes */}
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
-           <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex h-9">
-              <Link href={Routes.collegePredictor} className="flex items-center gap-1">
-                  <Search className="h-4 w-4"/> College Predictor
-              </Link>
-          </Button>
-          <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex h-9">
-              <Link href={Routes.collegeDetailsLogin} className="flex items-center gap-1"> {/* Changed from collegePredictor to collegeDetailsLogin */}
-                  <GraduationCap className="h-4 w-4"/> College Details
-              </Link>
-          </Button>
+           {/* College Predictor button removed */}
+           {/* College Details Login button removed */}
           {effectiveLoading ? (
             <div className="h-9 w-20 animate-pulse rounded-md bg-muted"></div>
           ) : effectiveUser ? (
