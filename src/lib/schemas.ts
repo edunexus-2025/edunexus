@@ -128,7 +128,7 @@ export const QuestionBankSchema = z.object({
 
   questionStructureType: z.enum(["text_only", "image_only", "text_with_diagram"], { required_error: "Please select a question structure type."}).default("text_only"),
   questionText: z.string().optional().nullable(),
-  questionImage: fileSchema.or(imageUrlSchema), 
+  questionImage: fileSchema.or(imageUrlSchema),
 
   optionsFormatForDiagramQuestion: z.enum(["text_options", "image_options"]).optional(),
 
@@ -207,7 +207,7 @@ const TestExamEnum = z.enum(["MHT CET", "JEE MAIN", "NEET"], {
 const TestSubjectEnum = z.enum(['Physics', 'Chemistry', 'Mathematics', 'Biology'], {
   required_error: "Test Subject is required for Chapterwise tests.",
 });
-const TeacherTestSubjectEnum = z.enum(['Physics', 'Chemistry', 'Maths', 'Biology']).optional();
+export const TeacherTestSubjectEnum = z.enum(['Physics', 'Chemistry', 'Maths', 'Biology']).optional().nullable();
 
 
 export const CreateTestSchema = z.object({
@@ -248,7 +248,7 @@ export const CreateTestSchema = z.object({
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "At least one question must be selected for the chosen subject in a Chapterwise test.",
-        path: ["testSubject"], 
+        path: ["testSubject"],
       });
     }
   }
@@ -310,7 +310,7 @@ export const TeacherCreateTestModalSchema = z.object({
   model: z.enum(["Chapterwise", "Full Length"], { required_error: "Please select a test model." }),
   type: z.enum(["Free", "Premium"], { required_error: "Please select a test type." }),
   QBExam: TestModalQBExamEnum,
-  Test_Subject: TeacherTestSubjectEnum, // Added Test_Subject field
+  Test_Subject: TeacherTestSubjectEnum,
   adminPassword: z.coerce.number().int().min(1000, "Admin password must be at least 1000.").max(999999, "Admin password must be at most 999999."),
 });
 export type TeacherCreateTestModalInput = z.infer<typeof TeacherCreateTestModalSchema>;
@@ -376,7 +376,8 @@ export const TeacherTestSettingsSchema = z.object({
     Shuffle_Questions: z.boolean().default(false),
     Who_can_take_your_test: WhoCanTakeTestEnum.default("EveryOne"),
     Would_you_like_to_get_admin_access_through_link: z.boolean().default(false),
-    QBExam: TestModalQBExamEnum.optional(), 
+    QBExam: TestModalQBExamEnum.optional(),
+    Test_Subject: TeacherTestSubjectEnum, // Added Test_Subject
     model: z.enum(["Chapterwise", "Full Length"]).optional(),
     type: z.enum(["Free", "Premium"]).optional(),
 });
@@ -442,7 +443,7 @@ export type DiscussionGroupManagementInput = z.infer<typeof DiscussionGroupManag
 export const StudentDashboardAdSchema = z.object({
   ad_name: z.string().min(1, "Ad name is required").max(100, "Ad name too long"),
   ad_expiry_date: z.string().optional().nullable().refine(val => !val || !isNaN(Date.parse(val)), { message: "Invalid date format for expiry" }),
-  ad_image_file: fileSchema, 
+  ad_image_file: fileSchema,
   ad_button_link: z.string().url("Invalid URL for button link").optional().nullable(),
   ad_button_name: z.string().max(50, "Button name too long").optional().nullable(),
   ad_description: z.string().min(10, "Description must be at least 10 characters").max(250, "Description too long"),
@@ -499,4 +500,3 @@ export const TeacherReferralCodeSchema = z.object({
   expiry_date: z.string().optional().nullable().refine(val => !val || !isNaN(Date.parse(val)), { message: "Invalid date format for expiry date." }),
 });
 export type TeacherReferralCodeInput = z.infer<typeof TeacherReferralCodeSchema>;
-
