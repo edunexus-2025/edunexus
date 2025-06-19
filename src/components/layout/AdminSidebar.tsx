@@ -57,7 +57,7 @@ import {
   GraduationCap,
   Database,
   ClipboardList,
-  FileSpreadsheet 
+  FileSpreadsheet
 } from 'lucide-react';
 import { ThemeToggleButton } from './ThemeToggleButton';
 import { buttonVariants } from '../ui/button';
@@ -96,8 +96,8 @@ const adminNavGroups = [
     label: 'Data & Marketing',
     icon: <Database />,
     items: [
-      { href: Routes.adminManageCollegeCutoffs, label: 'Manage College Cutoffs', icon: <GraduationCap /> },
-      { href: Routes.adminUploadCollegeCutoffs, label: 'Upload Cutoffs (Excel)', icon: <FileSpreadsheet /> }, 
+      // { href: Routes.adminManageCollegeCutoffs, label: 'Manage College Cutoffs', icon: <GraduationCap /> }, // This route might be obsolete if only upload is needed
+      { href: Routes.adminUploadCollegeCutoffs, label: 'Upload Cutoffs (PDF Text)', icon: <FileSpreadsheet /> },
       { href: Routes.adminCreateAds, label: 'Create Ads', icon: <Megaphone /> },
       { href: Routes.adminManageReferrals, label: 'Manage Referrals', icon: <TicketPercent /> },
     ]
@@ -141,22 +141,24 @@ export function AdminSidebar() {
             </SidebarGroupLabel>
             <SidebarMenu>
               {group.items.map((item) => (
-                <SidebarMenuItem key={item.label}>
-                  <Link href={item.href} passHref legacyBehavior>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive(item.href)}
-                      tooltip={item.label}
-                      aria-label={item.label}
-                      onClick={handleMobileNavClick}
-                    >
-                      <a>
-                        {item.icon}
-                        <span>{item.label}</span>
-                      </a>
-                    </SidebarMenuButton>
-                  </Link>
-                </SidebarMenuItem>
+                item.href ? (
+                  <SidebarMenuItem key={item.label}>
+                    <Link href={item.href} passHref legacyBehavior>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive(item.href)}
+                        tooltip={item.label}
+                        aria-label={item.label}
+                        onClick={handleMobileNavClick}
+                      >
+                        <a>
+                          {item.icon}
+                          <span>{item.label}</span>
+                        </a>
+                      </SidebarMenuButton>
+                    </Link>
+                  </SidebarMenuItem>
+                ) : null
               ))}
             </SidebarMenu>
           </SidebarGroup>
@@ -230,3 +232,4 @@ export function AdminSidebar() {
     </Sidebar>
   );
 }
+
