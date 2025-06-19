@@ -67,27 +67,53 @@ const isValidHttpUrl = (string: string | null | undefined): string is string => 
 };
 
 const getPbFileUrlOrDirectUrl = (record: RecordModel | null | undefined, fieldName: string, isDirectUrlField: boolean = false): string | null => {
-    if (!record || !record[fieldName] || typeof record[fieldName] !== 'string') {
+    if (!record) {
+      // console.warn(`ViewTestQuestionsPage: getPbFileUrlOrDirectUrl called with null/undefined record for field '${fieldName}'.`);
       return null;
     }
-    const fieldValue = record[fieldName] as string;
+    if (!record[fieldName] || typeof record[fieldName] !== 'string') {
+      // console.warn(`ViewTestQuestionsPage: Field '${fieldName}' is missing or not a string on record '${record.id}'. Value:`, record[fieldName]);
+      return null;
+    }
+    const fieldValue = (record[fieldName] as string).trim();
+    if (!fieldValue) {
+        // console.warn(`ViewTestQuestionsPage: Field '${fieldName}' has an empty trimmed value on record '${record.id}'.`);
+        return null;
+    }
 
-    if (isDirectUrlField) { // For fields that store the full URL directly (e.g., from teacher_question_data)
-      if (isValidHttpUrl(fieldValue)) { // Validate if it's a proper URL
+    if (isDirectUrlField) {
+      // This path is for teacher_question_data where fields like QuestionImage store full URLs
+      if (isValidHttpUrl(fieldValue)) {
         return fieldValue;
       }
-      // console.warn(`Invalid URL format for direct URL field '${fieldName}': ${fieldValue}`); // Optional: Log invalid URLs
-      return null; // Return null if not a valid URL to avoid broken images
-    } else { // For PocketBase file fields (like in question_bank)
-      if (record.collectionId && record.collectionName) {
+      // console.warn(`ViewTestQuestionsPage: Invalid direct URL for field '${fieldName}' in record ${record.id}: '${fieldValue}'`);
+      return null;
+    } else {
+      // This path is for question_bank where fields like questionImage store filenames
+      // Here, collectionId and collectionName are absolutely required for pb.files.getUrl
+      if (typeof record.id === 'string' && record.id.trim() !== '' &&
+          typeof record.collectionId === 'string' && record.collectionId.trim() !== '' &&
+          typeof record.collectionName === 'string' && record.collectionName.trim() !== '') {
         try {
-          return pb.files.getUrl(record, fieldValue);
+          // console.log(`ViewTestQuestionsPage: Attempting pb.files.getUrl for record: ${record.id}, field: ${fieldName}, collection: ${record.collectionName}, filename: ${fieldValue}`);
+          // Ensure the record passed to pb.files.getUrl is minimal but complete for this purpose
+          const minimalRecordForPb = {
+              id: record.id,
+              collectionId: record.collectionId,
+              collectionName: record.collectionName,
+              // This dynamic field assignment is crucial.
+              // It ensures that the `fieldValue` (the filename) is actually present on the object
+              // that pb.files.getUrl uses internally, under the key `fieldName`.
+              [fieldName]: fieldValue 
+          };
+          return pb.files.getUrl(minimalRecordForPb as RecordModel, fieldValue);
         } catch (e) {
-          console.warn(`ViewTestQuestionsPage: Error getting PB file URL for ${fieldName} in record ${record.id}:`, e);
+          console.warn(`ViewTestQuestionsPage: Catch block - Error getting PB file URL for ${fieldName} in record ${record.id} (collection: ${record.collectionName}, filename: ${fieldValue}). Error:`, e);
           return null;
         }
       }
-      // console.warn(`Missing collectionId or collectionName for PB file field '${fieldName}' in record ${record.id}`); // Optional: Log missing info
+      // If collectionId or collectionName is missing/falsy, log it and return null
+      console.error(`ViewTestQuestionsPage: CRITICAL - Missing or invalid collectionId/collectionName for PB file field '${fieldName}' in record ID '${record.id}'. Cannot call pb.files.getUrl. Record details: collectionId='${record.collectionId}', collectionName='${record.collectionName}'. This leads to 'Missing collection context' error.`);
       return null;
     }
 };
@@ -149,7 +175,7 @@ export default function ViewTestQuestionsPage() {
               source: 'EduNexus QB',
               difficulty: q.difficulty,
               subject: q.subject,
-              lessonName: q.lessonName,
+              lessonName: q.lessonName, // Directly from question_bank
               marks: q.marks
             });
           });
@@ -168,18 +194,18 @@ export default function ViewTestQuestionsPage() {
                 { label: 'D', text: q.OptionDText, imageUrl: getPbFileUrlOrDirectUrl(q, 'OptionDImage', true) },
               ],
               displayCorrectOptionLabel: q.CorrectOption?.replace("Option ", "") || "",
-              displayExplanationText: q.explanationText, // teacher_question_data has 'explanationText'
-              displayExplanationImageUrl: getPbFileUrlOrDirectUrl(q, 'explanationImage', true), // teacher_question_data has 'explanationImage'
+              displayExplanationText: q.explanationText,
+              displayExplanationImageUrl: getPbFileUrlOrDirectUrl(q, 'explanationImage', true),
               source: 'My QB',
               marks: q.marks,
-              subject: q.subject || fetchedTest.QBExam,
-              lessonName: fetchedTest.testName, 
-              difficulty: q.difficulty as DisplayableQuestion['difficulty'],
+              subject: q.subject || fetchedTest.QBExam, // Fallback to test's QBExam if question subject is missing
+              lessonName: fetchedTest.testName, // For "My QB" questions, the lesson context is the test itself
+              difficulty: q.difficulty as DisplayableQuestion['difficulty'], // Ensure type compatibility
             });
           });
           
           setQuestions(combinedQuestions);
-          if (combinedQuestions.length === 0) {
+           if (combinedQuestions.length === 0) {
             setError(`No questions found for "${fetchedTest.testName}". This could be because:\n1. No questions are linked to this test in its 'questions_edunexus' or 'questions_teachers' fields in the database.\n2. API Rules for the 'question_bank' or 'teacher_question_data' collections might be too restrictive (e.g., admin-only view access or incorrect filter rules).\nPlease check the test data and collection permissions in your PocketBase admin panel.`);
           }
         } else { return; }
@@ -295,5 +321,3 @@ export default function ViewTestQuestionsPage() {
     </div>
   );
 }
-
-    
