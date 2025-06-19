@@ -1,5 +1,6 @@
 
 import type { Plan, UserSubscriptionTierStudent, UserSubscriptionTierTeacher } from '@/lib/types';
+import { BaseTeacherTestSubjectEnum } from '@/lib/schemas'; // Import the base enum
 
 export const AppConfig = {
   appName: 'EduNexus',
@@ -80,7 +81,7 @@ export const Routes = {
   // Student Test Taking Routes
   studentTestInstructions: (testId: string) => `/student/test/${testId}/instructions`,
   studentTestChapterwise: (testId: string) => `/student/test/${testId}/chapterwise`,
-  studentTestEnterPin: (testId: string) => `/student/teacher-test/${testId}/live`, // PIN entry is now part of the live page for teacher tests
+  studentTestEnterPin: (testId: string) => `/student/teacher-test/${testId}/live`,
   studentTeacherTestLive: (testId: string) => `/student/teacher-test/${testId}/live`,
   testResultTeacherTest: (attemptId: string) => `/student/teacher-test/results/${attemptId}`,
 
@@ -193,6 +194,7 @@ export const PYQ_SHIFT_OPTIONS = ["Shift 1", "Shift 2", "N/A"] as const;
 export const DPP_ASSOCIATED_EXAMS = ["JEE MAIN", "NEET", "MHT CET"] as const;
 // For Teacher Question Creation QBExam
 export const TeacherQBExamEnumOptions = ["MHT CET", "JEE MAIN", "NEET"] as const;
+export const TeacherTestSubjectEnumOptions = BaseTeacherTestSubjectEnum.options;
 
 
 export const allPlansData: Plan[] = [
@@ -349,35 +351,3 @@ export const teacherPlatformPlansData: Plan[] = [
     customActivationLink: Routes.teacherUpgradeAds,
   },
 ];
-
-// Removed CollegeDetails routes as per previous instruction
-// Removed CollegeDetailsNavbar and CollegeDetailsSidebar exports from components/layout/index.ts
-// Updated /student/test/[testId]/instructions/page.tsx to handle PIN verification and then proceed to the test
-// Removed /student/test/[testId]/enter-pin/page.tsx as its functionality is merged
-// Updated /student/teacher-test/[testId]/live/page.tsx to be the main entry for teacher-created tests, handling PIN and instructions if needed
-// Reverted /student/test/[testId]/chapterwise/page.tsx to its original purpose
-// Removed /student/test/page.tsx (seems it was a redirector, not needed with clear entry points)
-// Updated /app/admin/* routes to not have /college-details/* specific entries
-// Updated /app/dashboard/layout.tsx to remove college-specific sidebar/logic
-// Updated /src/lib/types.ts to remove CollegeDetailsUser type and related fields from User
-// Updated /src/lib/schemas.ts to remove CollegeDetails specific schemas
-// Updated /src/contexts/AuthContext.tsx to remove all collegeUser logic
-// Updated /src/components/auth/index.ts to remove college auth component exports
-// Updated /src/components/layout/index.ts to remove college layout component exports
-// Updated /src/app/page.tsx to remove college details login button from landing
-// Updated /app/teacher/dashboard/my-content/[testId]/add-question/page.tsx to use TeacherQuestionDataCreateSchema and point to teacher_question_data
-// Updated /app/teacher/dashboard/my-content/[testId]/view-questions/page.tsx and add-question/page.tsx for relational data handling.
-// Corrected /components/teacher/QbModal.tsx to use 'teacher_question_data' collection.
-// Corrected /components/teacher/QbModal.tsx to properly handle relational LessonName for My Teacher QB.
-// Corrected /app/teacher/dashboard/my-content/[testId]/view-questions/page.tsx for `getPbFileUrlOrDirectUrl` to handle PocketBase file objects more robustly.
-// Corrected /pd_collection/teacher_tests.json API rules.
-// Corrected /components/teacher/QbModal.tsx again to fix the DialogClose issue by removing asChild.
-// Recreated /teacher/dashboard/my-content/[testId]/* pages as requested.
-// Fixed ScrollArea import in /teacher/dashboard/my-content/[testId]/layout.tsx
-// Added '$autoCancel': false to /teacher/dashboard/my-content/[testId]/layout.tsx
-// Fixed next.config.ts image hostname issue
-// Swapped add-question and view-questions tabs and their page content
-// Implemented detailed question creation form in /teacher/dashboard/my-content/[testId]/add-question/page.tsx
-// Corrected parsing error in constants.ts by removing trailing XML tags
-
-    

@@ -10,11 +10,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, Send, CheckCircle, EyeOff, Archive, Copy, Loader2, Info, Link as LinkIcon, KeyRound } from 'lucide-react'; // Added KeyRound
+import { AlertCircle, Send, CheckCircle, EyeOff, Archive, Copy, Loader2, Info, Link as LinkIcon, KeyRound } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AppConfig, Routes } from '@/lib/constants';
+import { AppConfig, Routes, APP_BASE_URL } from '@/lib/constants'; // Import APP_BASE_URL
 
 interface TeacherTestStatusRecord extends RecordModel {
   testName?: string;
@@ -37,9 +37,9 @@ export default function TestStatusPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const studentTestLink = testDetails?.status === "Published" ? `${AppConfig.APP_BASE_URL}${Routes.studentTeacherTest(testId)}/live` : null; // Corrected route
+  const studentTestLink = testDetails?.status === "Published" ? `${APP_BASE_URL}${Routes.studentTeacherTestLive(testId)}` : null;
   const adminTestLink = testDetails?.status === "Published" && testDetails?.Would_you_like_to_get_admin_access_through_link && testDetails?.Admin_Password
-    ? `${AppConfig.APP_BASE_URL}${Routes.studentTeacherTest(testId)}/live?pin=${testDetails.Admin_Password}` // Simple PIN in query for now
+    ? `${APP_BASE_URL}${Routes.studentTeacherTestLive(testId)}?pin=${testDetails.Admin_Password}`
     : null;
 
 
@@ -151,4 +151,3 @@ export default function TestStatusPage() {
     </div>
   );
 }
-    

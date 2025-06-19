@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Routes, escapeForPbFilter } from '@/lib/constants';
-import Link from 'next/link';
+import Link from 'next/link'; // Added missing import
 import {
   Dialog,
   DialogContent,
@@ -227,9 +227,8 @@ export default function ViewTestQuestionsDetailedPage() {
     setIsUpdatingCorrectOption(true);
     try {
       const collectionToUpdate = editingQuestion.rawCollectionName;
-      const dataToUpdate = collectionToUpdate === 'question_bank' 
-        ? { correctOption: newCorrectOption } 
-        : { CorrectOption: `Option ${newCorrectOption}` };
+      // For 'teacher_question_data', the field is 'CorrectOption' and stores "Option A", "Option B", etc.
+      const dataToUpdate = { CorrectOption: `Option ${newCorrectOption}` };
 
       await pb.collection(collectionToUpdate).update(editingQuestion.id, dataToUpdate);
       toast({ title: "Correct Option Updated", description: "The correct answer has been saved." });
@@ -372,7 +371,3 @@ export default function ViewTestQuestionsDetailedPage() {
     </div>
   );
 }
-    
-    
-    
-    

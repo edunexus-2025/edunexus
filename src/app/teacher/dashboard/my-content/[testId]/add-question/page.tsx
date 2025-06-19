@@ -2,7 +2,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import React, { useEffect, useState, useCallback, ChangeEvent } from 'react';
+import React, { useEffect, useState, useCallback, ChangeEvent, FormEvent, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import pb from '@/lib/pocketbase';
@@ -118,13 +118,12 @@ export default function TeacherCreateQuestionForTestPage() {
         Test_Subject: record.Test_Subject as TeacherQuestionDataCreateInput['subject'] || undefined,
       };
       setParentTestDetails(details);
-      form.reset({ // Use reset to ensure all fields are updated, especially derived ones
-        ...form.getValues(), // Preserve any existing typed data not related to parent test
+      form.reset({
+        ...form.getValues(),
         lesson_name: details.testName || '',
         QBExam: details.QBExam,
         subject: details.Test_Subject,
-        // Keep other fields as they are or reset them to defaults if needed
-        marks: form.getValues('marks') || 1, // Example: keep marks or reset
+        marks: form.getValues('marks') || 1,
         CorrectOption: form.getValues('CorrectOption') || "Option A",
       });
 
@@ -187,8 +186,8 @@ export default function TeacherCreateQuestionForTestPage() {
     
     const dataForTeacherQb: any = {
       teacher: teacher.id,
-      LessonName: testId, // Relation to teacher_tests table using the current test's ID
-      lesson_name: parentTestDetails.testName, // Text field, storing parent test's name
+      LessonName: testId, 
+      lesson_name: parentTestDetails.testName, 
       QuestionText: values.QuestionText || null,
       QuestionImage: isValidHttpUrl(values.QuestionImage) ? values.QuestionImage : null,
       OptionAText: values.OptionAText || null,
@@ -312,7 +311,7 @@ export default function TeacherCreateQuestionForTestPage() {
               <CardHeader className="p-0 pb-3"><CardTitle className="text-base font-medium">Question Content</CardTitle></CardHeader>
               <CardContent className="p-0 space-y-3">
                 <FormField control={form.control} name="QuestionText" render={({ field }) => (<FormItem><FormLabel className="text-sm">Question Text (Supports LaTeX: $...$ or $$...$$)</FormLabel><FormControl><Textarea placeholder="Type question..." {...field} value={field.value ?? ''} rows={4} className="text-sm bg-background dark:bg-slate-800"/></FormControl><FormMessage /></FormItem>)}/>
-                {renderImageFieldWithModal("QuestionImage", "Question Image (Optional)")}
+                {renderImageFieldWithModal("QuestionImage", "Question Image (Optional URL or Upload)")}
               </CardContent>
             </Card>
 
@@ -322,7 +321,7 @@ export default function TeacherCreateQuestionForTestPage() {
                   <CardHeader className="p-0 pb-2"><CardTitle className="text-sm font-medium">Option {optChar} *</CardTitle></CardHeader>
                   <CardContent className="p-0 space-y-2">
                     <FormField control={form.control} name={`Option${optChar}Text` as keyof TeacherQuestionDataCreateInput} render={({ field }) => (<FormItem><FormLabel className="text-xs">Text (LaTeX)</FormLabel><FormControl><Textarea placeholder={`Option ${optChar} text`} {...field} value={field.value ?? ''} rows={2} className="text-xs min-h-[38px] bg-background dark:bg-slate-800"/></FormControl><FormMessage className="text-xs"/></FormItem>)}/>
-                    {renderImageFieldWithModal(`Option${optChar}Image` as keyof TeacherQuestionDataCreateInput, "Image (Optional)")}
+                    {renderImageFieldWithModal(`Option${optChar}Image` as keyof TeacherQuestionDataCreateInput, "Image (Optional URL or Upload)")}
                   </CardContent>
                 </Card>
               ))}
@@ -333,7 +332,7 @@ export default function TeacherCreateQuestionForTestPage() {
               <CardContent className="p-0 space-y-3">
                 <FormField control={form.control} name="CorrectOption" render={({ field }) => (<FormItem><FormLabel className="text-sm">Correct Option *</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-9 text-sm bg-background dark:bg-slate-800"><SelectValue placeholder="Select correct answer" /></SelectTrigger></FormControl><SelectContent>{correctOptionSelect.map(val => (<SelectItem key={val} value={val}>{val}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)}/>
                 <FormField control={form.control} name="explanationText" render={({ field }) => (<FormItem><FormLabel className="text-sm">Explanation Text (Optional, LaTeX)</FormLabel><FormControl><Textarea placeholder="Detailed explanation..." {...field} value={field.value ?? ''} rows={3} className="text-sm bg-background dark:bg-slate-800"/></FormControl><FormMessage /></FormItem>)}/>
-                {renderImageFieldWithModal("explanationImage", "Explanation Image (Optional)")}
+                {renderImageFieldWithModal("explanationImage", "Explanation Image (Optional URL or Upload)")}
               </CardContent>
             </Card>
             
