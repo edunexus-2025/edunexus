@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -224,7 +223,11 @@ export default function TeacherCreateQuestionForTestPage() {
       });
       setImagePreviews({ QuestionImage: null, OptionAImage: null, OptionBImage: null, OptionCImage: null, OptionDImage: null, explanationImage: null, });
     } catch (error: any) {
-      console.error("Error creating/linking question:", error.data?.data || error.response || error);
+      console.error(
+        "Error creating/linking question. Full Error:", error, 
+        "Error Data (if available):", error.data, 
+        "Error Response (if available):", error.response
+      );
       const specificErrors = error.data?.data;
       let errorMessages = "Could not save the question. ";
       if (specificErrors && typeof specificErrors === 'object') {
