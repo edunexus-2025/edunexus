@@ -88,26 +88,27 @@ interface FetchedQuestionSourceRecord extends RecordModel {
   marks?: number;
   subject?: string;
   difficulty?: 'Easy' | 'Medium' | 'Hard' | null;
-  questionText?: string | null; 
-  optionAText?: string | null;   
-  optionBText?: string | null;   
-  optionCText?: string | null;   
-  optionDText?: string | null;   
-  correctOption?: 'A' | 'B' | 'C' | 'D'; 
-  explanationText?: string | null; 
-  lessonName?: string | null;    
-  questionImage?: string | null; 
-  optionAImage?: string | null;  
-  optionBImage?: string | null;  
-  optionCImage?: string | null;  
-  optionDImage?: string | null;  
-  explanationImage?: string | null; 
+  questionText?: string | null;
+  optionAText?: string | null;
+  optionBText?: string | null;
+  optionCText?: string | null;
+  optionDText?: string | null;
+  correctOption?: 'A' | 'B' | 'C' | 'D';
+  explanationText?: string | null;
+  lessonName?: string | null;
+  questionImage?: string | null;
+  optionAImage?: string | null;
+  optionBImage?: string | null;
+  optionCImage?: string | null;
+  optionDImage?: string | null;
+  explanationImage?: string | null;
 
-  QuestionText?: string | null;  
-  CorrectOption?: 'Option A' | 'Option B' | 'Option C' | 'Option D'; 
-  lesson_name?: string | null;   
-  explanationText_teacher?: string | null; 
-  
+  QuestionText?: string | null;
+  CorrectOption?: 'Option A' | 'Option B' | 'Option C' | 'Option D';
+  lesson_name?: string | null; // Note: underscore, from teacher_question_data
+  explanationText_teacher?: string | null; // For teacher_question_data
+
+  // Specific to teacher_question_data (direct URLs)
   QuestionImage_teacher?: string | null;
   OptionAImage_teacher?: string | null;
   OptionBImage_teacher?: string | null;
@@ -138,7 +139,7 @@ interface NormalizedQuestionRecord {
   lessonName?: string | null;
   difficulty?: 'Easy' | 'Medium' | 'Hard' | null;
   originalSourceCollection: 'question_bank' | 'teacher_question_data';
-  rawRecord: RecordModel;
+  rawRecord: RecordModel; // Keep raw for any other needs
 }
 
 interface UserAnswerLog {
@@ -197,7 +198,7 @@ export default function StudentTakeTeacherTestLivePage() {
   const { toast } = useToast();
 
   const [initialLoading, setInitialLoading] = useState(true);
-  const [isLoadingPageData, setIsLoadingPageData] = useState(false);
+  const [isLoadingPageData, setIsLoadingPageData] = useState(false); // For question loading stage
 
   const [testDetails, setTestDetails] = useState<TeacherTestDetailsRecord | null>(null);
   const [teacherName, setTeacherName] = useState<string>('Educator');
@@ -228,16 +229,25 @@ export default function StudentTakeTeacherTestLivePage() {
 
   const normalizeFetchedQuestion = useCallback((q: FetchedQuestionSourceRecord, sourceCollection: 'question_bank' | 'teacher_question_data'): NormalizedQuestionRecord | null => {
     if (!q || !q.id) return null;
-    let displayCorrectOptionLabel: 'A' | 'B' | 'C' | 'D' = 'A';
-    let correctOptionStringFull: 'Option A' | 'Option B' | 'Option C' | 'Option D' = 'Option A';
+    let displayCorrectOptionLabel: 'A' | 'B' | 'C' | 'D' = 'A'; // Default
+    let correctOptionStringFull: 'Option A' | 'Option B' | 'Option C' | 'Option D' = 'Option A'; // Default
     let lessonNameToUse = '';
 
     if (sourceCollection === 'question_bank') {
-      if (q.correctOption) { displayCorrectOptionLabel = q.correctOption; correctOptionStringFull = `Option ${q.correctOption}` as any;}
+      if (q.correctOption && ['A', 'B', 'C', 'D'].includes(q.correctOption)) {
+        displayCorrectOptionLabel = q.correctOption;
+        correctOptionStringFull = `Option ${q.correctOption}` as any;
+      }
       lessonNameToUse = q.lessonName || '';
     } else if (sourceCollection === 'teacher_question_data') {
-      if (q.CorrectOption) { const optStr = (q.CorrectOption).replace('Option ', ''); if (['A', 'B', 'C', 'D'].includes(optStr)) { displayCorrectOptionLabel = optStr as 'A' | 'B' | 'C' | 'D'; correctOptionStringFull = q.CorrectOption;}}
-      lessonNameToUse = q.lesson_name || testDetails?.testName || '';
+      if (q.CorrectOption) {
+        const optStr = (q.CorrectOption).replace('Option ', '');
+        if (['A', 'B', 'C', 'D'].includes(optStr)) {
+          displayCorrectOptionLabel = optStr as 'A' | 'B' | 'C' | 'D';
+          correctOptionStringFull = q.CorrectOption;
+        }
+      }
+      lessonNameToUse = q.lesson_name || testDetails?.testName || ''; // Use testName as fallback lesson for teacher's QB questions
     }
 
     const normalized: NormalizedQuestionRecord = {
@@ -266,7 +276,7 @@ export default function StudentTakeTeacherTestLivePage() {
       lessonName: lessonNameToUse,
       difficulty: q.difficulty as NormalizedQuestionRecord['difficulty'] || null,
       originalSourceCollection: sourceCollection,
-      rawRecord: q as RecordModel, 
+      rawRecord: q as RecordModel,
     };
     return normalized;
   }, [testDetails?.testName]);
@@ -287,14 +297,14 @@ export default function StudentTakeTeacherTestLivePage() {
     }
 
     let correctCount = 0; let attemptedCount = 0; let pointsEarnedFromTest = 0;
-    let totalMarksForTest = 0; 
+    let totalMarksForTest = 0;
 
     const answersLogForDb = questions.map(q => {
       const userAnswerRec = userAnswers[q.id];
       const selected = userAnswerRec?.selectedOption || null;
       let isCorrectAns = false;
       const questionCorrectOptionString = q.correctOptionString;
-      const questionMarks = typeof q.marks === 'number' ? q.marks : 1;
+      const questionMarks = typeof q.marks === 'number' ? q.marks : 1; // Default 1 mark
       totalMarksForTest += questionMarks;
 
       if (selected) {
@@ -315,8 +325,8 @@ export default function StudentTakeTeacherTestLivePage() {
       };
     });
     
-    const maxScoreForCalculation = testDetails.totalScore && testDetails.totalScore > 0 ? testDetails.totalScore : totalMarksForTest;
-    const percentageScore = maxScoreForCalculation > 0 ? (pointsEarnedFromTest / maxScoreForCalculation) * 100 : 0;
+    const maxScorePossible = testDetails.totalScore && testDetails.totalScore > 0 ? testDetails.totalScore : totalMarksForTest;
+    const percentageScore = maxScorePossible > 0 ? (pointsEarnedFromTest / maxScorePossible) * 100 : 0;
 
 
     const finalTestStatusDbValue: TeacherTestAttempt['status'] = terminationReason === 'time_up'
@@ -333,17 +343,17 @@ export default function StudentTakeTeacherTestLivePage() {
       test_name_cache: testDetails.testName,
       teacher_name_cache: testDetails.expand?.teacherId?.name || 'Educator',
       score: pointsEarnedFromTest,
-      max_score: maxScoreForCalculation,
-      total_questions: questions.length,
-      attempted_questions: attemptedCount,
-      correct_answers: correctCount,
-      incorrect_answers: attemptedCount - correctCount,
-      unattempted_questions: questions.length - attemptedCount,
+      max_score: maxScorePossible,
+      total_questions_in_test_cache: questions.length, // Store total questions from the displayed set
+      attempted_questions_count: attemptedCount,
+      correct_answers_count: correctCount,
+      incorrect_answers_count: attemptedCount - correctCount,
+      unattempted_questions_count: questions.length - attemptedCount,
       percentage: parseFloat(percentageScore.toFixed(2)),
       duration_taken_seconds: Math.max(0, durationTakenSecs),
       answers_log: JSON.stringify(answersLogForDb),
       status: finalTestStatusDbValue,
-      plan_context: "Subscribed - Teacher Plan",
+      plan_context: "Subscribed - Teacher Plan", // Example context
       started_at: testStartTimeRef.current ? new Date(testStartTimeRef.current).toISOString() : new Date().toISOString(),
       submitted_at: new Date().toISOString(),
       marked_for_review_without_selecting_option: answersLogForDb.filter(a => a.markedForReview && !a.selectedOption).length,
@@ -399,6 +409,7 @@ export default function StudentTakeTeacherTestLivePage() {
         if (isMountedGetter()) { fetchedAndNormalizedQuestions.push(...teacherQuestionRecords.map(q => normalizeFetchedQuestion(q, 'teacher_question_data')).filter(Boolean) as NormalizedQuestionRecord[]); } else return;
       }
 
+      // Re-order based on the original order in teacher_tests collections
       const orderedQuestions = fetchedAndNormalizedQuestions.sort((a,b) => (originalOrderMap.get(a.id) ?? Infinity) - (originalOrderMap.get(b.id) ?? Infinity));
 
       if (isMountedGetter()) {
@@ -412,7 +423,7 @@ export default function StudentTakeTeacherTestLivePage() {
           setUserAnswers(initialAnswers);
           setTestSessionState('inProgress');
           const durationMinutes = parseInt(currentTestDetails.duration || "60", 10);
-          setTimeLeft(durationMinutes > 0 ? durationMinutes * 60 : 3600);
+          setTimeLeft(durationMinutes > 0 ? durationMinutes * 60 : 3600); // Default 1hr if invalid or zero
           testStartTimeRef.current = Date.now();
           questionStartTimeRef.current = Date.now();
           toast({ title: "Test Started!", description: "Good luck!" });
@@ -519,7 +530,7 @@ export default function StudentTakeTeacherTestLivePage() {
   const handleStartTestAfterInstructions = () => {
     setShowInstructionModal(false);
     if (testDetails) {
-        loadQuestionsAndStartTest(testDetails, () => true);
+        loadQuestionsAndStartTest(testDetails, () => true); // Assuming component is mounted
     } else {
         setError("Test details not available to start.");
         setTestSessionState('terminated');
@@ -583,7 +594,7 @@ export default function StudentTakeTeacherTestLivePage() {
               const isActive = currentQuestionIndex === index;
               return (
                 <Button
-                  key={`${q.id}-${index}`}
+                  key={q.id}
                   variant="outline"
                   size="icon"
                   className={cn("h-8 w-full text-xs rounded-md aspect-square", questionPaletteButtonClass(status, isActive))}
@@ -651,7 +662,7 @@ export default function StudentTakeTeacherTestLivePage() {
   
   if (testSessionState === 'instructions' && showInstructionModal) {
     return (
-      <InstructionDialog open={showInstructionModal} onOpenChange={(open: boolean) => { if (!open) { setShowInstructionModal(false); if (testDetails) handleStartTestAfterInstructions(); else { setError("Cannot start test, test details missing."); setTestSessionState('terminated');}} else { setShowInstructionModal(open); }}}>
+      <Dialog open={showInstructionModal} onOpenChange={(openState: boolean) => { if (!openState) { setShowInstructionModal(false); if (testDetails) handleStartTestAfterInstructions(); else { setError("Cannot start test, test details missing."); setTestSessionState('terminated');}} else { setShowInstructionModal(openState); }}}>
         <InstructionDialogContent className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl max-h-[80vh] flex flex-col">
           <InstructionDialogHeader><InstructionDialogTitle className="text-2xl">Test Instructions: {testDetails?.testName}</InstructionDialogTitle><InstructionDialogDescription>Read carefully before starting. Test by {teacherName}.</InstructionDialogDescription></InstructionDialogHeader>
           <ScrollArea className="flex-grow my-4 min-h-0"><div className="prose prose-sm dark:prose-invert p-1">
@@ -664,7 +675,7 @@ export default function StudentTakeTeacherTestLivePage() {
           </div></ScrollArea>
           <InstructionDialogFooter className="sm:justify-center"><Button onClick={handleStartTestAfterInstructions} size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">I'm Ready, Start Test!</Button></InstructionDialogFooter>
         </InstructionDialogContent>
-      </InstructionDialog>
+      </Dialog>
     );
   }
 
