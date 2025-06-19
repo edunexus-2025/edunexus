@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect } from 'react';
@@ -8,7 +7,7 @@ import { Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 // This page now primarily acts as a redirector to the live test page,
-// as PIN and instructions are handled within the live page itself.
+// as the live page now handles its own instruction display post-PIN verification.
 export default function TestInstructionsRedirectPage() {
   const params = useParams();
   const router = useRouter();
@@ -16,10 +15,8 @@ export default function TestInstructionsRedirectPage() {
 
   useEffect(() => {
     if (testId) {
-      // For teacher tests, the live page handles PIN and instructions.
-      // For platform tests (if this route was also used for them),
-      // they might have a different flow or their own dedicated live page.
-      // Assuming testId is for a teacher test based on the context of student/teacher-test/[testId] structure.
+      // Always redirect to the live page for teacher tests.
+      // The live page will handle PIN entry and then show instructions.
       router.replace(Routes.studentTeacherTestLive(testId));
     } else {
       // If no testId, perhaps redirect to test series or dashboard
@@ -43,4 +40,3 @@ export default function TestInstructionsRedirectPage() {
     </div>
   );
 }
-      
