@@ -1,10 +1,10 @@
 
 'use client';
 
-import { Navbar } from "@/components/layout/Navbar"; // Using main Navbar for now
+import { CollegeDetailsNavbar } from "@/components/layout/CollegeDetailsNavbar"; // Changed to CollegeDetailsNavbar
 import { AppConfig } from "@/lib/constants";
 
-// Simple layout for college-details specific pages
+// Layout for college-details specific pages
 export default function CollegeDetailsLayout({
   children,
 }: {
@@ -12,7 +12,7 @@ export default function CollegeDetailsLayout({
 }) {
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-br from-accent/10 via-background to-secondary/5"> 
-      <Navbar /> {/* Or a specific CollegeDetailsNavbar if created */}
+      <CollegeDetailsNavbar /> {/* Use the specific CollegeDetailsNavbar */}
       <main className="flex-1 container mx-auto px-4 py-8">
         {children}
       </main>

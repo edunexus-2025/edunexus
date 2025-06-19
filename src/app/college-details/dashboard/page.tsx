@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"; // Added CardFooter
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
@@ -10,16 +10,20 @@ import { CollegeDetailsProtectedRoute } from "@/components/auth/CollegeDetailsPr
 import { GraduationCap, ListChecks, BarChart3, Settings, LogOut } from "lucide-react";
 
 export default function CollegeDetailsDashboardPage() {
-  const { collegeUser, logout } = useAuth();
+  const { collegeUser, logout } = useAuth(); // Using collegeUser from context
   const router = useRouter();
 
   const handleLogout = async () => {
-    await logout();
-    router.push(Routes.collegeDetailsLogin); // Redirect to college details login after logout
+    await logout(); // This should clear collegeUser as well due to AuthContext changes
+    router.push(Routes.collegeDetailsLogin); 
   };
 
   return (
     <CollegeDetailsProtectedRoute>
+      {/* 
+        This page is wrapped by CollegeDetailsLayout, which now uses CollegeDetailsNavbar.
+        No engineering student sidebar will be present here.
+      */}
       <div className="space-y-8">
         <Card className="shadow-xl bg-gradient-to-r from-primary to-accent text-primary-foreground">
           <CardHeader>
@@ -63,4 +67,3 @@ export default function CollegeDetailsDashboardPage() {
     </CollegeDetailsProtectedRoute>
   );
 }
-
