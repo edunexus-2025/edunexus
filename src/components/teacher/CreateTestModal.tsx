@@ -38,13 +38,18 @@ import pb from '@/lib/pocketbase';
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Loader2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { TeacherTestSubjectEnumOptions } from '@/lib/constants'; // Import the enum options
 
 interface CreateTestModalProps {
   onTestCreated?: () => void; 
 }
 
 const qbExamOptions: Array<NonNullable<TeacherCreateTestModalInput['QBExam']>> = ["MHT CET", "JEE MAIN", "NEET"];
-const testSubjectOptions: Array<NonNullable<TeacherCreateTestModalInput['Test_Subject']>> = ["Physics", "Chemistry", "Maths", "Biology"]; // Added
+const testModelOptions: Array<NonNullable<TeacherCreateTestModalInput['model']>> = ["Chapterwise", "Full Length"];
+const testTypeOptions: Array<NonNullable<TeacherCreateTestModalInput['type']>> = ["Free", "Premium"];
+
+// Special placeholder value for the "None" option in Test Subject select
+const NONE_SUBJECT_PLACEHOLDER = "_NONE_SUBJECT_PLACEHOLDER_";
 
 export function CreateTestModal({ onTestCreated }: CreateTestModalProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -60,7 +65,7 @@ export function CreateTestModal({ onTestCreated }: CreateTestModalProps) {
       model: undefined,
       type: undefined,
       QBExam: undefined,
-      Test_Subject: undefined, // Added
+      Test_Subject: undefined, // Default to undefined
       adminPassword: undefined,
     },
   });
@@ -79,7 +84,7 @@ export function CreateTestModal({ onTestCreated }: CreateTestModalProps) {
       model: values.model,
       type: values.type,
       QBExam: values.QBExam,
-      Test_Subject: values.Test_Subject || null, // Added, send null if undefined
+      Test_Subject: values.Test_Subject === NONE_SUBJECT_PLACEHOLDER ? null : values.Test_Subject, // Save as null if placeholder was used
       status: "Draft", 
       Admin_Password: values.adminPassword,
     };
@@ -175,8 +180,7 @@ export function CreateTestModal({ onTestCreated }: CreateTestModalProps) {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="Chapterwise">Chapterwise</SelectItem>
-                            <SelectItem value="Full Length">Full Length</SelectItem>
+                            {testModelOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
                           </SelectContent>
                         </Select>
                         <ShadcnFormDescription className="text-xs">
@@ -199,8 +203,7 @@ export function CreateTestModal({ onTestCreated }: CreateTestModalProps) {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="Free">Free</SelectItem>
-                            <SelectItem value="Premium">Premium</SelectItem>
+                            {testTypeOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -214,15 +217,18 @@ export function CreateTestModal({ onTestCreated }: CreateTestModalProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Test Subject (Optional)</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || ''}>
+                      <Select 
+                        onValueChange={(value) => field.onChange(value === NONE_SUBJECT_PLACEHOLDER ? undefined : value as TeacherCreateTestModalInput['Test_Subject'])} 
+                        value={field.value || NONE_SUBJECT_PLACEHOLDER}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select subject (if applicable)" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">None</SelectItem>
-                          {testSubjectOptions.map(subject => (
+                          <SelectItem value={NONE_SUBJECT_PLACEHOLDER}>None (General Test)</SelectItem>
+                          {TeacherTestSubjectEnumOptions.map(subject => (
                             <SelectItem key={subject} value={subject}>{subject}</SelectItem>
                           ))}
                         </SelectContent>

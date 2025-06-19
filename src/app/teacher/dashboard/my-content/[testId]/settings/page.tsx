@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams } from 'next/navigation';
@@ -92,7 +93,7 @@ export default function TestSettingsPage() {
         Who_can_take_your_test: record.Who_can_take_your_test as TeacherTestSettingsInput['Who_can_take_your_test'] || 'EveryOne',
         Would_you_like_to_get_admin_access_through_link: record.Would_you_like_to_get_admin_access_through_link === undefined ? false : record.Would_you_like_to_get_admin_access_through_link,
         QBExam: record.QBExam,
-        Test_Subject: record.Test_Subject,
+        Test_Subject: record.Test_Subject, // This will be null if not set, or one of the enum values
         model: record.model,
         type: record.type,
       });
@@ -113,7 +114,7 @@ export default function TestSettingsPage() {
       totalScore: data.totalScore === null || data.totalScore === undefined ? null : Number(data.totalScore),
       PerNegativeScore: data.PerNegativeScore === null || data.PerNegativeScore === undefined ? null : Number(data.PerNegativeScore),
       status: data.status, QBExam: data.QBExam,
-      Test_Subject: data.Test_Subject === NONE_SUBJECT_VALUE ? null : data.Test_Subject,
+      Test_Subject: data.Test_Subject, // No change needed here if form value is already null/undefined or a valid enum
       model: data.model, type: data.type,
       Students_can_view_their_results_after_the_test: data.Students_can_view_their_results_after_the_test,
       How_many_times_can_students_take_the_test: data.How_many_times_can_students_take_the_test === null || data.How_many_times_can_students_take_the_test === undefined ? null : Number(data.How_many_times_can_students_take_the_test),
@@ -169,7 +170,7 @@ export default function TestSettingsPage() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value={NONE_SUBJECT_VALUE}>None</SelectItem>
+                        <SelectItem value={NONE_SUBJECT_VALUE}>None (General Test)</SelectItem>
                         {TeacherTestSubjectEnumOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
                       </SelectContent>
                     </Select>
