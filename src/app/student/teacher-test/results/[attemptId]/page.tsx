@@ -41,7 +41,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { StudentBookmark, User, TeacherTestAttempt, AnswerLogItem as BaseAnswerLogItem } from '@/lib/types';
 
-import { AlertCircle, ArrowLeft, CheckCircle, ChevronLeft, ChevronRight, Clock, FileText, BarChart3, Target as TargetIcon, Info, TrendingUp, XCircle, Percent, Users, Star, ThumbsDown, Zap, Turtle, ClipboardList, Eye, BookOpen, AlertTriangle as ReportIcon, Loader2, ListFilter, CalendarDays, NotebookText, BarChart, PieChart as PieChartIcon, UserCheck, Bookmark as BookmarkIcon, LayoutDashboard, PlusCircle, Check, Printer } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle, ChevronLeft, ChevronRight, Clock, FileText, BarChart3, Target as TargetIcon, Info, TrendingUp, XCircle, Percent, Users, Star, ThumbsDown, Zap, Turtle, ClipboardList, Eye as EyeIcon, BookOpen, AlertTriangle as ReportIcon, Loader2, ListFilter, CalendarDays, NotebookText, BarChart, PieChart as PieChartIcon, UserCheck, Bookmark as BookmarkIcon, LayoutDashboard, PlusCircle, Check, Printer } from 'lucide-react';
 import NextImage from 'next/image';
 import 'katex/dist/katex.min.css';
 import { InlineMath, BlockMath } from 'react-katex';
@@ -187,7 +187,7 @@ export default function TeacherTestStudentResultPage() {
       setAnswersLog(parsedLog);
 
       const fetchedOriginalTest = fetchedAttemptData.expand?.teacher_test as OriginalTeacherTestRecord | undefined;
-      if (!fetchedOriginalTest) { if (isMountedGetter()) { setError("Original test details not found for this attempt."); return; } } else { setOriginalTestDetails(fetchedOriginalTest); }
+      if (!fetchedOriginalTest) { if (isMountedGetter()) { setError("Original test details not found for this attempt."); setIsLoading(false); return; } } else { setOriginalTestDetails(fetchedOriginalTest); }
 
       const eduNexusQuestionIds = Array.isArray(fetchedOriginalTest?.questions_edunexus) ? fetchedOriginalTest.questions_edunexus : [];
       const teacherQuestionIds = Array.isArray(fetchedOriginalTest?.questions_teachers) ? fetchedOriginalTest.questions_teachers : [];
@@ -248,13 +248,16 @@ export default function TeacherTestStudentResultPage() {
       if (isMountedGetter()) setDifficultyStats(diffStatsCalc);
 
       if (isMountedGetter()) {
+        const correct = fetchedAttemptData.correct_answers_count ?? fetchedAttemptData.score ?? 0; // Prioritize detailed counts if available
+        const attempted = fetchedAttemptData.attempted_questions_count ?? 0;
+        const totalQuestions = fetchedAttemptData.total_questions_in_test_cache ?? 0;
         setStats({
-          correct: fetchedAttemptData.score || 0, // Schema uses 'score' for correct answers
-          incorrect: (fetchedAttemptData.attempted_questions || 0) - (fetchedAttemptData.score || 0),
-          attempted: fetchedAttemptData.attempted_questions || 0,
-          unattempted: (fetchedAttemptData.total_questions || 0) - (fetchedAttemptData.attempted_questions || 0),
-          totalQuestions: fetchedAttemptData.total_questions || 0,
-          accuracy: (fetchedAttemptData.attempted_questions || 0) > 0 ? ((fetchedAttemptData.score || 0) / (fetchedAttemptData.attempted_questions || 1)) * 100 : 0,
+          correct: correct,
+          incorrect: attempted - correct,
+          attempted: attempted,
+          unattempted: totalQuestions - attempted,
+          totalQuestions: totalQuestions,
+          accuracy: attempted > 0 ? (correct / attempted) * 100 : 0,
           percentage: fetchedAttemptData.percentage || 0,
           score: fetchedAttemptData.score,
           maxScore: fetchedAttemptData.max_score,
@@ -276,9 +279,9 @@ export default function TeacherTestStudentResultPage() {
     if (!isAuthLoading && user?.id && attemptId) {
       fetchResultData(() => isMounted);
     } else if (!isAuthLoading && !user?.id) {
-      setIsLoading(false); setError("User not authenticated.");
+      if (isMounted) { setIsLoading(false); setError("User not authenticated."); }
     } else if (!attemptId) {
-      setIsLoading(false); setError("Attempt ID is missing.");
+      if (isMounted) { setIsLoading(false); setError("Attempt ID is missing."); }
     }
     return () => { isMounted = false; };
   }, [attemptId, isAuthLoading, user?.id, fetchResultData]);
@@ -359,18 +362,18 @@ export default function TeacherTestStudentResultPage() {
     setIsReportModalOpen(true);
   };
 
-  const chartData = stats ? [
+  const chartData = useMemo(() => stats ? [
     { name: "Correct", value: stats.correct, fill: "hsl(var(--chart-1))" },
     { name: "Incorrect", value: stats.incorrect, fill: "hsl(var(--chart-2))" },
     { name: "Unattempted", value: Math.max(0, stats.unattempted), fill: "hsl(var(--chart-3))" },
-  ] : [];
+  ] : [], [stats]);
 
-  const donutChartConfig = {
+  const donutChartConfig = useMemo(() => ({
     value: { label: "Questions" },
     Correct: { label: "Correct", color: "hsl(var(--chart-1))" },
     Incorrect: { label: "Incorrect", color: "hsl(var(--chart-2))" },
     Unattempted: { label: "Unattempted", color: "hsl(var(--chart-3))" },
-  } satisfies ChartConfig;
+  } satisfies ChartConfig), []);
 
   const getQuestionStatusColor = (questionId: string, isActive: boolean): string => {
     const log = answersLog.find(a => a.questionId === questionId);
@@ -391,12 +394,12 @@ export default function TeacherTestStudentResultPage() {
     return `${minutes} Min ${seconds} Sec`;
   };
 
-  const statCardsData = stats ? [
+  const statCardsData = useMemo(() => stats ? [
     { title: "SCORE", value: `${stats.score} / ${stats.maxScore}`, icon: <ClipboardList className="h-5 w-5 text-blue-500" /> },
     { title: "PERCENTAGE", value: `${stats.percentage.toFixed(1)}%`, icon: <Percent className="h-5 w-5 text-purple-500" /> },
     { title: "ACCURACY", value: `${stats.accuracy.toFixed(1)}%`, icon: <TargetIcon className="h-5 w-5 text-green-500" /> },
     { title: "ATTEMPTED", value: `${stats.attempted} / ${stats.totalQuestions}`, icon: <UserCheck className="h-5 w-5 text-orange-500" /> },
-  ] : [];
+  ] : [], [stats]);
 
   const handlePrint = () => {
     const printableElement = document.getElementById('printableTestContent');
@@ -428,8 +431,8 @@ export default function TeacherTestStudentResultPage() {
       };
     }
   }, [isPrintPreviewActive, attemptData?.test_name_cache, originalTestDetails?.testName]);
-  
-  const getAriaLabelForPalette = (q_id: string, index: number) => {
+
+  const getAriaLabelForPaletteButton = (q_id: string, index: number): string => {
     const logEntry = answersLog.find(a => a.questionId === q_id);
     let statusText = 'Not Visited';
     if (logEntry) {
@@ -442,8 +445,9 @@ export default function TeacherTestStudentResultPage() {
     }
     return `Go to question ${index + 1}, Status: ${statusText}`;
   };
-
-  const PrintLayout = () => (
+  
+  function PrintLayout() {
+    return (
     <div id="printableTestContent" className={cn(showAnswersInPrint ? 'answers-visible' : 'answers-hidden')}>
       <header className="print-header text-center mb-6">
         <h1 className="text-2xl font-bold">Test: {attemptData?.test_name_cache || originalTestDetails?.testName || 'N/A'}</h1>
@@ -469,9 +473,10 @@ export default function TeacherTestStudentResultPage() {
       );
       })}
     </div>
-  );
+  )};
 
-  const QuestionPaletteContent = () => (
+  function QuestionPaletteContent() {
+    return (
     <Card className="border-primary/30 bg-primary/5 flex-1 flex flex-col min-h-0 shadow-md rounded-lg md:mt-0">
       <CardHeader className="p-2 text-center border-b border-primary/20">
         <CardTitle className="text-sm text-primary">QUESTIONS ({testQuestions.length})</CardTitle>
@@ -479,30 +484,33 @@ export default function TeacherTestStudentResultPage() {
       <CardContent className="p-2 flex-1 overflow-hidden">
         <ScrollArea className="h-full">
           <div className="grid grid-cols-5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-4 xl:grid-cols-5 gap-1.5 p-1">
-            {testQuestions.map((q, index) => (
-              <Button
-                key={q.id}
-                variant="outline"
-                size="icon"
-                className={cn("h-8 w-full text-xs rounded-md aspect-square", getQuestionStatusColor(q.id, currentReviewQuestionIndex === index))}
-                onClick={() => setCurrentReviewQuestionIndex(index)}
-                aria-label={getAriaLabelForPalette(q.id, index)}
-              >
-                {index + 1}
-                {answersLog.find(a => a.questionId === q.id)?.markedForReview && answersLog.find(a => a.questionId === q.id)?.selectedOption && <Check className="absolute h-2.5 w-2.5 bottom-0.5 right-0.5 text-white" />}
-              </Button>
-            ))}
+            {testQuestions.map((q, index) => {
+              const ariaLabel = getAriaLabelForPaletteButton(q.id, index);
+              return (
+                <Button
+                  key={q.id}
+                  variant="outline"
+                  size="icon"
+                  className={cn("h-8 w-full text-xs rounded-md aspect-square", getQuestionStatusColor(q.id, currentReviewQuestionIndex === index))}
+                  onClick={() => setCurrentReviewQuestionIndex(index)}
+                  aria-label={ariaLabel}
+                >
+                  {index + 1}
+                  {answersLog.find(a => a.questionId === q.id)?.markedForReview && answersLog.find(a => a.questionId === q.id)?.selectedOption && <Check className="absolute h-2.5 w-2.5 bottom-0.5 right-0.5 text-white" />}
+                </Button>
+              );
+            })}
           </div>
         </ScrollArea>
       </CardContent>
     </Card>
-  );
+  )};
   
   if (isLoading || isAuthLoading) { return ( <div className="space-y-6 p-4 md:p-6"> <Skeleton className="h-10 w-3/4" /> <Skeleton className="h-8 w-1/2 mb-4" /> <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4"> {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28 rounded-lg" />)} </div> <Skeleton className="h-64 w-full rounded-lg" /> </div> ); }
   if (error) { return ( <div className="p-4 md:p-6 text-center"> <AlertCircle className="mx-auto h-12 w-12 text-destructive mb-4" /> <h2 className="text-xl font-semibold text-destructive mb-2">Error Loading Test Result</h2> <p className="text-muted-foreground mb-4 whitespace-pre-wrap">{error}</p> <Button onClick={() => router.back()} variant="outline"><ArrowLeft className="mr-2 h-4 w-4" /> Back</Button> </div> ); }
   if (!attemptData || !stats || !originalTestDetails) { return ( <div className="p-4 md:p-6 text-center"> <BookOpen className="mx-auto h-12 w-12 text-muted-foreground mb-4" /> <h2 className="text-xl font-semibold mb-2">Test Result Not Found</h2> <p className="text-muted-foreground mb-4">The result for this test could not be found or is still processing.</p> <Button onClick={() => router.push(Routes.myProgress)} variant="default">Back to My Progress</Button> </div> ); }
   if (isPrintPreviewActive) return <PrintLayout />;
-  
+
   return (
     <div className="min-h-screen bg-muted/30 dark:bg-slate-950 print:bg-white">
       <header className="bg-background shadow-sm sticky top-0 z-40 print:hidden">
@@ -512,7 +520,7 @@ export default function TeacherTestStudentResultPage() {
              <Button onClick={() => setShowAnswersInPrint(prev => !prev)} variant="outline" size="sm" className="text-xs">{showAnswersInPrint ? "Hide Answers (Print)" : "Show Answers (Print)"}</Button>
              <Button onClick={handlePrint} variant="outline" size="sm"><Printer className="mr-2 h-4 w-4"/> Print</Button>
              <Button onClick={() => setActiveTab(activeTab === "summary" ? "review" : "summary")} variant="default" size="sm">
-               <Eye className="mr-2 h-4 w-4"/>{activeTab === "summary" ? "Review Answers" : "View Summary"}
+               <EyeIcon className="mr-2 h-4 w-4"/>{activeTab === "summary" ? "Review Answers" : "View Summary"}
              </Button>
            </div>
         </div>
@@ -521,7 +529,7 @@ export default function TeacherTestStudentResultPage() {
         <div className="print:text-center print:mb-4"><h2 className="text-2xl md:text-3xl font-bold text-foreground">Performance Analysis</h2><CardDescription>Test: {attemptData.test_name_cache || originalTestDetails.testName} <span className="hidden print:inline">| By: {originalTestDetails.expand?.teacherId?.name || 'Educator'}</span><span className="print:block">Taken on: {format(new Date(attemptData.submitted_at || attemptData.created), "dd MMM yyyy, HH:mm")}</span></CardDescription></div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6"> {statCardsData.map(card => ( <Card key={card.title} className="shadow-md rounded-lg bg-card print:border print:shadow-none"> <CardHeader className="pb-2 pt-4 px-4 flex flex-row items-center justify-between space-y-0"><CardTitle className="text-xs font-medium uppercase text-muted-foreground">{card.title}</CardTitle>{card.icon}</CardHeader> <CardContent className="px-4 pb-4"><div className="text-2xl font-bold text-foreground">{card.value}</div></CardContent> </Card> ))}</div>
         {activeTab === "summary" && ( <div className="grid grid-cols-1 lg:grid-cols-3 gap-6"> <div className="lg:col-span-1 grid grid-cols-1 gap-6"> <Card className="shadow-md print:border print:shadow-none"><CardHeader className="items-center text-center pb-2"><CardTitle className="text-md font-medium">Overview</CardTitle><CardDescription className="text-xs">Question Breakdown</CardDescription></CardHeader><CardContent className="h-[200px] flex items-center justify-center p-0"> {(stats.attempted === 0 && stats.unattempted === 0 && stats.totalQuestions === 0) ? <p className="text-muted-foreground text-sm">No questions/data.</p> : (<ChartContainer config={donutChartConfig} className="aspect-square h-full w-full max-w-[250px] mx-auto"><PieChart><Tooltip content={<ChartTooltipContent hideLabel nameKey="name" />} /><Pie data={chartData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={75} strokeWidth={2}>{chartData.map((entry) => ( <Cell key={`cell-${entry.name}`} fill={entry.fill} /> ))}</PieChart></ChartContainer>)} </CardContent><CardFooter className="text-xs text-muted-foreground text-center block pt-2 pb-4 print:hidden">Hover chart for details.</CardFooter></Card> </Card></div> <Card className="lg:col-span-2 shadow-md print:border print:shadow-none"><CardHeader><CardTitle className="text-md font-medium">Performance by Difficulty</CardTitle></CardHeader><CardContent className="space-y-3"> {(['Easy', 'Medium', 'Hard'] as const).map(level => { const difficultyData = difficultyStats ? difficultyStats[level] : { attempted: 0, correct: 0, total: 0 }; const accuracy = difficultyData.attempted > 0 ? (difficultyData.correct / difficultyData.attempted) * 100 : 0; let indicatorColorClass = 'bg-primary print:bg-gray-700'; if (level === 'Easy') indicatorColorClass = 'bg-green-500 print:bg-green-700'; else if (level === 'Medium') indicatorColorClass = 'bg-yellow-500 print:bg-yellow-700'; else if (level === 'Hard') indicatorColorClass = 'bg-red-500 print:bg-red-700'; return ( <div key={level} className="p-2.5 rounded-md border border-border bg-card print:border-gray-300"> <div className="flex justify-between items-center mb-1"><span className="font-semibold text-sm">{level}</span><Badge variant="outline" className="text-xs px-1.5 py-0.5 print:border-gray-400">{difficultyData.correct}/{difficultyData.attempted} Correct (of {difficultyData.total} Total)</Badge></div> <div className="flex items-center gap-2"><Progress value={accuracy} className="h-1.5 flex-grow bg-muted/50 print:bg-gray-200" indicatorClassName={indicatorColorClass} /><span className="text-xs font-medium">{accuracy.toFixed(1)}% Acc.</span></div> </div> ); })} </CardContent></Card> </Card> )}
-        {activeTab === "review" && ( testQuestions.length > 0 && currentReviewQuestion ? ( <> <Card className="mb-4 shadow-sm bg-card print:hidden"><CardHeader className="p-3"><CardTitle className="text-sm font-medium text-center text-muted-foreground">Questions</CardTitle></CardHeader><CardContent className="p-2"><ScrollArea className="h-auto max-h-28"><div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-15 xl:grid-cols-20 gap-1.5 p-1">{testQuestions.map((q, index) => (<Button key={q.id} variant="outline" size="icon" className={cn("h-7 w-7 text-xs rounded-md transition-all duration-150 ease-in-out", getQuestionStatusColor(q.id, currentReviewQuestionIndex === index))} onClick={() => setCurrentReviewQuestionIndex(index)} aria-label={getAriaLabelForPalette(q.id, index)}>{index + 1}</Button>))}</div></ScrollArea></CardContent></Card> <div className="print-questions-container space-y-4"> {testQuestions.map((qToPrint, index) => { const answerLogForPrint = answersLog.find(a => a.questionId === qToPrint.id); return ( <Card key={`print-q-${qToPrint.id}`} className={cn("bg-card p-4 md:p-6 rounded-lg shadow-md border border-border print-question-item print:shadow-none print:border-gray-300", (currentReviewQuestionIndex !== index && "hidden print:block"))}> <div className="flex justify-between items-center mb-3"><h3 className="text-lg font-semibold text-primary">Question {index + 1}:</h3><div className="flex items-center gap-2 print:hidden"><span className="text-xs text-muted-foreground flex items-center"><Clock className="h-3.5 w-3.5 mr-1"/> {formatDetailedDuration(answerLogForPrint?.timeSpentSeconds)}</span><Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-destructive p-1 h-auto" onClick={() => openReportModal(qToPrint.id)}><ReportIcon className="h-3.5 w-3.5 mr-1"/> Report</Button><Button variant="ghost" size="sm" onClick={handleOpenBookmarkModal} className="text-xs text-muted-foreground hover:text-primary p-1 h-auto"><BookmarkIcon className={cn("h-3.5 w-3.5 mr-1", "text-muted-foreground")} />Bookmark</Button></div></div> <div className="prose prose-sm dark:prose-invert max-w-none mb-4 text-foreground leading-relaxed">{renderLatex(qToPrint.questionText)}</div> {qToPrint.questionImageUrl && <div className="my-4 text-center"><NextImage src={qToPrint.questionImageUrl} alt="Question Image" width={400} height={300} className="rounded object-contain inline-block border max-h-80 print:max-w-xs print:max-h-60" data-ai-hint="question diagram"/></div>} {!(qToPrint.questionText || qToPrint.questionImageUrl) && <p className="text-sm text-muted-foreground italic py-4">No question text or image provided.</p>} <div className="space-y-3 mt-6"> {qToPrint.options.map(optChar => { const isSelected = answerLogForPrint?.selectedOption === `Option ${optChar.label}`; const isCorrectDbOption = qToPrint.correctOptionEnum === optChar.label; let optionBgClass = "bg-card hover:bg-muted/30 print:bg-white"; let optionBorderClass = "border-border print:border-gray-300"; let answerIndicator: React.ReactNode = null; let optionTextColor = "text-foreground print:text-black"; if (isCorrectDbOption) { optionBgClass = "bg-green-500/10 dark:bg-green-700/20 print:bg-green-100"; optionBorderClass = "border-green-500/50 dark:border-green-600/50 print:border-green-400"; optionTextColor = "text-green-700 dark:text-green-400 print:text-green-700"; answerIndicator = <Badge className="ml-auto text-xs bg-green-600 text-white px-2 py-0.5 print:bg-green-600 print:text-white">Correct Answer</Badge>; } if (isSelected) { if (answerLogForPrint?.isCorrect) answerIndicator = (<div className="ml-auto flex items-center gap-2"><Badge variant="outline" className="text-xs border-green-500 text-green-600 bg-transparent px-2 py-0.5 print:border-green-500 print:text-green-600">Your Answer</Badge><Badge className="text-xs bg-green-600 text-white px-2 py-0.5 print:bg-green-600 print:text-white">Correct Answer</Badge></div>); else { optionBgClass = "bg-red-500/10 dark:bg-red-700/20 print:bg-red-100"; optionBorderClass = "border-red-500/50 dark:border-red-600/50 print:border-red-400"; optionTextColor = "text-red-700 dark:text-red-400 print:text-red-700"; answerIndicator = (<div className="ml-auto flex items-center gap-2"><Badge variant="outline" className="text-xs border-red-500 text-red-600 bg-transparent px-2 py-0.5 print:border-red-500 print:text-red-600">Your Answer</Badge><Badge className="text-xs bg-red-600 text-white px-2 py-0.5 print:bg-red-600 print:text-white">Wrong Answer</Badge></div>); }} return (<div key={optChar.label} className={cn("p-3 border rounded-md transition-all flex items-start gap-3", optionBgClass, optionBorderClass)}> <span className={cn("font-semibold", isCorrectDbOption ? "text-green-700 dark:text-green-300 print:text-green-700" : "text-primary print:text-blue-600")}>{optChar.label}.</span> <div className={cn("flex-1 text-sm", optionTextColor)}> {(optChar.text || optChar.imageUrl) ? (<>{optChar.text && <div className={cn("prose prose-sm dark:prose-invert max-w-none")}>{renderLatex(optChar.text)}</div>}{optChar.imageUrl && <div className="mt-1.5"><NextImage src={optChar.imageUrl} alt={`Option ${optChar.label}`} width={150} height={90} className="rounded object-contain border print:max-w-[100px] print:max-h-[60px]" data-ai-hint="option diagram"/></div>}</>) : (<p className="italic">Option {optChar.label} content not available.</p>)} </div>{answerIndicator}</div>); })} </div> {(qToPrint.explanationText || qToPrint.explanationImageUrl) && <div className="mt-6 pt-4 border-t print:pt-2 print:mt-2"><h4 className="text-md font-semibold text-muted-foreground mb-2 print:text-sm">Explanation:</h4>{qToPrint.explanationText && <div className="prose prose-sm dark:prose-invert max-w-none text-foreground leading-relaxed print:text-xs">{renderLatex(qToPrint.explanationText)}</div>}{qToPrint.explanationImageUrl && <div className="my-3 text-center"><NextImage src={qToPrint.explanationImageUrl} alt="Explanation Image" width={300} height={200} className="rounded object-contain inline-block border max-h-72 print:max-w-xs print:max-h-52" data-ai-hint="explanation diagram"/></div>}</div>} {!(qToPrint.explanationText || qToPrint.explanationImageUrl) && <p className="text-sm text-muted-foreground mt-4 text-center italic">No explanation available for this question.</p>} </Card> ); })} </div> <div className="flex justify-between items-center mt-4 print:hidden"><Button variant="outline" onClick={() => setCurrentReviewQuestionIndex(prev => Math.max(0, prev - 1))} disabled={currentReviewQuestionIndex === 0}><ChevronLeft className="mr-2 h-4 w-4" /> Previous</Button><Button variant="outline" onClick={() => setCurrentReviewQuestionIndex(prev => Math.min(testQuestions.length - 1, prev + 1))} disabled={currentReviewQuestionIndex === testQuestions.length - 1}><ChevronRight className="ml-2 h-4 w-4" /> Next</Button></div> </> ) : <p className="text-center text-muted-foreground py-10 print:hidden">Select a question from the palette above to review.</p> )}
+        {activeTab === "review" && ( testQuestions.length > 0 && currentReviewQuestion ? ( <> <Card className="mb-4 shadow-sm bg-card print:hidden"><CardHeader className="p-3"><CardTitle className="text-sm font-medium text-center text-muted-foreground">Questions</CardTitle></CardHeader><CardContent className="p-2"><ScrollArea className="h-auto max-h-28"><div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-15 xl:grid-cols-20 gap-1.5 p-1">{testQuestions.map((q, index) => (<Button key={q.id} variant="outline" size="icon" className={cn("h-7 w-7 text-xs rounded-md transition-all duration-150 ease-in-out", getQuestionStatusColor(q.id, currentReviewQuestionIndex === index))} onClick={() => setCurrentReviewQuestionIndex(index)} aria-label={getAriaLabelForPaletteButton(q.id, index)}>{index + 1}</Button>))}</div></ScrollArea></CardContent></Card> <div className="print-questions-container space-y-4"> {testQuestions.map((qToPrint, index) => { const answerLogForPrint = answersLog.find(a => a.questionId === qToPrint.id); return ( <Card key={`review-q-${qToPrint.id}`} className={cn("bg-card p-4 md:p-6 rounded-lg shadow-md border border-border print-question-item print:shadow-none print:border-gray-300", (currentReviewQuestionIndex !== index && "hidden print:block"))}> <div className="flex justify-between items-center mb-3"><h3 className="text-lg font-semibold text-primary">Question {index + 1}:</h3><div className="flex items-center gap-2 print:hidden"><span className="text-xs text-muted-foreground flex items-center"><Clock className="h-3.5 w-3.5 mr-1"/> {formatDetailedDuration(answerLogForPrint?.timeSpentSeconds)}</span><Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-destructive p-1 h-auto" onClick={() => openReportModal(qToPrint.id)}><ReportIcon className="h-3.5 w-3.5 mr-1"/> Report</Button><Button variant="ghost" size="sm" onClick={handleOpenBookmarkModal} className="text-xs text-muted-foreground hover:text-primary p-1 h-auto"><BookmarkIcon className={cn("h-3.5 w-3.5 mr-1", "text-muted-foreground")} />Bookmark</Button></div></div> <div className="prose prose-sm dark:prose-invert max-w-none mb-4 text-foreground leading-relaxed">{renderLatex(qToPrint.questionText)}</div> {qToPrint.questionImageUrl && <div className="my-4 text-center"><NextImage src={qToPrint.questionImageUrl} alt="Question Image" width={400} height={300} className="rounded object-contain inline-block border max-h-80 print:max-w-xs print:max-h-60" data-ai-hint="question diagram"/></div>} {!(qToPrint.questionText || qToPrint.questionImageUrl) && <p className="text-sm text-muted-foreground italic py-4">No question text or image provided.</p>} <div className="space-y-3 mt-6"> {qToPrint.options.map(optChar => { const isSelected = answerLogForPrint?.selectedOption === `Option ${optChar.label}`; const isCorrectDbOption = qToPrint.correctOptionEnum === optChar.label; let optionBgClass = "bg-card hover:bg-muted/30 print:bg-white"; let optionBorderClass = "border-border print:border-gray-300"; let answerIndicator: React.ReactNode = null; let optionTextColor = "text-foreground print:text-black"; if (isCorrectDbOption) { optionBgClass = "bg-green-500/10 dark:bg-green-700/20 print:bg-green-100"; optionBorderClass = "border-green-500/50 dark:border-green-600/50 print:border-green-400"; optionTextColor = "text-green-700 dark:text-green-400 print:text-green-700"; answerIndicator = <Badge className="ml-auto text-xs bg-green-600 text-white px-2 py-0.5 print:bg-green-600 print:text-white">Correct Answer</Badge>; } if (isSelected) { if (answerLogForPrint?.isCorrect) answerIndicator = (<div className="ml-auto flex items-center gap-2"><Badge variant="outline" className="text-xs border-green-500 text-green-600 bg-transparent px-2 py-0.5 print:border-green-500 print:text-green-600">Your Answer</Badge><Badge className="text-xs bg-green-600 text-white px-2 py-0.5 print:bg-green-600 print:text-white">Correct Answer</Badge></div>); else { optionBgClass = "bg-red-500/10 dark:bg-red-700/20 print:bg-red-100"; optionBorderClass = "border-red-500/50 dark:border-red-600/50 print:border-red-400"; optionTextColor = "text-red-700 dark:text-red-400 print:text-red-700"; answerIndicator = (<div className="ml-auto flex items-center gap-2"><Badge variant="outline" className="text-xs border-red-500 text-red-600 bg-transparent px-2 py-0.5 print:border-red-500 print:text-red-600">Your Answer</Badge><Badge className="text-xs bg-red-600 text-white px-2 py-0.5 print:bg-red-600 print:text-white">Wrong Answer</Badge></div>); }} return (<div key={optChar.label} className={cn("p-3 border rounded-md transition-all flex items-start gap-3", optionBgClass, optionBorderClass)}> <span className={cn("font-semibold", isCorrectDbOption ? "text-green-700 dark:text-green-300 print:text-green-700" : "text-primary print:text-blue-600")}>{optChar.label}.</span> <div className={cn("flex-1 text-sm", optionTextColor)}> {(optChar.text || optChar.imageUrl) ? (<>{optChar.text && <div className={cn("prose prose-sm dark:prose-invert max-w-none")}>{renderLatex(optChar.text)}</div>}{optChar.imageUrl && <div className="mt-1.5"><NextImage src={optChar.imageUrl} alt={`Option ${optChar.label}`} width={150} height={90} className="rounded object-contain border print:max-w-[100px] print:max-h-[60px]" data-ai-hint="option diagram"/></div>}</>) : (<p className="italic">Option {optChar.label} content not available.</p>)} </div>{answerIndicator}</div>); })} </div> {(qToPrint.explanationText || qToPrint.explanationImageUrl) && <div className="mt-6 pt-4 border-t print:pt-2 print:mt-2"><h4 className="text-md font-semibold text-muted-foreground mb-2 print:text-sm">Explanation:</h4>{qToPrint.explanationText && <div className="prose prose-sm dark:prose-invert max-w-none text-foreground leading-relaxed print:text-xs">{renderLatex(qToPrint.explanationText)}</div>}{qToPrint.explanationImageUrl && <div className="my-3 text-center"><NextImage src={qToPrint.explanationImageUrl} alt="Explanation Image" width={300} height={200} className="rounded object-contain inline-block border max-h-72 print:max-w-xs print:max-h-52" data-ai-hint="explanation diagram"/></div>}</div>} {!(qToPrint.explanationText || qToPrint.explanationImageUrl) && <p className="text-sm text-muted-foreground mt-4 text-center italic">No explanation available for this question.</p>} </Card> ); })} </div> <div className="flex justify-between items-center mt-4 print:hidden"><Button variant="outline" onClick={() => setCurrentReviewQuestionIndex(prev => Math.max(0, prev - 1))} disabled={currentReviewQuestionIndex === 0}><ChevronLeft className="mr-2 h-4 w-4" /> Previous</Button><Button variant="outline" onClick={() => setCurrentReviewQuestionIndex(prev => Math.min(testQuestions.length - 1, prev + 1))} disabled={currentReviewQuestionIndex === testQuestions.length - 1}><ChevronRight className="ml-2 h-4 w-4" /> Next</Button></div> </> ) : <p className="text-center text-muted-foreground py-10 print:hidden">Select a question from the palette above to review.</p> )}
         <div className="mt-8 text-center print:hidden"><Link href={Routes.myProgress} passHref><Button variant="outline" size="lg"><LayoutDashboard className="mr-2 h-5 w-5" /> Back to My Progress</Button></Link></div>
       </main>
       <Dialog open={isReportModalOpen} onOpenChange={setIsReportModalOpen}><DialogContent><DialogHeader><DialogTitle>Report Question {currentReviewQuestionIndex + 1}</DialogTitle><DialogDescription>Please let us know what's wrong.</DialogDescription></DialogHeader><Form {...reportForm}><form onSubmit={reportForm.handleSubmit(handleReportSubmit)} className="space-y-4"><FormField control={reportForm.control} name="TypeOfError" render={({ field }) => (<FormItem><FormLabel>Type of Error</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select error type" /></SelectTrigger></FormControl><SelectContent>{ReportErrorTypes.map(type => (<SelectItem key={type} value={type}>{type}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)}/> <FormField control={reportForm.control} name="Please_write_your_report_here" render={({ field }) => (<FormItem><FormLabel>Details (Optional)</FormLabel><FormControl><Textarea placeholder="Provide more details..." {...field} value={field.value ?? ''} rows={3}/></FormControl><FormMessage /></FormItem>)}/> <DialogFooter><DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose><Button type="submit" disabled={reportForm.formState.isSubmitting}>{reportForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Submit Report</Button></DialogFooter></form></Form></DialogContent></Dialog>
@@ -529,3 +537,4 @@ export default function TeacherTestStudentResultPage() {
     </div>
   );
 }
+
